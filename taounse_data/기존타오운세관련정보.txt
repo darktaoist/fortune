@@ -1,0 +1,59 @@
+기존타오운세 프로그램 소스 위치 : /Users/taoist/works/taounse/taounse
+
+
+KFortune Supabase 정보
+    https://zphcuovumpuykcqkruux.supabase.co
+
+
+## 클로드 코드에서 수파베이스 DB MCP 연결정보
+1. Add MCP server
+Add the MCP server to your project config using the command line.
+Code:
+File: Code
+```
+claude mcp add --scope project --transport http supabase "https://mcp.supabase.com/mcp?project_ref=zphcuovumpuykcqkruux"
+```
+
+2. Authenticate
+After configuring the MCP server, you need to authenticate. In a regular terminal (not the IDE extension) run:
+Details:
+Select the supabase server, then Authenticate to begin the flow.
+Code:
+File: Code
+```
+claude /mcp
+```
+
+3. Install Agent Skills (Optional)
+Agent Skills give AI coding tools ready-made instructions, scripts, and resources for working with Supabase more accurately and efficiently.
+Details:
+npx skills add supabase/agent-skills
+Code:
+File: Code
+```
+npx skills add supabase/agent-skills
+```
+
+
+### 디비 연결정보
+postgresql://postgres.zphcuovumpuykcqkruux:[YOUR-PASSWORD]@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
+
+host:
+aws-1-ap-southeast-1.pooler.supabase.com
+
+port:
+6543
+
+database:
+postgres
+
+user:
+postgres.zphcuovumpuykcqkruux
+
+
+
+
+Anon Public :
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwaGN1b3Z1bXB1eWtjcWtydXV4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NDQ3NDQsImV4cCI6MjA5NjEyMDc0NH0.Sr4rFja0abkObc5TvYo5HlBHYEJVgYUAG1LuFCxASec
+
+
