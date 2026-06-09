@@ -11,6 +11,28 @@ const localePath = useLocalePath()
 // come from app.vue; hreflang/canonical from useLocaleHead in the layout.
 usePageSeo('home', { suffix: false })
 
+/* ===================== Featured testimonials ===================== */
+// 관리자가 대시보드에서 featured 체크한 후기를 메인 "그들의 이야기"에 노출.
+// 없으면 하드코딩 샘플(testi.t1~3)로 폴백 → 메인이 비지 않음.
+const supabase = useSupabaseClient()
+const FLAGS = { ko: '🇰🇷', en: '🇺🇸', ja: '🇯🇵', zh: '🇹🇼' }
+const TESTI_TYPE = {
+  today: 'free.today.title', tojung: 'free.tojung.title', date: 'free.date.title',
+  lotto: 'free.lotto.title', month: 'free.month.title', hour: 'free.hour.title',
+  lifetime: 'premium.life.title', celeb: 'premium.celeb.title', mbti: 'premium.mbti.title',
+}
+const { data: featuredReviews } = await useAsyncData('featured-reviews', async () => {
+  const { data } = await supabase
+    .from('reviews')
+    .select('id,rating,text,author_name,locale,type_key')
+    .eq('featured', true)
+    .order('created_at', { ascending: false })
+    .limit(3)
+  return (data || []).filter((r) => r.text)
+}, { default: () => [] })
+function flagOf(code) { return FLAGS[code] || '🌐' }
+function tagOf(k) { return TESTI_TYPE[k] ? t(TESTI_TYPE[k]) : k }
+
 /* ===================== Zodiac quick reading ===================== */
 const ZODIAC = [
   { h: '子', name: { ko: '쥐띠', en: 'Rat', ja: '子(ねずみ)', zh: '鼠' }, years: '1936·48·60·72·84·96·08·20',
@@ -53,6 +75,11 @@ const ZODIAC = [
 const zodiacIdx = ref(6) // 午 — Horse (2026 丙午)
 const tr = (obj) => obj[locale.value] || obj.ko
 const selZodiac = computed(() => ZODIAC[zodiacIdx.value])
+// 띠별 오늘운세 실데이터(daily_horoscope). 운세 문구·행운 색/숫자/방위는 DB값을 쓰고,
+// 띠 정체성(한자·이름·생년)은 정적 ZODIAC 유지. API가 비면 정적값으로 폴백.
+const ZODIAC_ORDER = ['쥐', '소', '호랑이', '토끼', '용', '뱀', '말', '양', '원숭이', '닭', '개', '돼지']
+const { data: horoData } = await useFetch('/api/horoscope', { query: { lang: locale } })
+const todayZodiac = computed(() => horoData.value?.byZodiac?.[ZODIAC_ORDER[zodiacIdx.value]] || null)
 function zodiacGridLabel(z) {
   return locale.value === 'ko' ? z.name.ko.replace(/띠$/, '') : (z.name[locale.value] || z.name.ko)
 }
@@ -70,21 +97,25 @@ const carousel = ref(null)
 const scrollCarousel = (dx) => carousel.value?.scrollBy({ left: dx, behavior: 'smooth' })
 
 /* ===================== Free grid ===================== */
+// 무료 운세는 결과로 직행한다. 결과 페이지가 게이트: 사주 정보가 있으면(로그인 →
+// 저장된 사람, 게스트 → 브라우저 저장값) 바로 결과를, 없으면 /saju 입력 화면으로 보낸다.
 const FREE = [
-  { to: { path: '/saju', query: { service: 'today' } }, glyph: '日', titleKey: 'free.today.title', descKey: 'free.today.desc', badge: 'free' },
-  { to: { path: '/saju', query: { service: 'toJung' } }, glyph: '秘', titleKey: 'free.tojung.title', descKey: 'free.tojung.desc', badge: 'free' },
-  { to: { path: '/saju', query: { service: 'date' } }, glyph: '情', titleKey: 'free.date.title', descKey: 'free.date.desc', badge: 'free' },
-  { to: { path: '/saju', query: { service: 'lotto' } }, glyph: '財', titleKey: 'free.lotto.title', descKey: 'free.lotto.desc', badge: 'free' },
-  { to: { path: '/saju', query: { service: 'month' } }, glyph: '月', titleKey: 'free.month.title', descKey: 'free.month.desc', badge: 'free' },
-  { to: { path: '/saju', query: { service: 'hour' } }, glyph: '平', titleKey: 'free.hour.title', descKey: 'free.hour.desc', badge: 'new' },
+  { to: { path: '/result/free', query: { service: 'today' } }, glyph: '日', titleKey: 'free.today.title', descKey: 'free.today.desc', badge: 'free' },
+  { to: { path: '/result/free', query: { service: 'toJung' } }, glyph: '秘', titleKey: 'free.tojung.title', descKey: 'free.tojung.desc', badge: 'free' },
+  { to: { path: '/result/free', query: { service: 'date' } }, glyph: '情', titleKey: 'free.date.title', descKey: 'free.date.desc', badge: 'free' },
+  { to: { path: '/result/free', query: { service: 'lotto' } }, glyph: '財', titleKey: 'free.lotto.title', descKey: 'free.lotto.desc', badge: 'free' },
+  { to: { path: '/result/free', query: { service: 'month' } }, glyph: '月', titleKey: 'free.month.title', descKey: 'free.month.desc', badge: 'free' },
+  { to: { path: '/result/free', query: { service: 'hour' } }, glyph: '平', titleKey: 'free.hour.title', descKey: 'free.hour.desc', badge: 'new' },
 ]
 
 /* ===================== Trust counters ===================== */
+// 과장된 사용자/만족도 수치 대신 실제로 검증되는 데이터 자산 수치를 노출한다.
+// (만세력=calenda_data 행수, 연예인=celebrities, 언어=지원 로케일, 명리=브랜드 연혁)
 const STATS = [
-  { labelKey: 'trust.totalReads', target: 382, decimals: 0, unitKey: 'trust.totalReads.unit' },
-  { labelKey: 'trust.rating', target: 49, decimals: 1, unit: '/5.0' },
-  { labelKey: 'trust.countries', target: 4, decimals: 0, unitKey: 'trust.countries.unit' },
-  { labelKey: 'trust.keywords', target: 1200, decimals: 0, unit: '+' },
+  { labelKey: 'trust.manse', target: 73442, decimals: 0, unitKey: 'trust.manse.unit' },
+  { labelKey: 'trust.celebs', target: 84, decimals: 0, unitKey: 'trust.celebs.unit' },
+  { labelKey: 'trust.langs', target: 4, decimals: 0, unitKey: 'trust.langs.unit' },
+  { labelKey: 'trust.heritage', target: 40, decimals: 0, unitKey: 'trust.heritage.unit' },
 ]
 const unitText = (s) => (s.unitKey ? t(s.unitKey) : s.unit)
 const counts = ref(STATS.map(() => '0'))
@@ -114,8 +145,14 @@ const ELEMENTS = [
   { el: 'geum', han: '金', koKey: 'oh.geum.ko', sub: 'METAL' },
   { el: 'su', han: '水', koKey: 'oh.su.ko', sub: 'WATER' },
 ]
-const ohSelected = ref(null)
-const ohText = computed(() => (ohSelected.value ? t(`oh.${ohSelected.value}.text`) : t('oh.placeholder')))
+// 오행 동적 데이터(on-the-fly /api/ohaeng): 오늘 일진 오행 + 5원소 상생상극 해석.
+const { data: ohData } = await useFetch('/api/ohaeng', { query: { lang: locale } })
+const ohSelected = ref(ohData.value?.todayEl || null) // 기본은 오늘의 지배 오행
+const ohText = computed(() => {
+  const el = ohSelected.value
+  if (!el) return t('oh.placeholder')
+  return ohData.value?.byEl?.[el]?.content || t('oh.placeholder')
+})
 
 /* ===================== Starfield (client only) ===================== */
 const starfield = ref(null)
@@ -252,21 +289,21 @@ onBeforeUnmount(() => {
               <span class="sub">{{ selZodiac.years }}</span>
             </div>
           </div>
-          <p class="zodiac-result-text">{{ tr(selZodiac.text) }}</p>
+          <p class="zodiac-result-text">{{ todayZodiac ? todayZodiac.content : tr(selZodiac.text) }}</p>
           <div class="zodiac-lucky">
             <div class="lucky-item">
               <div class="lucky-label">{{ t('zodiac.luckyColor') }}</div>
               <div class="lucky-value">
-                <span class="lucky-color-swatch" :style="{ background: selZodiac.colorHex }" /><span>{{ tr(selZodiac.color) }}</span>
+                <span class="lucky-color-swatch" :style="{ background: todayZodiac ? todayZodiac.colorHex : selZodiac.colorHex }" /><span>{{ todayZodiac ? todayZodiac.color : tr(selZodiac.color) }}</span>
               </div>
             </div>
             <div class="lucky-item">
               <div class="lucky-label">{{ t('zodiac.luckyNumber') }}</div>
-              <div class="lucky-value">{{ selZodiac.num }}</div>
+              <div class="lucky-value">{{ todayZodiac ? todayZodiac.num : selZodiac.num }}</div>
             </div>
             <div class="lucky-item">
               <div class="lucky-label">{{ t('zodiac.luckyDir') }}</div>
-              <div class="lucky-value">{{ tr(selZodiac.dir) }}</div>
+              <div class="lucky-value">{{ todayZodiac ? todayZodiac.dir : tr(selZodiac.dir) }}</div>
             </div>
           </div>
         </div>
@@ -358,7 +395,18 @@ onBeforeUnmount(() => {
         <div class="section-label"><span>{{ t('testi.eyebrow') }}</span></div>
         <h2 class="section-title">{{ t('testi.title') }}</h2>
       </div>
-      <div class="testi-grid">
+      <!-- 관리자가 featured 지정한 실제 후기. 없으면 아래 샘플로 폴백. -->
+      <div v-if="featuredReviews.length" class="testi-grid">
+        <article v-for="r in featuredReviews" :key="r.id" class="testi-card">
+          <div class="testi-rating">{{ '★'.repeat(r.rating) }}</div>
+          <p class="testi-text">{{ r.text }}</p>
+          <div class="testi-meta">
+            <div class="testi-who"><span class="testi-flag">{{ flagOf(r.locale) }}</span><span class="testi-name">{{ r.author_name || t('testi.anon') }}</span></div>
+            <span class="testi-tag">{{ tagOf(r.type_key) }}</span>
+          </div>
+        </article>
+      </div>
+      <div v-else class="testi-grid">
         <article class="testi-card">
           <div class="testi-rating">★★★★★</div>
           <p class="testi-text">{{ t('testi.t1') }}</p>
@@ -384,6 +432,12 @@ onBeforeUnmount(() => {
           </div>
         </article>
       </div>
+      <div class="testi-more">
+        <NuxtLink :to="localePath('/reviews')" class="testi-more-btn">
+          <span>{{ t('reviews.more') }}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+        </NuxtLink>
+      </div>
     </section>
 
     <!-- ============ OHAENG ============ -->
@@ -393,11 +447,14 @@ onBeforeUnmount(() => {
         <h2 class="section-title">{{ t('oh.title') }}</h2>
         <p class="section-subtitle">{{ t('oh.subtitle') }}</p>
 
+        <p v-if="ohData" class="oh-today">{{ ohData.todayLabel }}</p>
+
         <div class="ohhaeng-orbit">
           <div
             v-for="e in ELEMENTS"
             :key="e.el"
             class="element"
+            :class="{ active: e.el === ohSelected, today: ohData && e.el === ohData.todayEl }"
             :data-el="e.el"
             @click="ohSelected = e.el"
           >
@@ -406,7 +463,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div class="ohhaeng-readout" :class="{ active: ohSelected }" v-html="ohText" />
+        <div class="ohhaeng-readout active" v-html="ohText" />
       </div>
     </section>
 
@@ -473,10 +530,10 @@ onBeforeUnmount(() => {
           <div class="footer-col">
             <h4>{{ t('footer.col.fortune') }}</h4>
             <ul>
-              <li><NuxtLink :to="localePath({ path: '/saju', query: { service: 'today' } })">{{ t('footer.link.today') }}</NuxtLink></li>
-              <li><NuxtLink :to="localePath({ path: '/saju', query: { service: 'toJung' } })">{{ t('footer.link.tojung') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath({ path: '/result/free', query: { service: 'today' } })">{{ t('footer.link.today') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath({ path: '/result/free', query: { service: 'toJung' } })">{{ t('footer.link.tojung') }}</NuxtLink></li>
               <li><NuxtLink :to="localePath({ path: '/saju', query: { service: 'lifetime' } })">{{ t('footer.link.life') }}</NuxtLink></li>
-              <li><NuxtLink :to="localePath({ path: '/saju', query: { service: 'lotto' } })">{{ t('footer.link.lotto') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath({ path: '/result/free', query: { service: 'lotto' } })">{{ t('footer.link.lotto') }}</NuxtLink></li>
             </ul>
           </div>
 
@@ -485,7 +542,7 @@ onBeforeUnmount(() => {
             <ul>
               <li><NuxtLink :to="localePath({ path: '/celeb-select', query: { service: 'celeb' } })">{{ t('footer.link.celeb') }}</NuxtLink></li>
               <li><NuxtLink :to="localePath({ path: '/celeb-select', query: { service: 'mbti' } })">{{ t('footer.link.mbti') }}</NuxtLink></li>
-              <li><NuxtLink :to="localePath({ path: '/saju', query: { service: 'date' } })">{{ t('footer.link.date') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath({ path: '/result/free', query: { service: 'date' } })">{{ t('footer.link.date') }}</NuxtLink></li>
               <li><a href="https://taoist.co.kr/aura" target="_blank" rel="noopener"><span>{{ t('nav.aura') }}</span> ↗</a></li>
             </ul>
           </div>
@@ -998,6 +1055,9 @@ onBeforeUnmount(() => {
 
 /* ============ TESTIMONIALS ============ */
 .testi-section { padding: var(--space-24) 0; }
+.testi-more { display: flex; justify-content: center; margin-top: var(--space-12); }
+.testi-more-btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 26px; border-radius: var(--radius-md); border: 1px solid var(--gold-border); background: var(--bg-secondary); color: var(--text-secondary); font-size: var(--text-sm); font-weight: 600; transition: all 0.2s; }
+.testi-more-btn:hover { border-color: var(--gold-primary); color: var(--gold-light); background: var(--gold-soft); transform: translateY(-2px); }
 .testi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-6); }
 .testi-card {
   background: var(--bg-secondary);
@@ -1106,7 +1166,11 @@ onBeforeUnmount(() => {
 .element[data-el='geum'] .element-circle { color: #e8e0d0; border-color: #e8e0d0; box-shadow: 0 0 30px rgba(232, 224, 208, 0.25); }
 .element[data-el='su'] .element-circle { color: #3b82f6; border-color: #3b82f6; box-shadow: 0 0 30px rgba(59, 130, 246, 0.25); }
 .element:hover .element-circle { transform: scale(1.05); }
+.element.active .element-circle { transform: scale(1.08); }
+.element.today .element-circle { box-shadow: 0 0 0 2px var(--gold-primary), 0 0 34px var(--gold-glow); }
+.element.today .element-name { color: var(--gold-light); }
 .element-name { font-family: var(--font-display); font-size: var(--text-lg); color: var(--text-primary); }
+.oh-today { text-align: center; font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.04em; color: var(--gold-light); margin: 0 0 var(--space-6); }
 .element-name .ko-sub {
   display: block;
   font-size: var(--text-xs);
@@ -1119,21 +1183,33 @@ onBeforeUnmount(() => {
 .ohhaeng-readout {
   max-width: 600px;
   margin: 0 auto;
-  padding: var(--space-6);
+  padding: var(--space-6) var(--space-8);
   background: var(--bg-tertiary);
   border: 1px solid var(--gold-border);
   border-radius: var(--radius-lg);
   min-height: 80px;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  text-align: center;
   color: var(--text-secondary);
   font-size: var(--text-base);
-  line-height: 1.6;
+  line-height: 1.75;
+  text-wrap: pretty;
   transition: all 0.3s;
 }
 .ohhaeng-readout.active { color: var(--text-primary); border-color: var(--gold-primary); }
-.ohhaeng-readout :deep(strong) { color: var(--gold-light); font-family: var(--font-display); }
+.ohhaeng-readout :deep(strong) {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--gold-light);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+/* 제목(strong) 뒤의 <br>는 블록 제목과 중복되므로 숨겨 빈 줄 방지 */
+.ohhaeng-readout :deep(strong + br) { display: none; }
 
 /* ============ AURA BANNER ============ */
 .aura-section { padding: var(--space-24) 0; }

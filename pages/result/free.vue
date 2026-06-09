@@ -6,7 +6,8 @@ const { t, locale } = useI18n()
 const localePath = useLocalePath()
 const route = useRoute()
 const user = useSupabaseUser()
-const { current } = useSajuInput()
+const supabase = useSupabaseClient()
+const { current, hasInput, save } = useSajuInput()
 
 usePageSeo('result')
 
@@ -285,23 +286,80 @@ async function loadManse() {
 }
 
 function loadAll() { loadToday(); loadTojung(); loadMonth(); loadDate(); loadLotto(); loadLife(); loadManse() }
-onMounted(loadAll)
-watch(locale, loadAll)
+
+/* ===== 진입 게이트 =====
+ * 무료 카드는 여기로 직행한다. 사주 정보가 있으면 바로 결과를, 없으면 입력 화면으로.
+ *  - 게스트: 브라우저 저장값(localStorage, 부팅 시 하이드레이션)을 사용.
+ *  - 로그인: current가 비어 있으면 저장된 사람 중 최근 1명을 불러와 subject로 사용.
+ *  - 둘 다 없으면 /saju 입력 화면으로 보낸다(replace).
+ */
+const resolving = ref(true)
+function personToSubject(p) {
+  const [y, mo, d] = String(p.birth_date || '').split('-').map(Number)
+  let hour = null, minute = null
+  if (p.birth_time) { const [hh, mm] = String(p.birth_time).split(':'); hour = Number(hh); minute = Number(mm) }
+  return {
+    name: p.name || '', gender: p.gender === 'f' ? 'f' : 'm', calendar: p.calendar || 'solar',
+    year: y || null, month: mo || null, day: d || null,
+    hour: Number.isFinite(hour) ? hour : null, minute: Number.isFinite(minute) ? minute : null,
+    place: p.birth_place || '',
+    mbti: typeof p.mbti === 'string' && p.mbti.length === 4 ? p.mbti.split('') : [null, null, null, null],
+  }
+}
+async function ensureSubject() {
+  if (hasInput.value || !user.value) return
+  const { data } = await supabase
+    .from('people').select('*').eq('owner_id', user.value.id)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle()
+  if (data) save(personToSubject(data))
+}
+async function gateAndLoad() {
+  if (!ftKey.value) { resolving.value = false; return } // unknown service → notFound UI
+  await ensureSubject()
+  if (!hasInput.value) {
+    navigateTo(localePath({ path: '/saju', query: { service: ftKey.value } }), { replace: true })
+    return
+  }
+  resolving.value = false
+  loadAll()
+}
+onMounted(gateAndLoad)
+watch(locale, () => { if (hasInput.value) loadAll() })
+
+/* 사주 변경: 입력 화면으로(게스트는 prefill, 로그인은 person rail에서 전환) */
+function goEdit() {
+  navigateTo(localePath({ path: '/saju', query: { service: ftKey.value || 'today' } }))
+}
 
 /* ---- actions ---- */
-function onSave() {
+// 타입별 아바타 색조(보관함 카드에서 구분용).
+const TYPE_TINT = { today: 'gold', tojung: 'purple', date: 'rose', lotto: 'jade', month: 'blue', hour: 'gold' }
+const saving = ref(false)
+async function onSave() {
   if (!user.value) {
     navigateTo(localePath({ path: '/login', query: { reason: 'save', redirect: route.fullPath } }))
     return
   }
-  alert(t('result.savedMock'))
+  if (saving.value) return
+  saving.value = true
+  const c = current.value
+  const { error } = await supabase.from('saved_readings').insert({
+    owner_id: user.value.id,
+    type_key: ftKey.value || 'today',
+    tier: 'free',
+    subject: c ? { ...c } : null,        // 다시 보기 시 복원할 사주 주체
+    ganji: showGanji.value ? t('result.ganji') : null,
+    glyph: stamp.value,
+    tint: TYPE_TINT[ftKey.value] || 'gold',
+  })
+  saving.value = false
+  alert(error ? error.message : t('result.saved'))
 }
 function onShare() {
   const url = typeof window !== 'undefined' ? window.location.href : ''
   if (typeof navigator !== 'undefined' && navigator.share) navigator.share({ title: heroTitle.value, url }).catch(() => {})
   else if (typeof navigator !== 'undefined' && navigator.clipboard) navigator.clipboard.writeText(url).then(() => alert(t('result.shareMock')))
 }
-function onPrint() { if (typeof window !== 'undefined') window.print() }
 </script>
 
 <template>
@@ -322,9 +380,14 @@ function onPrint() { if (typeof window !== 'undefined') window.print() }
       </aside>
 
       <div class="main-col">
+        <p v-if="resolving" class="resolving-note">{{ t('result.loading') }}</p>
+        <template v-else>
         <!-- user info (입력값이 있을 때만) -->
         <div v-if="current && current.year" class="info-card">
-          <div class="info-card-head"><span class="dot" /><span>{{ t('result.userInfo') }}</span></div>
+          <div class="info-card-head"><span class="dot" /><span>{{ t('result.userInfo') }}</span><button class="edit-saju" @click="goEdit">
+              <svg v-if="user" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+              <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+              {{ user ? t('result.pickPerson') : t('result.changeSaju') }}</button></div>
           <div class="info-grid">
             <div v-for="([k, v], i) in userGrid" :key="i" class="info-item"><span class="k">{{ k }}</span><span class="v">{{ v }}</span></div>
           </div>
@@ -502,9 +565,11 @@ function onPrint() { if (typeof window !== 'undefined') window.print() }
         <div class="actions">
           <button class="btn btn-primary" @click="onSave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg><span>{{ t('result.save') }}</span></button>
           <button class="btn btn-ghost" @click="onShare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg><span>{{ t('result.share') }}</span></button>
-          <button class="btn btn-ghost" @click="onPrint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg><span>{{ t('result.print') }}</span></button>
-          <NuxtLink class="btn btn-secondary" :to="localePath({ path: '/', hash: '#free' })"><span>{{ t('result.more') }}</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg></NuxtLink>
         </div>
+
+        <!-- 후기 작성 (사주 입력이 있어 결과를 본 경우에만) -->
+        <ReviewForm v-if="ftKey && current && current.year" :type-key="ftKey" />
+        </template>
       </div>
 
       <aside class="ad-rail">
@@ -538,6 +603,9 @@ function onPrint() { if (typeof window !== 'undefined') window.print() }
 .info-card { background: var(--bg-secondary); border: 1px solid var(--gold-border); border-radius: var(--radius-lg); padding: var(--space-6) var(--space-8); box-shadow: var(--shadow-card), var(--shadow-inset); margin-bottom: var(--space-12); }
 .info-card-head { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; padding-bottom: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--gold-border); }
 .info-card-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold-primary); box-shadow: 0 0 10px var(--gold-glow); }
+.info-card-head .edit-saju { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: var(--radius-full); border: 1px solid var(--gold-border); background: transparent; color: var(--text-secondary); font-family: var(--font-body); font-size: var(--text-xs); font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.info-card-head .edit-saju:hover { border-color: var(--gold-primary); color: var(--gold-light); background: var(--gold-soft); }
+.resolving-note { text-align: center; color: var(--text-muted); font-size: var(--text-sm); padding: var(--space-16) var(--space-6); }
 .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-4) var(--space-8); }
 .info-item { display: flex; flex-direction: column; gap: 4px; }
 .info-item .k { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }

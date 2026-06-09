@@ -12,6 +12,17 @@ export default defineNuxtConfig({
     redirect: false,
   },
 
+  // 결제(Toss Payments v2) 키. 시크릿은 서버 전용, 클라이언트 키만 public.
+  // 미설정 시 결제 페이지가 "결제 설정 필요" 상태로 안전하게 표시된다.
+  runtimeConfig: {
+    tossSecretKey: process.env.TOSS_SECRET_KEY || '',
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+    premiumModel: process.env.PREMIUM_MODEL || 'claude-sonnet-4-6',
+    public: {
+      tossClientKey: process.env.NUXT_PUBLIC_TOSS_CLIENT_KEY || '',
+    },
+  },
+
   // Design tokens (ported verbatim from the design prototype) loaded globally.
   css: ['~/assets/css/design-system.css'],
 

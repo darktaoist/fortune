@@ -5,6 +5,27 @@
 const { t } = useI18n()
 const localePath = useLocalePath()
 const route = useRoute()
+const user = useSupabaseUser()
+const supabase = useSupabaseClient()
+
+// 로그인 상태 메뉴(드롭다운)
+const userMenuOpen = ref(false)
+const userInitial = computed(() => {
+  const u = user.value
+  if (!u) return '?'
+  const name = u.user_metadata?.name || u.user_metadata?.full_name || u.email || ''
+  return (name.trim()[0] || '?').toUpperCase()
+})
+async function logout() {
+  userMenuOpen.value = false
+  await supabase.auth.signOut()
+  navigateTo(localePath('/'))
+}
+function closeUserMenu(e) {
+  if (!e.target.closest?.('.user-menu')) userMenuOpen.value = false
+}
+onMounted(() => document.addEventListener('click', closeUserMenu))
+onBeforeUnmount(() => document.removeEventListener('click', closeUserMenu))
 
 const scrolled = ref(false)
 function onScroll() {
@@ -30,10 +51,10 @@ const isHome = computed(() => route.path === localePath('/'))
       <nav class="nav-main">
         <NuxtLink :to="localePath('/')" :class="{ active: isHome }">{{ t('nav.home') }}</NuxtLink>
         <NuxtLink :to="localePath({ path: '/', hash: '#free' })">{{ t('nav.free') }}</NuxtLink>
+        <NuxtLink :to="localePath('/daily')">{{ t('nav.daily') }}</NuxtLink>
         <NuxtLink :to="localePath({ path: '/', hash: '#premium' })">{{ t('nav.premium') }}</NuxtLink>
         <NuxtLink :to="localePath({ path: '/celeb-select', query: { service: 'celeb' } })">{{ t('nav.celeb') }}</NuxtLink>
         <NuxtLink :to="localePath({ path: '/celeb-select', query: { service: 'mbti' } })">{{ t('nav.mbti') }}</NuxtLink>
-        <NuxtLink :to="localePath('/library')">{{ t('nav.library') }}</NuxtLink>
         <a href="https://taoist.co.kr/aura" target="_blank" rel="noopener" class="external">{{ t('nav.aura') }}</a>
       </nav>
 
@@ -44,7 +65,14 @@ const isHome = computed(() => route.path === localePath('/'))
 
         <LangSwitcher />
 
-        <NuxtLink :to="localePath('/login')" class="login-btn">{{ t('common.login') }}</NuxtLink>
+        <NuxtLink v-if="!user" :to="localePath('/login')" class="login-btn">{{ t('common.login') }}</NuxtLink>
+        <div v-else class="user-menu">
+          <button class="user-avatar" type="button" :aria-label="t('common.mypage')" @click.stop="userMenuOpen = !userMenuOpen">{{ userInitial }}</button>
+          <div v-if="userMenuOpen" class="user-dropdown" role="menu">
+            <NuxtLink :to="localePath('/mypage')" @click="userMenuOpen = false">{{ t('common.mypage') }}</NuxtLink>
+            <button type="button" @click="logout">{{ t('common.logout') }}</button>
+          </div>
+        </div>
 
         <button class="icon-btn hamburger" type="button" :aria-label="t('common.menu')">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="7" x2="21" y2="7" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="17" x2="21" y2="17" /></svg>
@@ -165,6 +193,13 @@ const isHome = computed(() => route.path === localePath('/'))
   font-weight: 600;
   transition: all 0.2s;
 }
+/* 로그인 상태: 아바타 + 드롭다운 */
+.user-menu { position: relative; }
+.user-avatar { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: linear-gradient(135deg, var(--gold-primary), var(--gold-light)); color: var(--text-on-gold); font-family: var(--font-display); font-weight: 700; font-size: var(--text-sm); cursor: pointer; transition: transform 0.15s; }
+.user-avatar:hover { transform: scale(1.05); }
+.user-dropdown { position: absolute; top: calc(100% + 10px); right: 0; min-width: 160px; display: flex; flex-direction: column; padding: 6px; background: var(--bg-elevated, var(--bg-secondary)); border: 1px solid var(--gold-border); border-radius: var(--radius-md); box-shadow: var(--shadow-deep); z-index: 200; }
+.user-dropdown a, .user-dropdown button { display: block; width: 100%; text-align: left; padding: 9px 12px; border-radius: var(--radius-sm); font-size: var(--text-sm); color: var(--text-secondary); background: transparent; transition: all 0.15s; }
+.user-dropdown a:hover, .user-dropdown button:hover { background: var(--bg-tertiary); color: var(--gold-light); }
 .login-btn:hover {
   background: var(--gold-primary);
   color: var(--text-on-gold);

@@ -45,7 +45,7 @@ const MBTI_AXES = [
   [{ v: 'T', k: 'saju.mbti.T.k' }, { v: 'F', k: 'saju.mbti.F.k' }],
   [{ v: 'J', k: 'saju.mbti.J.k' }, { v: 'P', k: 'saju.mbti.P.k' }],
 ]
-const REL_KEYS = ['partner', 'friend', 'family', 'crush', 'colleague']
+const REL_KEYS = ['self', 'partner', 'friend', 'family', 'crush', 'colleague']
 const CAL_LABEL = { solar: 'saju.cal.solar', lunar: 'saju.cal.lunar', 'lunar-leap': 'saju.cal.leap' }
 const TINTS = ['gold', 'rose', 'purple', 'jade', 'blue']
 
@@ -207,7 +207,7 @@ function resetForm() {
 /* ============ Save modal ============ */
 const saveOpen = ref(false)
 const saveName = ref('')
-const saveRel = ref('')
+const saveRel = ref('self') // 기본은 '본인(나)'
 const saveSummary = computed(() => {
   const dob = hasDate.value ? `${f.year}.${String(f.month).padStart(2, '0')}.${String(f.day).padStart(2, '0')} · ${t(CAL_LABEL[f.calendar])}` : '—'
   return [
@@ -222,7 +222,7 @@ function openSave() {
   if (!loggedIn.value) { gotoLogin('save'); return }
   if (!hasDate.value) { alert(t('saju.save.needBirth')); return }
   saveName.value = f.name || ''
-  saveRel.value = ''
+  saveRel.value = 'self'
   saveOpen.value = true
 }
 async function confirmSave() {
@@ -241,6 +241,10 @@ async function confirmSave() {
     birth_place: f.place || null,
     tint,
   }
+  // 본인(나)은 1명만 유지 — 기존 본인 행이 있으면 교체.
+  if (saveRel.value === 'self') {
+    await supabase.from('people').delete().eq('owner_id', user.value.id).eq('rel_key', 'self')
+  }
   const { error } = await supabase.from('people').insert(row)
   if (error) { alert(error.message); return }
   saveOpen.value = false
@@ -250,7 +254,7 @@ async function confirmSave() {
 
 /* ============ Navigation ============ */
 function gotoLogin(reason) {
-  navigateTo(localePath({ path: '/login', query: { redirect: '/saju', service: f.fortuneType, ...(reason ? { reason } : {}) } }))
+  return navigateTo(localePath({ path: '/login', query: { redirect: '/saju', service: f.fortuneType, ...(reason ? { reason } : {}) } }))
 }
 // Persist the current subject (guest → localStorage; logged-in cache too) so
 // it survives navigation/refresh and the result page can read it.
@@ -274,7 +278,7 @@ function prefillFromCurrent() {
   f.mbti = c.mbti && c.mbti.length === 4 ? c.mbti.slice() : [null, null, null, null]
 }
 
-function submit() {
+async function submit() {
   if (!hasDate.value) { alert(t('saju.alert.dob')); return }
   if (f.fortuneType === 'mbti' && f.mbti.some((v) => v === null)) {
     mbtiHighlight.value = false
@@ -284,12 +288,13 @@ function submit() {
   }
   persistCurrent()
   if (needsLogin.value) {
-    if (!loggedIn.value) { gotoLogin('pro'); return }
-    if (f.fortuneType === 'couple') navigateTo(localePath({ path: '/celeb-select', query: { service: 'celeb' } }))
-    else navigateTo(localePath({ path: '/checkout', query: { service: f.fortuneType === 'mbti' ? 'mbti' : 'lifetime' } }))
-  } else {
-    navigateTo(localePath({ path: '/result/free', query: { service: f.fortuneType } }))
+    if (!loggedIn.value) return gotoLogin('pro')
+    if (f.fortuneType === 'couple') return navigateTo(localePath({ path: '/celeb-select', query: { service: 'celeb' } }))
+    // 결제 스킵(v1): 평생운세는 바로 결과 페이지로. 궁합/MBTI는 추후 결제·상대선택 연결.
+    if (f.fortuneType === 'lifetime') return navigateTo(localePath({ path: '/result/premium', query: { service: 'lifetime' } }))
+    return navigateTo(localePath({ path: '/checkout', query: { service: 'mbti' } }))
   }
+  return navigateTo(localePath({ path: '/result/free', query: { service: f.fortuneType } }))
 }
 
 onMounted(() => {
@@ -519,9 +524,9 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
           <div class="actions">
             <div class="row-1">
               <button class="btn btn-primary" @click="submit">
-                <span v-if="needsLogin">{{ t('saju.cta.premium') }}</span>
+                <span v-if="needsLogin">{{ loggedIn ? t('saju.cta.premiumIn') : t('saju.cta.premium') }}</span>
                 <span v-else>{{ t('saju.cta.free') }}</span>
-                <svg v-if="needsLogin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                <svg v-if="needsLogin && !loggedIn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                 <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
               </button>
               <button class="btn btn-secondary" @click="openSave">
@@ -529,7 +534,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
                 <span>{{ t('saju.save.btn') }}</span>
               </button>
             </div>
-            <p class="actions-hint">{{ needsLogin ? t('saju.hint.premium') : t('saju.hint.free') }}</p>
+            <p v-if="needsLogin && !loggedIn" class="actions-hint">{{ t('saju.hint.premium') }}</p>
+            <p v-else-if="!needsLogin" class="actions-hint">{{ t('saju.hint.free') }}</p>
           </div>
 
           <div class="trust-strip">
@@ -557,7 +563,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
           </div>
           <div class="mfield">
             <label>{{ t('saju.save.relLabel') }}</label>
-            <select v-model="saveRel" class="input"><option value="">—</option><option v-for="r in REL_KEYS" :key="r" :value="r">{{ t('cel.rel.' + r) }}</option></select>
+            <select v-model="saveRel" class="input"><option v-for="r in REL_KEYS" :key="r" :value="r">{{ t('cel.rel.' + r) }}</option></select>
           </div>
           <div class="msummary">
             <div class="sh">{{ t('saju.save.summary') }}</div>
