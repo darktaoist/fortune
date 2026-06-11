@@ -16,7 +16,7 @@ import { serverSupabaseClient } from '#supabase/server'
 const CAL_CODE: Record<string, number> = { solar: 1, lunar: 2, 'lunar-leap': 3 }
 const NATION: Record<string, string> = { ko: 'k', en: 'e', ja: 'j', zh: 'c' }
 
-function fortuneNumber(year: number, month: number, day: number, hour: number | null, calendar: string, target: string) {
+export function fortuneNumber(year: number, month: number, day: number, hour: number | null, calendar: string, target: string) {
   const y2 = parseInt(String(year).slice(-2)) || 0
   // 1.0 parity: clock hour 0–23; unknown (null) → 11 (1.0 default 11:30 → HH=11).
   const h = hour == null || Number.isNaN(hour) ? 11 : hour

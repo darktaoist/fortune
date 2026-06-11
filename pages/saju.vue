@@ -1,7 +1,7 @@
 <script setup>
 // 사주 정보 입력 — ported from 사주 정보 입력.html.
-// Real-time ganji preview via the prototype's approximate calcSaju (precise
-// manse-ryeok recompute happens server-side later). Demo login switcher removed;
+// 명식 미리보기는 결과 페이지와 동일한 정밀 만세력(/api/saju/manse → calenda_data DB)을
+// 디바운스 호출해 채운다(절기·음력 변환 정확). Demo login switcher removed;
 // login state now comes from Supabase auth. Header/tabbar come from the layout.
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
@@ -17,12 +17,6 @@ const STEMS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '�
 const BRANCHES = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥']
 const STEM_EL = { 甲: 'mok', 乙: 'mok', 丙: 'hwa', 丁: 'hwa', 戊: 'to', 己: 'to', 庚: 'geum', 辛: 'geum', 壬: 'su', 癸: 'su' }
 const BRANCH_EL = { 寅: 'mok', 卯: 'mok', 巳: 'hwa', 午: 'hwa', 辰: 'to', 戌: 'to', 丑: 'to', 未: 'to', 申: 'geum', 酉: 'geum', 亥: 'su', 子: 'su' }
-
-// 입력은 실제 시각(0~23시)으로 받고(1.0 parity), 지지(地支)는 시각에서 파생한다.
-// 子 23~01, 丑 01~03 … 의 2시간 블록 → BRANCHES 인덱스.
-function branchFromHour(h) {
-  return BRANCHES[Math.floor(((h + 1) % 24) / 2)]
-}
 const pad2 = (n) => String(n).padStart(2, '0')
 const fmtClock = (h, m) => `${pad2(h)}:${pad2(m ?? 0)}`
 const minuteOpts = Array.from({ length: 60 }, (_, i) => i)
@@ -36,6 +30,7 @@ const FTYPES = [
   { ft: 'lotto', glyph: '財', k: 'saju.ft.lotto', d: 'saju.ft.lotto.d', pro: false },
   { ft: 'hour', glyph: '平', k: 'saju.ft.hour', d: 'saju.ft.hour.d', pro: false },
   { ft: 'lifetime', glyph: '命', k: 'saju.ft.life', d: 'saju.ft.life.d', pro: true },
+  { ft: 'newyear', glyph: '秘', k: 'saju.ft.newyear', d: 'saju.ft.newyear.d', pro: true },
   { ft: 'couple', glyph: '緣', k: 'saju.ft.couple', d: 'saju.ft.couple.d', pro: true },
   { ft: 'mbti', glyph: '合', k: 'saju.ft.mbti', d: 'saju.ft.mbti.d', pro: true },
 ]
@@ -63,7 +58,7 @@ watch(hourUnknown, (v) => { if (v) { f.hour = null; f.minute = null } })
 watch(() => f.hour, (v) => { if (v != null) hourUnknown.value = false })
 
 function mapService(s) {
-  const MAP = { today: 'today', toJung: 'toJung', tojung: 'toJung', month: 'month', date: 'date', lotto: 'lotto', hour: 'hour', lifetime: 'lifetime', life: 'lifetime', mbti: 'mbti', celeb: 'couple', couple: 'couple' }
+  const MAP = { today: 'today', toJung: 'toJung', tojung: 'toJung', month: 'month', date: 'date', lotto: 'lotto', hour: 'hour', lifetime: 'lifetime', life: 'lifetime', newyear: 'newyear', mbti: 'mbti', celeb: 'couple', couple: 'couple' }
   return MAP[s] || 'today'
 }
 
@@ -79,45 +74,45 @@ watch(() => [f.year, f.month], () => {
   if (f.day && f.day > days.value.length) f.day = null
 })
 
-/* ============ Approximate saju (prototype calcSaju) ============ */
-function julianDay(y, m, d) {
-  if (m <= 2) { y -= 1; m += 12 }
-  const a = Math.floor(y / 100)
-  const b = 2 - a + Math.floor(a / 4)
-  return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + b - 1524
-}
-function calcSaju(y, mo, d, hourChar) {
-  let yearForPillar = y
-  if (mo < 2 || (mo === 2 && d < 4)) yearForPillar = y - 1
-  const yStem = STEMS[((yearForPillar - 4) % 10 + 10) % 10]
-  const yBranch = BRANCHES[((yearForPillar - 4) % 12 + 12) % 12]
-  let monthForPillar = mo
-  if (d < 6) monthForPillar = mo - 1
-  if (monthForPillar <= 0) monthForPillar += 12
-  const mBranchIdx = (monthForPillar + 1) % 12
-  const mBranch = BRANCHES[mBranchIdx]
-  const yStemIdx = STEMS.indexOf(yStem)
-  const mStemIdx = (((yStemIdx * 2 + 2) + (mBranchIdx - 2 + 12) % 12) % 10)
-  const mStem = STEMS[mStemIdx]
-  const jdn = julianDay(y, mo, d)
-  const baseJdn = julianDay(2000, 1, 7)
-  const dDiff = jdn - baseJdn
-  const dStemIdx = ((dDiff % 10) + 10) % 10
-  const dBranchIdx = ((dDiff % 12) + 12) % 12
-  const dStem = STEMS[dStemIdx]
-  const dBranch = BRANCHES[dBranchIdx]
-  let hStem = null, hBranch = null
-  if (hourChar && hourChar !== '?') {
-    hBranch = hourChar
-    const hBranchIdx = BRANCHES.indexOf(hBranch)
-    const startStemIdx = (dStemIdx * 2) % 10
-    hStem = STEMS[(startStemIdx + hBranchIdx) % 10]
-  }
-  return { year: [yStem, yBranch], month: [mStem, mBranch], day: [dStem, dBranch], hour: hStem ? [hStem, hBranch] : null, zodiac: yBranch }
-}
+/* ============ 명식 미리보기 — 정밀 만세력(서버) ============ */
+// 과거에는 클라이언트 근사(calcSaju)로 미리보기를 그렸으나 절기 경계·음력 변환이
+// 부정확했다(예: 1972-07-01 양력의 월주가 소서(7/7) 전인데도 未월로 계산됨).
+// 이제 결과 페이지와 동일한 서버 만세력(/api/saju/manse → calenda_data DB)을
+// 디바운스 호출해 미리보기를 채운다. 미리보기 = 실제 결과 100% 일치.
+const serverSaju = ref(null)
+const sajuLoading = ref(false)
+let manseSeq = 0
+let manseTimer = null
 
 const hasDate = computed(() => !!(f.year && f.month && f.day))
-const saju = computed(() => (hasDate.value ? calcSaju(f.year, f.month, f.day, f.hour != null ? branchFromHour(f.hour) : null) : null))
+
+async function fetchManse() {
+  if (!hasDate.value) { serverSaju.value = null; return }
+  const seq = ++manseSeq
+  sajuLoading.value = true
+  try {
+    const res = await $fetch('/api/saju/manse', {
+      method: 'POST',
+      body: { year: f.year, month: f.month, day: f.day, hour: f.hour, minute: f.minute, gender: f.gender, calendar: f.calendar, name: f.name },
+    })
+    if (seq === manseSeq && res?.pillars) serverSaju.value = res
+  } catch {
+    // 네트워크/없는 날짜 → 직전 값 유지
+  } finally {
+    if (seq === manseSeq) sajuLoading.value = false
+  }
+}
+watch(() => [f.year, f.month, f.day, f.hour, f.minute, f.gender, f.calendar], () => {
+  if (manseTimer) clearTimeout(manseTimer)
+  manseTimer = setTimeout(fetchManse, 350)
+}, { immediate: true })
+
+// 기존 미리보기 컴포저블이 기대하는 형태({year,month,day,hour,zodiac})로 어댑트.
+const saju = computed(() => {
+  const p = serverSaju.value?.pillars
+  if (!p) return null
+  return { year: p.year, month: p.month, day: p.day, hour: p.hour, zodiac: p.year[1] }
+})
 
 const pillars = computed(() => {
   const s = saju.value
@@ -177,6 +172,18 @@ async function loadPeople() {
   people.value = data || []
 }
 watch(user, loadPeople, { immediate: true })
+// 본인(나)이 이미 저장돼 있는지 — 새 사람 저장 시 기본 관계를 '본인'으로 두지 않기 위함.
+const hasSelf = computed(() => people.value.some((p) => p.rel_key === 'self'))
+
+// 저장 식별: 같은 (이름 + 생년월일 + 달력)이면 동일 인물로 보고 수정, 다르면 신규.
+function formBirthDate() {
+  return hasDate.value ? `${f.year}-${String(f.month).padStart(2, '0')}-${String(f.day).padStart(2, '0')}` : null
+}
+function findPerson(name) {
+  const nm = (name || '').trim()
+  const bd = formBirthDate()
+  return people.value.find((p) => (p.name || '').trim() === nm && p.birth_date === bd && p.calendar === f.calendar) || null
+}
 
 function prefillFromPerson(p) {
   activePersonId.value = p.id
@@ -222,7 +229,10 @@ function openSave() {
   if (!loggedIn.value) { gotoLogin('save'); return }
   if (!hasDate.value) { alert(t('saju.save.needBirth')); return }
   saveName.value = f.name || ''
-  saveRel.value = 'self'
+  // 이미 저장된 동일 인물이면 그 관계를 기본값으로(수정 시 관계 유지),
+  // 새 인물이면 본인이 아직 없을 때만 '본인(나)'으로, 있으면 '미지정'.
+  const match = findPerson(f.name)
+  saveRel.value = match ? (match.rel_key || '') : (hasSelf.value ? '' : 'self')
   saveOpen.value = true
 }
 async function confirmSave() {
@@ -241,11 +251,14 @@ async function confirmSave() {
     birth_place: f.place || null,
     tint,
   }
-  // 본인(나)은 1명만 유지 — 기존 본인 행이 있으면 교체.
-  if (saveRel.value === 'self') {
-    await supabase.from('people').delete().eq('owner_id', user.value.id).eq('rel_key', 'self')
+  // 같은 (이름+생년월일+달력)이면 동일 인물로 보고 수정(update), 아니면 신규(insert).
+  const existing = findPerson(name)
+  let error
+  if (existing) {
+    ({ error } = await supabase.from('people').update(row).eq('id', existing.id))
+  } else {
+    ({ error } = await supabase.from('people').insert(row))
   }
-  const { error } = await supabase.from('people').insert(row)
   if (error) { alert(error.message); return }
   saveOpen.value = false
   await loadPeople()
@@ -292,6 +305,7 @@ async function submit() {
     if (f.fortuneType === 'couple') return navigateTo(localePath({ path: '/celeb-select', query: { service: 'celeb' } }))
     // 결제 스킵(v1): 평생운세는 바로 결과 페이지로. 궁합/MBTI는 추후 결제·상대선택 연결.
     if (f.fortuneType === 'lifetime') return navigateTo(localePath({ path: '/result/premium', query: { service: 'lifetime' } }))
+    if (f.fortuneType === 'newyear') return navigateTo(localePath({ path: '/result/premium', query: { service: 'newyear' } }))
     return navigateTo(localePath({ path: '/checkout', query: { service: 'mbti' } }))
   }
   return navigateTo(localePath({ path: '/result/free', query: { service: f.fortuneType } }))
@@ -563,7 +577,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
           </div>
           <div class="mfield">
             <label>{{ t('saju.save.relLabel') }}</label>
-            <select v-model="saveRel" class="input"><option v-for="r in REL_KEYS" :key="r" :value="r">{{ t('cel.rel.' + r) }}</option></select>
+            <select v-model="saveRel" class="input"><option value="">—</option><option v-for="r in REL_KEYS" :key="r" :value="r">{{ t('cel.rel.' + r) }}</option></select>
           </div>
           <div class="msummary">
             <div class="sh">{{ t('saju.save.summary') }}</div>

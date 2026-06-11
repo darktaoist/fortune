@@ -87,6 +87,7 @@ function zodiacGridLabel(z) {
 /* ===================== Premium carousel + locale pricing ===================== */
 const PREMIUM = [
   { to: { path: '/saju', query: { service: 'lifetime' } }, glyph: '命', titleKey: 'premium.life.title', descKey: 'premium.life.desc', krwOld: '19,800', usdOld: '19.99' },
+  { to: { path: '/saju', query: { service: 'newyear' } }, glyph: '秘', titleKey: 'premium.newyear.title', descKey: 'premium.newyear.desc', krwOld: '9,900', usdOld: '9.99' },
   { to: { path: '/celeb-select', query: { service: 'celeb' } }, glyph: '緣', titleKey: 'premium.celeb.title', descKey: 'premium.celeb.desc', krwOld: '5,000', usdOld: '4.99' },
   { to: { path: '/celeb-select', query: { service: 'mbti' } }, glyph: '合', titleKey: 'premium.mbti.title', descKey: 'premium.mbti.desc', krwOld: '5,000', usdOld: '4.99' },
 ]
@@ -256,6 +257,22 @@ onBeforeUnmount(() => {
       <div class="scroll-indicator">
         <span>{{ t('common.scroll') }}</span>
         <div class="scroll-line" />
+      </div>
+    </section>
+
+    <!-- ============ ACCURACY BAND ============ -->
+    <section class="accuracy-band container">
+      <div class="ab-inner">
+        <div class="ab-glyph">曆</div>
+        <div class="ab-text">
+          <div class="ab-eyebrow">{{ t('accuracy.eyebrow') }}</div>
+          <h2 class="ab-title">{{ t('accuracy.band.title') }}</h2>
+          <p class="ab-desc">{{ t('accuracy.band.desc') }}</p>
+        </div>
+        <NuxtLink :to="localePath('/accuracy')" class="ab-link">
+          <span>{{ t('accuracy.band.more') }}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
+        </NuxtLink>
       </div>
     </section>
 
@@ -550,6 +567,7 @@ onBeforeUnmount(() => {
           <div class="footer-col">
             <h4>{{ t('footer.col.support') }}</h4>
             <ul>
+              <li><NuxtLink :to="localePath('/accuracy')">{{ t('footer.link.accuracy') }}</NuxtLink></li>
               <li><NuxtLink :to="localePath('/library')">{{ t('footer.link.library') }}</NuxtLink></li>
               <li><NuxtLink :to="localePath('/faq')">{{ t('footer.link.faq') }}</NuxtLink></li>
               <li><NuxtLink :to="localePath('/support')">{{ t('footer.link.contact') }}</NuxtLink></li>
@@ -577,12 +595,12 @@ onBeforeUnmount(() => {
 /* ============ HERO ============ */
 .hero {
   position: relative;
-  min-height: 100vh;
+  min-height: 78vh;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 120px 0 80px;
+  padding: 118px 0 48px;
 }
 .hero-bg { position: absolute; inset: 0; z-index: 0; }
 #starfield { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -714,6 +732,22 @@ onBeforeUnmount(() => {
 }
 
 /* ============ ZODIAC ============ */
+/* ACCURACY BAND */
+.accuracy-band { padding: var(--space-4) var(--space-8) 0; }
+.ab-inner { display: flex; align-items: center; gap: var(--space-6); padding: var(--space-6) var(--space-8); background: linear-gradient(120deg, rgba(201, 168, 76, 0.10), var(--bg-secondary)); border: 1px solid var(--gold-border-strong); border-radius: var(--radius-xl); box-shadow: var(--shadow-card), var(--shadow-inset); }
+.ab-glyph { flex-shrink: 0; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-family: var(--font-display); font-size: 32px; color: var(--gold-light); background: radial-gradient(circle at 35% 30%, rgba(201, 168, 76, 0.30), rgba(201, 168, 76, 0.05)); border: 2px solid var(--gold-border-strong); }
+.ab-text { flex: 1; min-width: 0; }
+.ab-eyebrow { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-primary); margin-bottom: 6px; }
+.ab-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; line-height: 1.35; margin-bottom: 6px; text-wrap: balance; }
+.ab-desc { color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.7; text-wrap: pretty; }
+.ab-link { flex-shrink: 0; display: inline-flex; align-items: center; gap: 7px; padding: 11px 18px; border-radius: var(--radius-full); border: 1px solid var(--gold-border-strong); color: var(--gold-light); font-weight: 600; font-size: var(--text-sm); white-space: nowrap; transition: background 0.2s, border-color 0.2s; }
+.ab-link:hover { background: var(--gold-soft); border-color: var(--gold-primary); }
+@media (max-width: 760px) {
+  .accuracy-band { margin-top: 0; padding: var(--space-4) var(--space-4) 0; }
+  .ab-inner { flex-direction: column; align-items: flex-start; gap: var(--space-4); padding: var(--space-6); }
+  .ab-link { align-self: stretch; justify-content: center; }
+}
+
 .zodiac-section { padding: var(--space-24) 0; position: relative; }
 .zodiac-card {
   background: linear-gradient(180deg, var(--bg-secondary), var(--bg-primary));

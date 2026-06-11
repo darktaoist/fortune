@@ -11,7 +11,7 @@ const { current, hasInput, save } = useSajuInput()
 
 const SERVICE = {
   lifetime: { glyph: '命', titleKey: 'premium.life.title' },
-  tojung: { glyph: '秘', titleKey: 'premium.newyear.title' },
+  newyear: { glyph: '秘', titleKey: 'premium.newyear.title' },
   gunghap: { glyph: '緣', titleKey: 'premium.celeb.title' },
   mbti: { glyph: '合', titleKey: 'premium.mbti.title' },
 }
@@ -62,12 +62,15 @@ const resolving = ref(true)   // 게이트(사주 확보) 진행 중
 const loading = ref(false)    // AI 생성 진행 중
 const result = ref(null)
 const errorMsg = ref('')
+const comingSoon = ref(false)  // 아직 콘텐츠 미완성(준비 중)인 운세
 const sections = computed(() => result.value?.sections || [])
 const manse = computed(() => result.value?.myeongsik || null)
 
 function handleEvent(evt) {
   if (!result.value) return
-  if (evt.type === 'meta') {
+  if (evt.type === 'notready') {
+    comingSoon.value = true
+  } else if (evt.type === 'meta') {
     result.value.glyph = evt.glyph || result.value.glyph
     result.value.tint = evt.tint || result.value.tint
     result.value.myeongsik = evt.myeongsik || null
@@ -86,6 +89,7 @@ async function load() {
   if (!service.value || !c || !c.year) return
   loading.value = true
   errorMsg.value = ''
+  comingSoon.value = false
   result.value = { glyph: cfg.value?.glyph || '命', tint: 'gold', myeongsik: null, sections: [] }
   try {
     const res = await fetch('/api/fortune/premium-stream', {
@@ -240,6 +244,15 @@ async function onSave() {
           <span v-if="!sections.length" class="gen-sub">{{ t('premium.generating.sub') }}</span>
         </div>
 
+        <!-- 곧 공개 (콘텐츠 준비 중) -->
+        <div v-else-if="comingSoon" class="need-input coming-soon">
+          <div class="cs-glyph">{{ result?.glyph || '秘' }}</div>
+          <h2>{{ heroTitle }}</h2>
+          <p class="cs-sub">{{ t('premium.comingSoon') }}</p>
+          <p class="cs-desc">{{ t('premium.comingSoon.sub') }}</p>
+          <NuxtLink class="btn btn-primary" :to="localePath({ path: '/', hash: '#premium' })">{{ t('premium.comingSoon.cta') }}</NuxtLink>
+        </div>
+
         <!-- 에러 -->
         <div v-else-if="errorMsg" class="need-input">
           <p>{{ errorMsg }}</p>
@@ -304,6 +317,11 @@ async function onSave() {
 
 .need-input { text-align: center; padding: var(--space-16) var(--space-6); background: var(--bg-secondary); border: 1px solid var(--gold-border); border-radius: var(--radius-lg); display: flex; flex-direction: column; align-items: center; gap: var(--space-6); }
 .need-input p { color: var(--text-secondary); font-size: var(--text-lg); }
+.coming-soon { gap: var(--space-4); }
+.coming-soon .cs-glyph { width: 84px; height: 84px; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 40px; color: var(--gold-primary); border: 1px solid var(--gold-border-strong); border-radius: 50%; background: radial-gradient(circle at 50% 35%, rgba(240, 208, 128, 0.18), transparent 70%); margin-bottom: var(--space-2); }
+.coming-soon h2 { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 600; }
+.coming-soon .cs-sub { color: var(--gold-primary); font-size: var(--text-lg); font-weight: 600; }
+.coming-soon .cs-desc { color: var(--text-secondary); font-size: var(--text-base); max-width: 460px; }
 .loading-note { color: var(--text-muted); text-align: center; padding: var(--space-12); font-family: var(--font-mono); letter-spacing: 0.05em; }
 .result-actions { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); margin-top: var(--space-12); }
 .result-actions .save-hint { display: inline-flex; align-items: center; gap: 7px; color: var(--text-muted); font-size: var(--text-sm); text-align: center; }

@@ -76,7 +76,11 @@ function personBirth(p) {
 }
 
 // 서비스 type_key → 라벨(매핑 없으면 키 그대로)
-const TYPE_LABELS = { lifetime: 'premium.life.title', celeb: 'premium.celeb.title', mbti: 'premium.mbti.title' }
+const TYPE_LABELS = {
+  today: 'free.today.title', tojung: 'free.tojung.title', date: 'free.date.title',
+  lotto: 'free.lotto.title', month: 'free.month.title', hour: 'free.hour.title',
+  lifetime: 'premium.life.title', newyear: 'premium.newyear.title', celeb: 'premium.celeb.title', mbti: 'premium.mbti.title',
+}
 function typeLabel(k) { return TYPE_LABELS[k] ? t(TYPE_LABELS[k]) : k }
 
 const availableLocales = computed(() =>

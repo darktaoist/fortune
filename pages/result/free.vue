@@ -204,33 +204,32 @@ async function loadDate() {
   }
 }
 
-/* ===== 로또 운세 — real data from /api/fortune/lotto ===== */
-const LOTTO_CATS = [
-  { key: 'total', glyph: '財', col: 'unsetotal' },
-  { key: 'luck', glyph: '福', col: 'lottolucky' },
-  { key: 'wish', glyph: '願', col: 'wish' },
-]
-const lottoFortune = ref(null)
+/* ===== 로또 운세 — real data from /api/fortune/lotto (계산 + 텍스트풀) ===== */
+const lottoData = ref(null)            // { text, computed } 전체 응답
 const lottoLoading = ref(false)
-const lottoCats = computed(() => {
-  const fr = lottoFortune.value
-  if (!fr) return []
-  return LOTTO_CATS.filter((c) => fr[c.col]).map((c) => ({ glyph: c.glyph, title: t('lotto.' + c.key), body: fr[c.col] }))
-})
+const lottoBundleOpen = ref(false)
+const lottoText = computed(() => lottoData.value?.text || null)
+const lottoComp = computed(() => lottoData.value?.computed || null)
+const LOTTO_SWATCH = { green: '#3aa655', red: '#d6455a', brown: '#9a6b3f', white: '#e8e8ea', navy: '#3a55a6' }
+function swatch(key) { return LOTTO_SWATCH[key] || '#888' }
 async function loadLotto() {
   const c = current.value
   if (!isLotto.value || !c || !c.year) return
   lottoLoading.value = true
+  lottoBundleOpen.value = false
   const now = new Date()
   const target = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   try {
-    const res = await $fetch('/api/fortune/lotto', {
+    lottoData.value = await $fetch('/api/fortune/lotto', {
       method: 'POST',
-      body: { year: c.year, month: c.month, day: c.day, lang: locale.value, target },
+      body: {
+        year: c.year, month: c.month, day: c.day,
+        hour: c.hour, minute: c.minute, gender: c.gender, calendar: c.calendar,
+        lang: locale.value, target,
+      },
     })
-    lottoFortune.value = res?.fortune || null
   } catch {
-    lottoFortune.value = null
+    lottoData.value = null
   } finally {
     lottoLoading.value = false
   }
@@ -505,7 +504,7 @@ function onShare() {
           </template>
         </template>
 
-        <!-- ===== 로또 운세 (실데이터: 총운/로또운/희망) ===== -->
+        <!-- ===== 로또 운세 (계산 + 텍스트풀, 벤치마크 패리티) ===== -->
         <template v-else-if="isLotto">
           <div v-if="!current || !current.year" class="need-input">
             <p>{{ t('result.needInput') }}</p>
@@ -518,10 +517,111 @@ function onShare() {
               <p>{{ t('free.lotto.desc') }}</p>
             </div>
             <p v-if="lottoLoading" class="loading-note">{{ t('result.loading') }}</p>
-            <div v-else class="overall-list">
-              <article v-for="(c, i) in lottoCats" :key="i" class="ov-card">
-                <div class="ov-glyph">{{ c.glyph }}</div>
-                <div class="ov-body"><h3 class="ov-title">{{ c.title }}</h3><p class="ov-text pre">{{ c.body }}</p></div>
+            <div v-else class="lotto-wrap">
+              <!-- 1) 미니로또운 게이지 -->
+              <section v-if="lottoComp" class="lotto-block">
+                <h3 class="lotto-sec-title">{{ t('lotto.sec.gauge') }}</h3>
+                <div class="lotto-gauge">
+                  <div class="lg-track"><div class="lg-fill" :style="{ width: lottoComp.gauge + '%' }"><span>{{ lottoComp.gauge }}%</span></div></div>
+                  <div class="lg-label">{{ t('lotto.gauge.label') }}</div>
+                </div>
+              </section>
+
+              <!-- 2) 운세총론 -->
+              <article v-if="lottoText && lottoText.unsetotal" class="ov-card">
+                <div class="ov-glyph">財</div>
+                <div class="ov-body"><h3 class="ov-title">{{ t('lotto.sec.total') }}</h3><p class="ov-text pre">{{ lottoText.unsetotal }}</p></div>
+              </article>
+
+              <!-- 3) 주간 로또 운세 -->
+              <section v-if="lottoComp" class="lotto-block">
+                <h3 class="lotto-sec-title">{{ t('lotto.sec.weekly') }}</h3>
+                <div class="lotto-week">
+                  <div v-for="d in lottoComp.weekly" :key="d.offset" class="lw-row">
+                    <div class="lw-day">{{ d.date.slice(5).replace('-', '/') }} <span class="lw-wd">({{ t('lotto.weekday.' + d.weekday) }})</span></div>
+                    <div class="lw-bar"><div class="lw-fill" :class="'bk' + d.bucket" :style="{ width: Math.max(6, d.score) + '%' }"></div></div>
+                    <div class="lw-phrase">{{ d.phrase }}</div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- 4) 행운의 번호 -->
+              <section v-if="lottoComp" class="lotto-block">
+                <h3 class="lotto-sec-title">{{ t('lotto.sec.numbers') }}</h3>
+                <div class="lotto-balls">
+                  <span v-for="n in lottoComp.luckyNumbers.main" :key="'m' + n" class="ball">{{ n }}</span>
+                  <template v-if="lottoComp.luckyNumbers.extra && lottoComp.luckyNumbers.extra.length">
+                    <span class="ball-plus">+</span>
+                    <span v-for="n in lottoComp.luckyNumbers.extra" :key="'e' + n" class="ball ball-extra" :class="'ek-' + lottoComp.luckyNumbers.extraKind">{{ n }}</span>
+                  </template>
+                </div>
+                <div class="lotto-balls-legend">
+                  <span>{{ t('lotto.ball.main') }}</span>
+                  <span v-if="lottoComp.luckyNumbers.extra && lottoComp.luckyNumbers.extra.length"> · {{ t('lotto.ball.' + lottoComp.luckyNumbers.extraKind) }}</span>
+                </div>
+                <button type="button" class="lotto-bundle-toggle" @click="lottoBundleOpen = !lottoBundleOpen">{{ lottoBundleOpen ? t('lotto.bundle.hide') : t('lotto.bundle.show') }}</button>
+                <div v-if="lottoBundleOpen" class="lotto-bundles">
+                  <div v-for="(set, si) in lottoComp.luckyNumbers.bundles" :key="si" class="lb-set">
+                    <span class="lb-no">{{ si + 1 }}</span>
+                    <span v-for="n in set" :key="si + '-' + n" class="ball ball-sm">{{ n }}</span>
+                  </div>
+                </div>
+              </section>
+
+              <!-- 5) 구입 전략 -->
+              <article v-if="lottoText && lottoText.lottolucky" class="ov-card">
+                <div class="ov-glyph">福</div>
+                <div class="ov-body"><h3 class="ov-title">{{ t('lotto.sec.strategy') }}</h3><p class="ov-text pre">{{ lottoText.lottolucky }}</p></div>
+              </article>
+
+              <!-- 6) 로또복권 사주 궁합 표 -->
+              <section v-if="lottoComp" class="lotto-block">
+                <h3 class="lotto-sec-title">{{ t('lotto.sec.saju') }}</h3>
+                <div class="lotto-table-wrap">
+                  <table class="lotto-saju-table">
+                    <thead>
+                      <tr>
+                        <th>{{ t('lotto.table.h.draw') }}</th>
+                        <th v-for="h in lottoComp.sajuTable.headerKeys" :key="h">{{ t('lotto.table.h.' + h) }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(row, ri) in lottoComp.sajuTable.rows" :key="ri">
+                        <td class="lst-label">{{ t('lotto.table.row').replace('{n}', ri + 1) }}</td>
+                        <td v-for="(n, ci) in row" :key="ci">{{ n }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <!-- 7) 행운예감 업그레이드 -->
+              <section v-if="lottoComp" class="lotto-block">
+                <h3 class="lotto-sec-title">{{ t('lotto.sec.aura') }}</h3>
+                <div class="lotto-aura">
+                  <div class="la-row">
+                    <div class="la-k">{{ t('lotto.aura.color') }}</div>
+                    <div class="la-v"><span v-for="cl in lottoComp.attributes.colors" :key="cl" class="la-color"><i class="la-dot" :style="{ background: swatch(cl) }" />{{ t('color.' + cl) }}</span></div>
+                  </div>
+                  <div class="la-row">
+                    <div class="la-k">{{ t('lotto.aura.number') }}</div>
+                    <div class="la-v">{{ lottoComp.attributes.numbers.join(', ') }}</div>
+                  </div>
+                  <div class="la-row">
+                    <div class="la-k">{{ t('lotto.aura.direction') }}</div>
+                    <div class="la-v">{{ lottoComp.attributes.directions.map((d) => t('dir.' + d)).join(', ') }}</div>
+                  </div>
+                  <div v-if="lottoComp.attributes.surnames" class="la-row">
+                    <div class="la-k">{{ t('lotto.aura.surname') }}</div>
+                    <div class="la-v">{{ lottoComp.attributes.surnames.join(', ') }}</div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- 희망 (클로징) -->
+              <article v-if="lottoText && lottoText.wish" class="ov-card">
+                <div class="ov-glyph">願</div>
+                <div class="ov-body"><h3 class="ov-title">{{ t('lotto.wish') }}</h3><p class="ov-text pre">{{ lottoText.wish }}</p></div>
               </article>
             </div>
           </template>
@@ -642,6 +742,59 @@ function onShare() {
 .need-input p { color: var(--text-secondary); font-size: var(--text-lg); }
 .loading-note { color: var(--text-muted); text-align: center; padding: var(--space-12); font-family: var(--font-mono); letter-spacing: 0.05em; }
 
+/* ===== 로또 운세 ===== */
+.lotto-wrap { display: flex; flex-direction: column; gap: var(--space-6); margin-bottom: var(--space-16); }
+.lotto-block { background: var(--bg-secondary); border: 1px solid var(--gold-border); border-radius: var(--radius-lg); padding: var(--space-6); box-shadow: var(--shadow-card), var(--shadow-inset); }
+.lotto-sec-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; margin-bottom: var(--space-5); }
+
+/* 게이지 */
+.lotto-gauge { display: flex; flex-direction: column; gap: var(--space-2); }
+.lg-track { height: 30px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); overflow: hidden; border: 1px solid var(--gold-border); }
+.lg-fill { height: 100%; min-width: 44px; display: flex; align-items: center; justify-content: flex-end; padding-right: 12px; border-radius: 999px; background: linear-gradient(90deg, rgba(240, 208, 128, 0.55), var(--gold-primary)); transition: width 0.6s var(--ease-out); }
+.lg-fill span { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 700; color: #1a1206; }
+.lg-label { color: var(--text-secondary); font-size: var(--text-sm); }
+
+/* 주간 7일 */
+.lotto-week { display: flex; flex-direction: column; gap: var(--space-3); }
+.lw-row { display: grid; grid-template-columns: 92px 90px 1fr; align-items: center; gap: var(--space-4); }
+.lw-day { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--text-primary); }
+.lw-wd { color: var(--text-muted); }
+.lw-bar { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+.lw-fill { height: 100%; border-radius: 999px; }
+.lw-fill.bk0 { background: #6b7280; } .lw-fill.bk1 { background: #9a6b3f; } .lw-fill.bk2 { background: #c7a24c; } .lw-fill.bk3 { background: #3aa655; } .lw-fill.bk4 { background: linear-gradient(90deg, var(--gold-primary), #ffd97a); }
+.lw-phrase { color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.6; }
+
+/* 행운번호 공 */
+.lotto-balls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.ball { width: 46px; height: 46px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-weight: 700; font-size: var(--text-lg); background: radial-gradient(circle at 32% 28%, #fff4d6, var(--gold-primary)); color: #1a1206; box-shadow: var(--shadow-card); }
+.ball-plus { font-size: var(--text-xl); color: var(--text-muted); margin: 0 2px; }
+.ball-extra.ek-power { background: radial-gradient(circle at 32% 28%, #ffb3b3, #d6455a); color: #fff; }
+.ball-extra.ek-bonus { background: radial-gradient(circle at 32% 28%, #ffe6a8, #e0a73a); color: #1a1206; }
+.ball-extra.ek-special { background: radial-gradient(circle at 32% 28%, #aebfff, #3a55a6); color: #fff; }
+.ball-sm { width: 34px; height: 34px; font-size: var(--text-sm); }
+.lotto-balls-legend { margin-top: var(--space-3); color: var(--text-muted); font-size: var(--text-xs); font-family: var(--font-mono); }
+.lotto-bundle-toggle { margin-top: var(--space-4); background: none; border: 1px solid var(--gold-border); color: var(--gold-primary); border-radius: var(--radius-md); padding: 8px 16px; font-size: var(--text-sm); cursor: pointer; transition: border-color 0.2s; }
+.lotto-bundle-toggle:hover { border-color: var(--gold-border-strong); }
+.lotto-bundles { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
+.lb-set { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.lb-no { width: 22px; color: var(--text-muted); font-family: var(--font-mono); font-size: var(--text-xs); }
+
+/* 사주궁합 표 */
+.lotto-table-wrap { overflow-x: auto; }
+.lotto-saju-table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); min-width: 520px; }
+.lotto-saju-table th, .lotto-saju-table td { padding: 10px 8px; text-align: center; border-bottom: 1px solid var(--gold-border); white-space: nowrap; }
+.lotto-saju-table thead th { color: var(--gold-primary); font-weight: 600; font-size: var(--text-xs); background: rgba(255, 255, 255, 0.03); }
+.lotto-saju-table td { font-family: var(--font-mono); color: var(--text-primary); }
+.lotto-saju-table .lst-label { color: var(--text-secondary); font-family: var(--font-sans); white-space: nowrap; }
+
+/* 행운예감 */
+.lotto-aura { display: flex; flex-direction: column; gap: 1px; background: var(--gold-border); border: 1px solid var(--gold-border); border-radius: var(--radius-md); overflow: hidden; }
+.la-row { display: grid; grid-template-columns: 140px 1fr; gap: var(--space-4); padding: 12px var(--space-5); background: var(--bg-secondary); }
+.la-k { color: var(--gold-primary); font-size: var(--text-sm); font-weight: 600; }
+.la-v { color: var(--text-primary); font-size: var(--text-sm); display: flex; flex-wrap: wrap; gap: 12px; }
+.la-color { display: inline-flex; align-items: center; gap: 6px; }
+.la-dot { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); }
+
 @media (max-width: 1100px) { .result-layout { grid-template-columns: minmax(0, 1fr); } .ad-rail { display: none; } }
 @media (max-width: 640px) {
   .result-hero { padding-top: var(--space-16); }
@@ -649,5 +802,9 @@ function onShare() {
   .info-grid { grid-template-columns: 1fr; }
   .ov-card { grid-template-columns: 1fr; }
   .ov-glyph { width: 48px; height: 48px; font-size: 24px; }
+  .lw-row { grid-template-columns: 76px 1fr; grid-template-areas: 'day bar' 'phrase phrase'; row-gap: 6px; }
+  .lw-day { grid-area: day; } .lw-bar { grid-area: bar; } .lw-phrase { grid-area: phrase; }
+  .la-row { grid-template-columns: 100px 1fr; }
+  .ball { width: 40px; height: 40px; font-size: var(--text-base); }
 }
 </style>

@@ -18,7 +18,21 @@ export default defineEventHandler(async (event) => {
   const service = String(body?.service || '')
   const type = FORTUNE_TYPES[service]
   if (!type) throw createError({ statusCode: 400, statusMessage: 'unknown service' })
-  if (!type.ready) throw createError({ statusCode: 501, statusMessage: `${service}는 아직 준비 중입니다.` })
+  // 아직 콘텐츠 미완성인 운세 → 에러 대신 'notready' 이벤트로 우아하게 안내(곧 공개 패널).
+  if (!type.ready) {
+    const es = createEventStream(event)
+    const send = (obj: any) => es.push(JSON.stringify(obj))
+    ;(async () => {
+      try {
+        send({ type: 'meta', service, glyph: type.glyph, tint: type.tint, myeongsik: null })
+        send({ type: 'notready' })
+        send({ type: 'done', cached: false })
+      } finally {
+        await es.close()
+      }
+    })()
+    return es.send()
+  }
 
   const lang = LANGS.has(String(body?.lang)) ? String(body.lang) : 'ko'
   const subj = body?.subject || {}
