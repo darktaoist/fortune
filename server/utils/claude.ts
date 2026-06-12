@@ -24,7 +24,7 @@ export interface GenerateOpts {
   maxTokens?: number
 }
 
-export async function generateStructured<T = any>(opts: GenerateOpts): Promise<T> {
+export async function claudeGenerateStructured<T = any>(opts: GenerateOpts): Promise<T> {
   const cfg = useRuntimeConfig()
   const client = getClient()
 
@@ -60,7 +60,7 @@ export interface StreamOpts {
 }
 
 /** 텍스트 스트리밍 — 델타가 올 때마다 onText 호출, 종료 시 전체 텍스트 반환. */
-export async function streamText(opts: StreamOpts): Promise<string> {
+export async function claudeStreamText(opts: StreamOpts): Promise<string> {
   const cfg = useRuntimeConfig()
   const client = getClient()
 

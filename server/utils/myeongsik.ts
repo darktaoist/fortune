@@ -133,8 +133,8 @@ export async function buildMyeongsik(client: any, input: MyeongsikInput): Promis
   }
 }
 
-/** 명식을 Claude 프롬프트용 한국어 텍스트 블록으로 직렬화. */
-export function formatMyeongsikForPrompt(m: Myeongsik): string {
+/** 명식을 프롬프트용 한국어 텍스트 블록으로 직렬화. label 지정 시 헤더를 "[<label> 명식]"으로(궁합 등 다인 비교용). */
+export function formatMyeongsikForPrompt(m: Myeongsik, label?: string): string {
   const p = m.pillars
   const pill = (x: [string, string] | null) => (x ? `${x[0]}${x[1]}` : '미상(시간 모름)')
   const ohaengLine = (['mok', 'hwa', 'to', 'geum', 'su'] as const)
@@ -150,7 +150,7 @@ export function formatMyeongsikForPrompt(m: Myeongsik): string {
       }).join('\n')
     : '  · 대운 정보 없음'
   return [
-    `[사주 명식]`,
+    label ? `[${label} 명식]` : `[사주 명식]`,
     `- 양력 ${m.user.solar} / 음력 ${m.user.lunar} / 생시 ${m.user.hour}`,
     `- 사주 4기둥(四柱): 년주 ${pill(p.year)} · 월주 ${pill(p.month)} · 일주 ${pill(p.day)} · 시주 ${pill(p.hour)}`,
     `- 일간(日干, 본인): ${m.dayStem} (${m.dayElement})`,

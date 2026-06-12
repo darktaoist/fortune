@@ -22,6 +22,25 @@ const service = computed(() => {
 const cfg = computed(() => (service.value ? SERVICE[service.value] : null))
 const heroTitle = computed(() => (cfg.value ? t(cfg.value.titleKey) : t('result.title')))
 
+// 궁합 상대(연예인/지인) — 식별자만 받고 명식은 서버가 조회. partnerName은 meta로 갱신될 수 있음.
+const partnerRef = computed(() => {
+  const id = String(route.query.partner || '')
+  const mbti = String(route.query.partnerMbti || '')
+  if (!id && !mbti) return null
+  return { id, kind: route.query.partnerKind === 'friend' ? 'friend' : 'celeb', name: String(route.query.partnerName || ''), mbti: mbti || undefined }
+})
+const partnerName = ref(String(route.query.partnerName || ''))
+const partnerMbti = ref(String(route.query.partnerMbti || '').toUpperCase())
+// 보관함에서 진입(?saved=id) — 저장된 결과를 그대로 표시(재계산 X)
+const savedId = computed(() => String(route.query.saved || ''))
+// 화면에 쓸 본인 정보: 저장본이면 그 subject, 아니면 현재 입력
+const displaySubject = computed(() => result.value?.subject || current.value)
+// 본인 MBTI(사주 입력의 배열/문자열 → 4글자)
+const myMbti = computed(() => {
+  const m = displaySubject.value?.mbti
+  return (Array.isArray(m) ? m.filter(Boolean).join('') : String(m || '')).toUpperCase()
+})
+
 // NOTE: useSeoMeta는 heroTitle 정의 "뒤"에 와야 함. title 게터가 SPA 전환 시
 // setup 도중 즉시 평가돼, 위에 두면 heroTitle TDZ(ReferenceError)로 페이지가 깨진다.
 useSeoMeta({ title: () => `${heroTitle.value} · ${t('seo.titleSuffix')}`, robots: 'noindex, nofollow' })
@@ -46,15 +65,26 @@ function fmtHour(hhmm) {
   return `${h}:${m}`
 }
 const userGrid = computed(() => {
-  const c = current.value
-  if (!c || !c.year) return []
+  const c = displaySubject.value
+  if (!c) return []
+  // MBTI 궁합: 사주 정보 대신 두 사람의 MBTI 유형만 표시(사용자 요구 — 사주 미노출)
+  if (service.value === 'mbti') {
+    const rows = [[t('result.name'), c.name || t('saju.preview.guest')]]
+    if (myMbti.value) rows.push([t('premium.mbtigh.mine'), myMbti.value])
+    if (partnerName.value || partnerMbti.value) rows.push([partnerName.value || t('premium.gunghap.vs'), partnerMbti.value || '—'])
+    return rows
+  }
+  if (!c.year) return []
   const hour = c.hour != null ? fmtHour(`${pad2(c.hour)}:${pad2(c.minute ?? 0)}`) : t('saju.save.none')
-  return [
+  const rows = [
     [t('result.name'), c.name || t('saju.preview.guest')],
     [t('result.birth'), fmtBirth({ calendar: c.calendar, y: c.year, mo: c.month, d: c.day })],
     [t('result.hour'), hour],
     [t('saju.field.gender'), t(c.gender === 'f' ? 'saju.field.female' : 'saju.field.male')],
   ]
+  // 궁합: 상대 표시(본인 ↔ 상대)
+  if (service.value === 'gunghap' && partnerName.value) rows.push([t('premium.gunghap.vs'), partnerName.value])
+  return rows
 })
 
 /* ---- 데이터 ---- */
@@ -65,6 +95,7 @@ const errorMsg = ref('')
 const comingSoon = ref(false)  // 아직 콘텐츠 미완성(준비 중)인 운세
 const sections = computed(() => result.value?.sections || [])
 const manse = computed(() => result.value?.myeongsik || null)
+const partnerManse = computed(() => result.value?.partnerMyeongsik || null)
 
 function handleEvent(evt) {
   if (!result.value) return
@@ -74,6 +105,9 @@ function handleEvent(evt) {
     result.value.glyph = evt.glyph || result.value.glyph
     result.value.tint = evt.tint || result.value.tint
     result.value.myeongsik = evt.myeongsik || null
+    result.value.partnerMyeongsik = evt.partnerMyeongsik || null
+    if (evt.partnerName) partnerName.value = evt.partnerName
+    if (evt.partnerMbti) partnerMbti.value = String(evt.partnerMbti).toUpperCase()
   } else if (evt.type === 'section') {
     const i = result.value.sections.findIndex((s) => s.key === evt.key)
     const sec = { key: evt.key, titleKey: evt.titleKey, glyph: evt.glyph, body: evt.body }
@@ -95,7 +129,7 @@ async function load() {
     const res = await fetch('/api/fortune/premium-stream', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ service: service.value, subject: { ...c }, lang: locale.value }),
+      body: JSON.stringify({ service: service.value, subject: { ...c }, lang: locale.value, partner: partnerRef.value || undefined }),
     })
     if (!res.ok || !res.body) {
       let msg = t('premium.error')
@@ -144,8 +178,36 @@ async function ensureSubject() {
     .order('created_at', { ascending: false }).limit(1).maybeSingle()
   if (data) save(personToSubject(data))
 }
+/* ---- 보관함 저장본 로드(재계산 없이 저장된 결과 그대로) ---- */
+async function loadSaved() {
+  loading.value = true
+  errorMsg.value = ''
+  comingSoon.value = false
+  try {
+    const { data, error } = await supabase.from('saved_readings').select('*').eq('id', savedId.value).maybeSingle()
+    if (error || !data) { errorMsg.value = t('premium.error'); return }
+    const p = data.payload || {}
+    result.value = {
+      glyph: data.glyph || cfg.value?.glyph || '命',
+      tint: data.tint || 'gold',
+      myeongsik: p.myeongsik || null,
+      partnerMyeongsik: p.partnerMyeongsik || null,
+      sections: p.sections || [],
+      score: p.score ?? null,
+      subject: data.subject || null,
+    }
+    partnerName.value = p.partnerName || ''
+    partnerMbti.value = (p.partnerMbti || '').toUpperCase()
+  } catch {
+    errorMsg.value = t('premium.error')
+  } finally {
+    loading.value = false
+  }
+}
 async function gateAndLoad() {
   if (!service.value) { resolving.value = false; return }
+  // 보관함 진입: 저장본만 표시(게이트·생성·과금 없음)
+  if (savedId.value) { resolving.value = false; return loadSaved() }
   await ensureSubject()
   if (!hasInput.value) {
     return navigateTo(localePath({ path: '/saju', query: { service: service.value } }), { replace: true })
@@ -154,7 +216,8 @@ async function gateAndLoad() {
   load()
 }
 onMounted(gateAndLoad)
-watch(locale, () => { if (hasInput.value) load() })
+// 저장본은 저장 당시 언어로 고정 — 생성 모드일 때만 언어 변경 시 재생성.
+watch(locale, () => { if (hasInput.value && !savedId.value) load() })
 
 function goEdit() { navigateTo(localePath({ path: '/saju', query: { service: service.value || 'lifetime' } })) }
 
@@ -173,7 +236,14 @@ async function onSave() {
     type_key: service.value,
     tier: 'pro',
     subject: c ? { ...c } : null,
-    payload: { sections: result.value.sections, score: result.value.score ?? null },
+    payload: {
+      sections: result.value.sections,
+      score: result.value.score ?? null,
+      myeongsik: result.value.myeongsik || null,
+      partnerMyeongsik: result.value.partnerMyeongsik || null,
+      partnerName: partnerName.value || '',
+      partnerMbti: partnerMbti.value || '',
+    },
     glyph: stamp.value,
     tint: result.value.tint || 'gold',
   })
@@ -220,6 +290,12 @@ async function onSave() {
           <SajuChart :data="manse" />
         </div>
 
+        <!-- 궁합: 상대방 명식 -->
+        <div v-if="partnerManse" class="info-card">
+          <div class="info-card-head"><span class="dot" /><span>{{ partnerName || t('premium.gunghap.vs') }}</span></div>
+          <SajuChart :data="partnerManse" />
+        </div>
+
         <!-- 결과 섹션 (도착하는 대로 점진 렌더) -->
         <template v-if="sections.length">
           <div class="section-head">
@@ -260,7 +336,7 @@ async function onSave() {
         </div>
 
         <!-- 저장 (완료 후) -->
-        <div v-else-if="sections.length" class="result-actions">
+        <div v-else-if="sections.length && !savedId" class="result-actions">
           <p class="save-hint">{{ t('premium.saveHint') }}</p>
           <button class="btn btn-secondary" :disabled="saving" @click="onSave">{{ t('result.save') }}</button>
         </div>
@@ -324,6 +400,7 @@ async function onSave() {
 .coming-soon .cs-desc { color: var(--text-secondary); font-size: var(--text-base); max-width: 460px; }
 .loading-note { color: var(--text-muted); text-align: center; padding: var(--space-12); font-family: var(--font-mono); letter-spacing: 0.05em; }
 .result-actions { display: flex; flex-direction: column; align-items: center; gap: var(--space-4); margin-top: var(--space-12); }
+.result-actions .action-row { display: flex; gap: var(--space-3); flex-wrap: wrap; justify-content: center; }
 .result-actions .save-hint { display: inline-flex; align-items: center; gap: 7px; color: var(--text-muted); font-size: var(--text-sm); text-align: center; }
 .result-actions .save-hint::before { content: '🔖'; font-size: var(--text-base); opacity: 0.85; }
 

@@ -97,14 +97,17 @@ function fmtBirth(b) {
   return `${b.y}년 ${b.m}월 ${b.d}일${t('cel.born.suffix')}`
 }
 
-/* ---- selection → checkout (PRO) ---- */
-function goCheckout(name, id) {
-  const q = { service: service.value, partnerName: name || '' }
+/* ---- selection → 결과 직행 (v1: 결제 스킵) ---- */
+// celeb 모드는 gunghap(사주 궁합), mbti 모드는 mbti 결과로. partnerKind로 연예인/지인 구분.
+function goResult(name, id, kind, mbti) {
+  const svc = service.value === 'mbti' ? 'mbti' : 'gunghap'
+  const q = { service: svc, partnerName: name || '', partnerKind: kind }
   if (id) q.partner = id
-  navigateTo(localePath({ path: '/checkout', query: q }))
+  if (mbti && svc === 'mbti') q.partnerMbti = mbti   // MBTI 궁합: 상대 유형 전달
+  navigateTo(localePath({ path: '/result/premium', query: q }))
 }
-function selectCeleb(c) { goCheckout(c.name, c.id) }
-function selectFriend(f) { goCheckout(f.name, f.id) }
+function selectCeleb(c) { goResult(c.name, c.id, 'celeb', c.mbti) }
+function selectFriend(f) { goResult(f.name, f.id, 'friend', f.mbti) }
 function onRegister() {
   if (import.meta.client) window.alert(t('cel.alert.register'))
 }
@@ -124,9 +127,9 @@ function openModal() {
 function closeModal() { modalOpen.value = false }
 
 async function saveAlsoPerson(birthDate) {
-  if (!user.value) return
+  if (!user.value) return null
   try {
-    await supabase.from('people').insert({
+    const { data } = await supabase.from('people').insert({
       owner_id: user.value.id,
       name: m.name.trim(),
       gender: m.gender,
@@ -135,9 +138,10 @@ async function saveAlsoPerson(birthDate) {
       mbti: m.mbti || null,
       rel_key: m.rel || null,
       tint: 'gold',
-    })
+    }).select('id').single()
     await loadFriends()
-  } catch { /* best-effort; don't block checkout */ }
+    return data?.id || null  // 지인 궁합에 쓸 people id
+  } catch { return null }
 }
 
 async function confirmModal() {
@@ -148,13 +152,16 @@ async function confirmModal() {
   } else if (!m.year || !m.month || !m.day) {
     window.alert(t('cel.alert.needBirth')); return
   }
-  let birthDate = null
+  let pid = null
   if (!isMbti.value) {
-    birthDate = `${m.year}-${String(m.month).padStart(2, '0')}-${String(m.day).padStart(2, '0')}`
-    if (m.saveAlso && user.value) await saveAlsoPerson(birthDate)
+    const birthDate = `${m.year}-${String(m.month).padStart(2, '0')}-${String(m.day).padStart(2, '0')}`
+    // 궁합은 상대 사주가 필요 → people에 저장하고 그 id로 지인 궁합 진행(로그인 필수 흐름).
+    if (user.value) pid = await saveAlsoPerson(birthDate)
   }
   closeModal()
-  goCheckout(name)
+  if (isMbti.value) goResult(name, null, 'celeb', m.mbti)   // MBTI는 사주 불필요, 직접입력 유형 전달
+  else if (pid) goResult(name, pid, 'friend')
+  else window.alert(t('cel.alert.needBirth'))       // 저장 실패 시 진행 불가
 }
 
 if (import.meta.client) {

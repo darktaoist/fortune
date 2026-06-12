@@ -302,11 +302,12 @@ async function submit() {
   persistCurrent()
   if (needsLogin.value) {
     if (!loggedIn.value) return gotoLogin('pro')
+    // 결제 스킵(v1): 궁합/MBTI는 상대 선택 화면으로, 평생/신년은 바로 결과로.
     if (f.fortuneType === 'couple') return navigateTo(localePath({ path: '/celeb-select', query: { service: 'celeb' } }))
-    // 결제 스킵(v1): 평생운세는 바로 결과 페이지로. 궁합/MBTI는 추후 결제·상대선택 연결.
+    if (f.fortuneType === 'mbti') return navigateTo(localePath({ path: '/celeb-select', query: { service: 'mbti' } }))
     if (f.fortuneType === 'lifetime') return navigateTo(localePath({ path: '/result/premium', query: { service: 'lifetime' } }))
     if (f.fortuneType === 'newyear') return navigateTo(localePath({ path: '/result/premium', query: { service: 'newyear' } }))
-    return navigateTo(localePath({ path: '/checkout', query: { service: 'mbti' } }))
+    return navigateTo(localePath({ path: '/result/premium', query: { service: 'mbti' } }))
   }
   return navigateTo(localePath({ path: '/result/free', query: { service: f.fortuneType } }))
 }

@@ -16,8 +16,12 @@ export default defineNuxtConfig({
   // 미설정 시 결제 페이지가 "결제 설정 필요" 상태로 안전하게 표시된다.
   runtimeConfig: {
     tossSecretKey: process.env.TOSS_SECRET_KEY || '',
+    // AI 프로바이더 선택: 'deepseek' | 'claude' (기본 deepseek). 요청별 provider로 개별 강제 가능.
+    aiProvider: process.env.AI_PROVIDER || 'deepseek',
     anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
     premiumModel: process.env.PREMIUM_MODEL || 'claude-sonnet-4-6',
+    deepseekApiKey: process.env.DEEPSEEK_API_KEY || '',
+    deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
     public: {
       tossClientKey: process.env.NUXT_PUBLIC_TOSS_CLIENT_KEY || '',
     },

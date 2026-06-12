@@ -85,9 +85,13 @@ function replay(r) {
     alert(t('lib.alert.again'))
     return
   }
+  // 프리미엄(AI)은 저장된 결과를 그대로 불러온다(재계산·재과금·상대 유실 방지).
+  if (isPremium) {
+    return navigateTo(localePath({ path: '/result/premium', query: { service: r.type_key, saved: r.id } }))
+  }
+  // 무료 운세는 DB 텍스트라 결정적 → 본인 사주로 재조회.
   saveSubject({ place: '', mbti: [], ...r.subject })
-  const path = isFree ? '/result/free' : '/result/premium'
-  navigateTo(localePath({ path, query: { service: r.type_key } }))
+  navigateTo(localePath({ path: '/result/free', query: { service: r.type_key } }))
 }
 
 async function remove(id) {
