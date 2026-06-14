@@ -11,17 +11,27 @@ const { save: saveSubject } = useSajuInput()
 useSeoMeta({ title: () => `${t('lib.title')} · ${t('seo.titleSuffix')}`, robots: 'noindex, nofollow' })
 
 const FREE_TYPES = new Set(['today', 'tojung', 'date', 'lotto', 'month', 'hour'])
-const PREMIUM_TYPES = new Set(['lifetime', 'newyear', 'gunghap', 'mbti'])
+// 궁합은 결제 시 type_key='celeb'로 저장되지만 결과 라우트 service 키는 'gunghap' — 둘 다 인식.
+const PREMIUM_TYPES = new Set(['lifetime', 'newyear', 'gunghap', 'celeb', 'mbti'])
+import { toServiceKey } from '~/shared/premiumService'
 const TYPE_LABELS = {
   today: 'free.today.title', tojung: 'free.tojung.title', date: 'free.date.title',
   lotto: 'free.lotto.title', month: 'free.month.title', hour: 'free.hour.title',
-  lifetime: 'premium.life.title', newyear: 'premium.newyear.title', celeb: 'premium.celeb.title', mbti: 'premium.mbti.title',
+  lifetime: 'premium.life.title', newyear: 'premium.newyear.title',
+  celeb: 'premium.celeb.title', gunghap: 'premium.celeb.title', mbti: 'premium.mbti.title',
 }
 function typeLabel(k) { return TYPE_LABELS[k] ? t(TYPE_LABELS[k]) : k }
 
 const readings = ref([])
 const peopleNames = ref(new Set())
 const loading = ref(true)
+
+// 보관함에 보일 완성본 판정: 무료는 항상(사주로 재계산), 프리미엄은 AI 생성 완료(payload.sections)만.
+// 결제 전 미리 만든 스냅샷·결제 실패로 남은 미완성 pro 행은 숨긴다.
+function isComplete(r) {
+  if (r.tier !== 'pro') return true
+  return Array.isArray(r.payload?.sections) && r.payload.sections.length > 0
+}
 
 async function loadAll() {
   if (!user.value) { loading.value = false; return }
@@ -31,7 +41,7 @@ async function loadAll() {
     supabase.from('saved_readings').select('*').eq('owner_id', uid).order('created_at', { ascending: false }),
     supabase.from('people').select('name, rel_key').eq('owner_id', uid),
   ])
-  readings.value = rd.data || []
+  readings.value = (rd.data || []).filter(isComplete)
   // 지인 이름 집합(본인 제외) — 저장된 운세의 대상이 여기 있으면 '지인'으로 분류.
   peopleNames.value = new Set(
     (pe.data || []).filter((p) => p.rel_key !== 'self').map((p) => (p.name || '').trim()).filter(Boolean),
@@ -87,7 +97,8 @@ function replay(r) {
   }
   // 프리미엄(AI)은 저장된 결과를 그대로 불러온다(재계산·재과금·상대 유실 방지).
   if (isPremium) {
-    return navigateTo(localePath({ path: '/result/premium', query: { service: r.type_key, saved: r.id } }))
+    const routeKey = toServiceKey(r.type_key)
+    return navigateTo(localePath({ path: '/result/premium', query: { service: routeKey, saved: r.id } }))
   }
   // 무료 운세는 DB 텍스트라 결정적 → 본인 사주로 재조회.
   saveSubject({ place: '', mbti: [], ...r.subject })

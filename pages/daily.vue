@@ -93,6 +93,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 
 <template>
   <main class="daily container">
+    <div class="daily-top">
     <div class="dh-head">
       <div class="stamp">運</div>
       <div class="dh-date">{{ dateLabel }}</div>
@@ -117,7 +118,11 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
       <button class="action-btn" @click="copyAll">📋 {{ t('daily.copy') }}</button>
       <button class="action-btn" @click="share">🔗 {{ t('daily.share') }}</button>
     </div>
+    </div>
 
+    <div class="daily-layout">
+      <aside class="ad-rail"><AdUnit ad-slot="5610413079" :fixed="{ width: 160, height: 600 }" /></aside>
+      <div class="daily-main">
     <!-- 띠 빠른 이동 -->
     <nav class="z-nav">
       <a v-for="z in ZODIAC" :key="z.ko" :href="'#z-' + z.ko" class="z-chip" :class="{ mine: z.ko === myZodiacKo }" @click.prevent="scrollToZodiac(z.ko)">{{ z.emoji }}</a>
@@ -142,6 +147,14 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
       </article>
     </div>
 
+    <!-- 하단 광고 (공개 무료 콘텐츠) -->
+    <div class="ad-bottom">
+      <AdUnit ad-slot="5610413079" />
+    </div>
+      </div>
+      <aside class="ad-rail"><AdUnit ad-slot="1831451172" :fixed="{ width: 160, height: 600 }" /></aside>
+    </div>
+
     <transition name="toast">
       <div v-if="toast" class="toast">{{ toast }}</div>
     </transition>
@@ -149,7 +162,14 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 </template>
 
 <style scoped>
-.daily { padding: 112px var(--space-6) var(--space-24); max-width: 860px; }
+.daily { padding: 112px var(--space-6) var(--space-24); max-width: 1544px; }
+/* 상단(헤더·내띠찾기·액션)은 본문 폭에 맞춰 가운데 정렬 유지 */
+.daily-top { max-width: 860px; margin: 0 auto; }
+/* 본문(띠목록) 좌우에 광고 레일 — PC만, 1100px 이하 숨김 */
+.daily-layout { display: grid; grid-template-columns: 180px minmax(0, 860px) 180px; gap: var(--space-8); justify-content: center; align-items: start; }
+.daily-main { min-width: 0; }
+.daily-layout .ad-rail { position: sticky; top: 104px; }
+@media (max-width: 1100px) { .daily-layout { grid-template-columns: minmax(0, 860px); } .daily-layout .ad-rail { display: none; } }
 
 .dh-head { text-align: center; margin-bottom: var(--space-8); }
 .dh-head .stamp { width: 60px; height: 60px; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center; border-radius: 50%; font-family: var(--font-display); font-size: 28px; color: var(--gold-light); background: radial-gradient(circle at 35% 30%, rgba(201, 168, 76, 0.30), rgba(201, 168, 76, 0.05)); border: 2px solid var(--gold-border-strong); box-shadow: var(--shadow-glow); }
@@ -175,6 +195,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 .z-chip.mine { border-color: var(--gold-primary); background: var(--gold-soft); }
 
 .z-list { display: flex; flex-direction: column; gap: var(--space-4); }
+.ad-bottom { width: 100%; margin: var(--space-12) 0 0; }
 .z-card { padding: var(--space-6); border: 1px solid var(--gold-border); border-radius: var(--radius-lg); background: var(--bg-secondary); scroll-margin-top: 140px; transition: border-color 0.2s; }
 .z-card.mine { border-color: var(--gold-primary); box-shadow: 0 0 0 1px var(--gold-border-strong), var(--shadow-glow); }
 .z-card-head { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); }

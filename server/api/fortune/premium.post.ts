@@ -3,13 +3,14 @@ import { buildMyeongsik, type MyeongsikInput } from '../../utils/myeongsik'
 import { FORTUNE_TYPES, sectionSchema } from '../../utils/fortune-registry'
 import { generateStructured, resolveProvider } from '../../utils/ai'
 import { resolvePartnerInput, resolvePartnerMbti } from '../../utils/partner'
+import { requirePaidPurchase } from '../../utils/paywall'
 
 const LANGS = new Set(['ko', 'en', 'ja', 'zh'])
 
 /**
  * 프리미엄 운세 통합 엔진 — 모든 타입을 레지스트리 설정으로 처리하는 단일 라우트.
- * 흐름: 검증 → 명식 빌드 → 구조화 생성 → 섹션 반환. (캐시 미사용 — 매번 새로 생성)
- * v1: 결제/인증 게이트 없음(운세보기 → 바로 결과). 추후 이 자리에 게이트 삽입.
+ * 흐름: 검증 → 결제 게이트 → 명식 빌드 → 구조화 생성 → 섹션 반환.
+ * v2: 로그인(401) + paid 구매(402) 게이트 적용. UI는 premium-stream을 쓰지만 보안상 동일 차단.
  */
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
@@ -17,6 +18,9 @@ export default defineEventHandler(async (event) => {
   const type = FORTUNE_TYPES[service]
   if (!type) throw createError({ statusCode: 400, statusMessage: 'unknown service' })
   if (!type.ready) throw createError({ statusCode: 501, statusMessage: `${service}는 아직 준비 중입니다.` })
+
+  // ── 결제 게이트: 로그인 + 해당 서비스 paid 구매 필수 ──
+  await requirePaidPurchase(event, serverSupabaseServiceRole(event), service, body?.order ? String(body.order) : null)
 
   // AI 엔진 선택(요청별 provider 우선, 없으면 기본=runtimeConfig.aiProvider=deepseek).
   const provider = resolveProvider(body?.provider)

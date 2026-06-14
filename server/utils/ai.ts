@@ -28,14 +28,57 @@ export function activeModelId(provider?: AiProvider): string {
     : `deepseek:${c.deepseekModel || 'deepseek-chat'}`
 }
 
-export function generateStructured<T = any>(opts: GenerateOpts, provider?: string | null): Promise<T> {
-  return resolveProvider(provider) === 'claude'
-    ? claudeGenerateStructured<T>(opts)
-    : deepseekGenerateStructured<T>(opts)
+/** 해당 프로바이더의 API 키가 설정돼 있는지. 폴백 후보 판정에 사용. */
+function hasKey(p: AiProvider): boolean {
+  const c = useRuntimeConfig()
+  return p === 'claude' ? !!c.anthropicApiKey : !!c.deepseekApiKey
 }
 
-export function streamText(opts: StreamOpts, provider?: string | null): Promise<string> {
-  return resolveProvider(provider) === 'claude'
-    ? claudeStreamText(opts)
-    : deepseekStreamText(opts)
+/** 시도 순서: 1차(요청/기본) → 다른 프로바이더. 키가 있는 것만 남긴다. */
+function providerChain(primary: AiProvider): AiProvider[] {
+  const other: AiProvider = primary === 'claude' ? 'deepseek' : 'claude'
+  return [primary, other].filter(hasKey)
+}
+
+const NO_PROVIDER = () => createError({ statusCode: 503, statusMessage: 'AI 미설정: 사용 가능한 AI 제공자가 없습니다(키 확인).' })
+
+/**
+ * 구조화 생성 — 1차 프로바이더 실패 시 다른 프로바이더로 자동 폴백.
+ * (예: DeepSeek 모델명 오류/장애 → Claude로 전환). 모두 실패하면 마지막 에러를 던진다.
+ */
+export async function generateStructured<T = any>(opts: GenerateOpts, provider?: string | null): Promise<T> {
+  const chain = providerChain(resolveProvider(provider))
+  if (!chain.length) throw NO_PROVIDER()
+  let lastErr: any
+  for (const p of chain) {
+    try {
+      return await (p === 'claude' ? claudeGenerateStructured<T>(opts) : deepseekGenerateStructured<T>(opts))
+    } catch (e) {
+      lastErr = e
+      console.warn(`[ai] generateStructured via ${p} failed, trying next:`, (e as any)?.statusMessage || (e as any)?.message)
+    }
+  }
+  throw lastErr
+}
+
+/**
+ * 텍스트 스트리밍 — 1차 실패 시 폴백. 단 이미 토큰을 일부라도 내보냈으면(중복 방지)
+ * 폴백하지 않고 그대로 에러를 던진다(연결/인증 단계 실패만 폴백 대상).
+ */
+export async function streamText(opts: StreamOpts, provider?: string | null): Promise<string> {
+  const chain = providerChain(resolveProvider(provider))
+  if (!chain.length) throw NO_PROVIDER()
+  let lastErr: any
+  for (const p of chain) {
+    let emitted = 0
+    const wrapped: StreamOpts = { ...opts, onText: (d) => { emitted += d.length; opts.onText(d) } }
+    try {
+      return await (p === 'claude' ? claudeStreamText(wrapped) : deepseekStreamText(wrapped))
+    } catch (e) {
+      lastErr = e
+      console.warn(`[ai] streamText via ${p} failed${emitted ? ' (after partial output, no fallback)' : ', trying next'}:`, (e as any)?.statusMessage || (e as any)?.message)
+      if (emitted > 0) throw e // 일부라도 출력했으면 폴백 시 중복 → 중단
+    }
+  }
+  throw lastErr
 }

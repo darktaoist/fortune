@@ -43,6 +43,8 @@ const errorMsg = ref('')
 const okMsg = ref('')
 
 // ── 이메일/비밀번호 폼 ───────────────────────────────────────────
+// 소셜 우선 레이아웃: 이메일 폼은 접어두고 토글 버튼으로 펼침.
+const showEmail = ref(false)
 // mode: 'login' | 'signup' | 'reset'
 const mode = ref('login')
 const email = ref('')
@@ -194,6 +196,39 @@ function continueAsGuest() {
           <p class="auth-sub" v-html="t('auth.sub')" />
         </div>
 
+        <!-- 소셜 로그인 (우선 노출) -->
+        <div class="social-list">
+          <button class="social-btn btn-kakao" :disabled="!!socialBusy" @click="signIn('kakao')">
+            <span class="ic">
+              <svg width="20" height="20" viewBox="0 0 256 256" aria-hidden="true"><path fill="#191600" d="M128 36C70.56 36 24 72.89 24 118.4c0 29.46 19.55 55.3 48.91 69.78-1.62 5.6-10.4 35.9-10.75 38.28 0 0-.21 1.8.95 2.49 1.16.69 2.72.16 2.72.16 3.39-.47 39.27-25.7 45.48-30.07 5.42.76 11 .96 16.69.96 57.44 0 104-36.89 104-82.4S185.44 36 128 36z" /></svg>
+            </span>
+            <span>{{ t('auth.kakao') }}</span>
+          </button>
+          <button class="social-btn btn-google" :disabled="!!socialBusy" @click="signIn('google')">
+            <span class="ic">
+              <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+              </svg>
+            </span>
+            <span>{{ t('auth.google') }}</span>
+          </button>
+        </div>
+
+        <!-- 소셜 로그인 에러(이메일 폼 접힘 상태에서도 보이도록) -->
+        <p v-if="errorMsg && !showEmail" class="auth-error">{{ errorMsg }}</p>
+
+        <div class="or-divider"><span>{{ t('auth.or') }}</span></div>
+
+        <!-- 이메일 로그인: 접어두고 토글로 펼침 -->
+        <button v-if="!showEmail" type="button" class="email-toggle" @click="showEmail = true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 5L2 7" /></svg>
+          <span>{{ t('auth.emailToggle') }}</span>
+        </button>
+
+        <template v-else>
         <!-- 로그인/회원가입 탭 -->
         <div v-if="mode !== 'reset'" class="auth-tabs" role="tablist">
           <button type="button" class="auth-tab" :class="{ active: mode === 'login' }" role="tab" :aria-selected="mode === 'login'" @click="setMode('login')">{{ t('auth.tab.login') }}</button>
@@ -242,28 +277,7 @@ function continueAsGuest() {
         </div>
 
         <p v-if="mode === 'signup'" class="new-note">{{ t('auth.signup.note') }}</p>
-
-        <!-- 소셜 로그인 (UI 유지) -->
-        <div class="or-divider"><span>{{ t('auth.or') }}</span></div>
-        <div class="social-list">
-          <button class="social-btn btn-kakao" :disabled="!!socialBusy" @click="signIn('kakao')">
-            <span class="ic">
-              <svg width="20" height="20" viewBox="0 0 256 256" aria-hidden="true"><path fill="#191600" d="M128 36C70.56 36 24 72.89 24 118.4c0 29.46 19.55 55.3 48.91 69.78-1.62 5.6-10.4 35.9-10.75 38.28 0 0-.21 1.8.95 2.49 1.16.69 2.72.16 2.72.16 3.39-.47 39.27-25.7 45.48-30.07 5.42.76 11 .96 16.69.96 57.44 0 104-36.89 104-82.4S185.44 36 128 36z" /></svg>
-            </span>
-            <span>{{ t('auth.kakao') }}</span>
-          </button>
-          <button class="social-btn btn-google" :disabled="!!socialBusy" @click="signIn('google')">
-            <span class="ic">
-              <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
-                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
-                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
-                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
-                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
-              </svg>
-            </span>
-            <span>{{ t('auth.google') }}</span>
-          </button>
-        </div>
+        </template>
 
         <button class="guest-btn" @click="continueAsGuest">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
@@ -578,6 +592,25 @@ function continueAsGuest() {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 .btn-google:hover { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); }
+
+/* 이메일 로그인 펼침 토글 */
+.email-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gold-border);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.email-toggle:hover { border-color: var(--gold-primary); color: var(--gold-light); background: var(--gold-soft); }
 
 .auth-error {
   margin-top: 2px;

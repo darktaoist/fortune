@@ -33,6 +33,9 @@ const partnerName = ref(String(route.query.partnerName || ''))
 const partnerMbti = ref(String(route.query.partnerMbti || '').toUpperCase())
 // 보관함에서 진입(?saved=id) — 저장된 결과를 그대로 표시(재계산 X)
 const savedId = computed(() => String(route.query.saved || ''))
+import { toPurchaseKey } from '~/shared/premiumService'
+// 게이트를 통과한 주문번호 — 생성 요청에 함께 보내 서버가 결제를 검증/리플레이.
+const orderRef = ref('')
 // 화면에 쓸 본인 정보: 저장본이면 그 subject, 아니면 현재 입력
 const displaySubject = computed(() => result.value?.subject || current.value)
 // 본인 MBTI(사주 입력의 배열/문자열 → 4글자)
@@ -129,7 +132,7 @@ async function load() {
     const res = await fetch('/api/fortune/premium-stream', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ service: service.value, subject: { ...c }, lang: locale.value, partner: partnerRef.value || undefined }),
+      body: JSON.stringify({ service: service.value, subject: { ...c }, lang: locale.value, partner: partnerRef.value || undefined, order: orderRef.value || undefined }),
     })
     if (!res.ok || !res.body) {
       let msg = t('premium.error')
@@ -174,9 +177,12 @@ function personToSubject(p) {
 }
 async function ensureSubject() {
   if (hasInput.value || !user.value) return
+  // 자동 대상 기준 통일: 본인(self) 우선, 없으면 최근.
   const { data } = await supabase.from('people').select('*').eq('owner_id', user.value.id)
-    .order('created_at', { ascending: false }).limit(1).maybeSingle()
-  if (data) save(personToSubject(data))
+    .order('created_at', { ascending: false })
+  const list = data || []
+  const def = list.find((p) => p.rel_key === 'self') || list[0]
+  if (def) save(personToSubject(def))
 }
 /* ---- 보관함 저장본 로드(재계산 없이 저장된 결과 그대로) ---- */
 async function loadSaved() {
@@ -206,12 +212,28 @@ async function loadSaved() {
 }
 async function gateAndLoad() {
   if (!service.value) { resolving.value = false; return }
-  // 보관함 진입: 저장본만 표시(게이트·생성·과금 없음)
+  // 보관함 진입: 저장본만 표시(게이트·생성·과금 없음 — RLS가 본인 소유만 허용)
   if (savedId.value) { resolving.value = false; return loadSaved() }
+  // 1) 로그인 게이트
+  if (!user.value) {
+    return navigateTo(localePath({ path: '/login', query: { reason: 'pro', redirect: route.fullPath } }), { replace: true })
+  }
   await ensureSubject()
   if (!hasInput.value) {
     return navigateTo(localePath({ path: '/saju', query: { service: service.value } }), { replace: true })
   }
+  // 2) 결제 게이트: order(결제 직후/마이페이지/보관함 재생성)가 있을 때만 통과.
+  //    자동 통과 금지 — 한 번 결제한 service라도 "새 대상"은 새 결제가 필요(과금 누수·옛 결과 리플레이 방지).
+  const typeKey = toPurchaseKey(service.value)
+  const orderNo = String(route.query.order || '')
+  if (!orderNo) {
+    const q = { service: typeKey }
+    if (partnerRef.value?.id) { q.partnerId = partnerRef.value.id; q.partnerKind = partnerRef.value.kind }
+    if (partnerName.value) q.partnerName = partnerName.value
+    if (partnerMbti.value) q.partnerMbti = partnerMbti.value
+    return navigateTo(localePath({ path: '/checkout', query: q }), { replace: true })
+  }
+  orderRef.value = orderNo
   resolving.value = false
   load()
 }
@@ -220,6 +242,13 @@ onMounted(gateAndLoad)
 watch(locale, () => { if (hasInput.value && !savedId.value) load() })
 
 function goEdit() { navigateTo(localePath({ path: '/saju', query: { service: service.value || 'lifetime' } })) }
+
+// 뒤로가기 출발지: 보관함 진입(saved)→보관함, 결제건(order)→마이페이지, 그 외→사주 입력.
+const backTo = computed(() => {
+  if (savedId.value) return localePath('/library')
+  if (orderRef.value) return localePath('/mypage')
+  return localePath({ path: '/saju', query: { service: service.value || 'lifetime' } })
+})
 
 /* ---- 저장 ---- */
 const saving = ref(false)
@@ -255,7 +284,7 @@ async function onSave() {
 <template>
   <main class="result container">
     <div class="result-hero">
-      <NuxtLink :to="localePath('/saju')" class="back-btn">
+      <NuxtLink :to="backTo" class="back-btn">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6" /></svg>
         <span>{{ t('common.back') }}</span>
       </NuxtLink>
@@ -335,10 +364,13 @@ async function onSave() {
           <button class="btn btn-primary" @click="load">{{ t('premium.retry') }}</button>
         </div>
 
-        <!-- 저장 (완료 후) -->
+        <!-- 저장 (완료 후) — 결제 생성분은 서버가 보관함에 자동 저장 -->
         <div v-else-if="sections.length && !savedId" class="result-actions">
-          <p class="save-hint">{{ t('premium.saveHint') }}</p>
-          <button class="btn btn-secondary" :disabled="saving" @click="onSave">{{ t('result.save') }}</button>
+          <p v-if="orderRef" class="save-hint">{{ t('premium.autoSaved') }}</p>
+          <template v-else>
+            <p class="save-hint">{{ t('premium.saveHint') }}</p>
+            <button class="btn btn-secondary" :disabled="saving" @click="onSave">{{ t('result.save') }}</button>
+          </template>
         </div>
 
         <!-- 후기 등록 (결과 완료 후) -->

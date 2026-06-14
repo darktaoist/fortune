@@ -8,6 +8,9 @@ import { serverSupabaseServiceRole } from '#supabase/server'
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default defineEventHandler(async (event) => {
+  // 스팸 방지 — IP당 1분에 5회.
+  rateLimit(event, { key: 'inquiry', limit: 5, windowMs: 60_000 })
+
   const body = await readBody(event)
   const name = String(body?.name || '').trim()
   const email = String(body?.email || '').trim()

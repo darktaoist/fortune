@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-Content .env | ForEach-Object { if \\($_ -match '^\\([A-Z_]+\\)=\\(.{0,10}\\)'\\) { \"$\\($Matches[1]\\) = $\\($Matches[2]\\)...\" } })",
+      "PowerShell(Get-Content .env | ForEach-Object { \\($_ -split '='\\)[0] })",
+      "PowerShell(Get-Content .env | Where-Object { $_ -match 'API_KEY' -and $_ -notmatch '^#' } | ForEach-Object { $parts = $_ -split '=',2; \"$\\($parts[0].Trim\\(\\)\\) : length=$\\($parts[1].Trim\\(\\).Length\\), prefix=$\\($parts[1].Trim\\(\\).Substring\\(0,[Math]::Min\\(7,$parts[1].Trim\\(\\).Length\\)\\)\\)...\" })",
+      "PowerShell($lines = [System.IO.File]::ReadAllLines\\(\"c:\\\\vue_works\\\\fortune\\\\.env\"\\); $lines | Where-Object { $_ -match 'API_KEY' } | ForEach-Object { $parts = $_ -split '=',2; if \\($parts.Count -eq 2\\) { \"name=[$\\($parts[0]\\)] valueLength=$\\($parts[1].Trim\\(\\).Length\\) prefix=$\\($parts[1].Trim\\(\\).Substring\\(0,[Math]::Min\\(6,$parts[1].Trim\\(\\).Length\\)\\)\\)\" } else { \"no-equals: [$_]\" } })",
+      "Bash(npx nuxt *)",
+      "Bash(curl -s -o /tmp/login_page.html -w \"HTTP %{http_code}\" http://localhost:3000/login)",
+      "Read(//tmp/**)",
+      "Bash(grep -o \"auth-tabs\\\\|email-toggle\\\\|btn-kakao\\\\|btn-google\\\\|guest-btn\" /tmp/login_page.html | sort | uniq -c)",
+      "PowerShell(Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq '' } | Stop-Process -Force -ErrorAction SilentlyContinue; \"cleaned\")",
+      "Read(//c/vue_works/tao.unse.new/taounse/taounse/**)",
+      "Read(//c/vue_works/tao.unse.new/taounse/**)",
+      "Bash(node -e \"for \\(const f of ['ko','en','ja','zh']\\) { try { JSON.parse\\(require\\('fs'\\).readFileSync\\('i18n/locales/'+f+'.json','utf8'\\)\\); console.log\\(f+'.json: OK'\\); } catch\\(e\\) { console.log\\(f+'.json: ERROR '+e.message\\); } }\")",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(grep -iE \"warn|error|cannot|undefined|not found\" /tmp/nuxt_build.log | grep -v \"noindex\\\\|gzip\\\\|\\\\.map\" | head -20; echo \"=== done ===\")",
+      "PowerShell(Get-Content \"c:\\\\vue_works\\\\fortune\\\\.env\" | Where-Object { $_ -match '^\\(PAYMENT_MODE|TOSS_\\)' } | ForEach-Object { $p = $_ -split '=',2; if \\($p[1]\\) { \"$\\($p[0]\\) = [SET ${\\($p[1].Length\\)} chars]\" } else { \"$\\($p[0]\\) = [EMPTY]\" } })",
+      "Bash(npm install *)",
+      "Bash(node -e \"import\\('@tosspayments/tosspayments-sdk'\\).then\\(m => console.log\\('exports:', Object.keys\\(m\\).join\\(', '\\)\\)\\).catch\\(e => console.log\\('ERR', e.message\\)\\)\")",
+      "WebSearch",
+      "WebFetch(domain:docs.tosspayments.com)",
+      "Bash(xargs grep -l \"profiles\")"
+    ]
+  }
+}

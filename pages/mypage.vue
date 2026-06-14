@@ -35,7 +35,7 @@ async function loadAll() {
   const [pf, pe, pu, rv, rc] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', uid).single(),
     supabase.from('people').select('*').eq('owner_id', uid).order('created_at', { ascending: false }),
-    supabase.from('purchases').select('*').eq('owner_id', uid).order('paid_at', { ascending: false }),
+    supabase.from('purchases').select('*').eq('owner_id', uid).neq('status', 'pending').order('paid_at', { ascending: false }),
     supabase.from('reviews').select('*').eq('owner_id', uid).order('created_at', { ascending: false }),
     supabase.from('saved_readings').select('id', { count: 'exact', head: true }).eq('owner_id', uid),
   ])
@@ -74,6 +74,8 @@ function fmtAmount(a, cur) {
 function personBirth(p) {
   return p.birth_date ? p.birth_date.replaceAll('-', '.') : ''
 }
+
+import { toServiceKey } from '~/shared/premiumService'
 
 // 서비스 type_key → 라벨(매핑 없으면 키 그대로)
 const TYPE_LABELS = {
@@ -220,6 +222,11 @@ async function confirmWithdraw() {
                 <div class="prow-side">
                   <span class="amount">{{ fmtAmount(p.amount, p.currency) }}</span>
                   <span class="badge" :class="p.status">{{ p.status === 'refunded' ? t('mypage.status.refunded') : t('mypage.status.paid') }}</span>
+                  <NuxtLink
+                    v-if="p.status === 'paid' && p.order_no"
+                    :to="localePath({ path: '/result/premium', query: { service: toServiceKey(p.type_key), order: p.order_no } })"
+                    class="btn-sm primary"
+                  >{{ t('mypage.purchase.view') }}</NuxtLink>
                 </div>
               </li>
             </ul>

@@ -19,6 +19,8 @@ const service = computed(() => {
 const svc = computed(() => SERVICES[service.value])
 const partnerName = computed(() => (typeof route.query.partnerName === 'string' ? route.query.partnerName : ''))
 const partnerId = computed(() => (typeof route.query.partnerId === 'string' ? route.query.partnerId : ''))
+const partnerKind = computed(() => (route.query.partnerKind === 'friend' ? 'friend' : 'celeb'))
+const partnerMbti = computed(() => (typeof route.query.partnerMbti === 'string' ? route.query.partnerMbti : ''))
 
 const isKorea = computed(() => locale.value === 'ko')
 const pick = (obj) => (obj && (obj[locale.value] ?? obj.ko)) ?? ''
@@ -71,9 +73,34 @@ function onSample() {
 const refundOpen = ref(false)
 
 // ── 결제 ──
+// 국내(ko)=카드(API 개별연동 ck 키), 해외=PayPal(토스 위젯 gck 키) — 레거시 1.0과 동일 이원화.
 const clientKey = computed(() => config.public.tossClientKey)
+const widgetKey = computed(() => config.public.tossWidgetKey)
+const payConfigured = computed(() => (isKorea.value ? !!clientKey.value : !!widgetKey.value))
 const busy = ref(false)
 const errorMsg = ref('')
+
+// ── PayPal 위젯(해외): 페이지 진입 시 미리 렌더 → CTA에서 requestPayment ──
+const paypalWidget = ref(null)
+async function initPaypal() {
+  if (typeof window === 'undefined' || isKorea.value || !widgetKey.value) return
+  paypalWidget.value = null
+  try {
+    const { loadTossPayments, ANONYMOUS } = await import('@tosspayments/tosspayments-sdk')
+    const tossPayments = await loadTossPayments(widgetKey.value)
+    const widgets = tossPayments.widgets({ customerKey: user.value?.id || ANONYMOUS })
+    // 표시용 초기 금액($1) — 실제 청구액은 주문 생성 후 setAmount로 갱신.
+    await widgets.setAmount({ currency: 'USD', value: 1 })
+    const box = document.getElementById('paypal-widget')
+    if (box) box.innerHTML = ''
+    await widgets.renderPaymentMethods({ selector: '#paypal-widget', variantKey: 'PAYPAL' })
+    paypalWidget.value = widgets
+  } catch (e) {
+    console.error('PayPal widget init failed:', e)
+  }
+}
+onMounted(initPaypal)
+watch([isKorea, user], initPaypal)
 
 async function pay() {
   if (busy.value) return
@@ -86,30 +113,74 @@ async function pay() {
     navigateTo(localePath({ path: '/saju', query: { service: service.value } }))
     return
   }
-  if (!clientKey.value) return // 안내는 config-note가 상시 표시
+  if (!payConfigured.value) return // 안내는 config-note가 상시 표시
 
   busy.value = true
   try {
+    const method = isKorea.value ? 'card' : 'paypal'
+    // 서버 주문 생성 — 금액·통화는 서버가 결정(card=KRW, paypal=USD).
     const order = await $fetch('/api/pay/order', {
       method: 'POST',
       body: {
         service: service.value,
+        method,
         subject: current.value,
-        partner: partnerName.value ? { name: partnerName.value, id: partnerId.value || null } : null,
+        partner: (partnerName.value || partnerId.value || partnerMbti.value)
+          ? { name: partnerName.value, id: partnerId.value || null, kind: partnerKind.value, mbti: partnerMbti.value || undefined }
+          : null,
       },
     })
-    const { loadTossPayments } = await import(/* @vite-ignore */ 'https://js.tosspayments.com/v2/standard')
-    const tossPayments = await loadTossPayments(clientKey.value)
-    const payment = tossPayments.payment({ customerKey: user.value.id })
-    await payment.requestPayment({
-      method: 'CARD',
-      amount: { currency: order.currency, value: order.amount },
-      orderId: order.orderId,
-      orderName: order.orderName,
-      successUrl: window.location.origin + localePath('/pay/success'),
-      failUrl: window.location.origin + localePath('/pay/fail'),
-      customerEmail: user.value.email,
-    })
+    const successUrl = window.location.origin + localePath('/pay/success')
+    const failUrl = window.location.origin + localePath('/pay/fail')
+
+    if (method === 'card') {
+      // 국내: 카드 결제(API 개별 연동)
+      const { loadTossPayments } = await import('@tosspayments/tosspayments-sdk')
+      const tossPayments = await loadTossPayments(clientKey.value)
+      const payment = tossPayments.payment({ customerKey: user.value.id })
+      await payment.requestPayment({
+        method: 'CARD',
+        amount: { currency: order.currency, value: order.amount },
+        orderId: order.orderId,
+        orderName: order.orderName,
+        successUrl,
+        failUrl,
+        customerEmail: user.value.email,
+      })
+    } else {
+      // 해외: PayPal(토스 위젯) — 레거시 1.0에서 검증된 파라미터 구조 그대로.
+      const widgets = paypalWidget.value
+      if (!widgets) {
+        errorMsg.value = t('checkout.err.paypal')
+        busy.value = false
+        return
+      }
+      await widgets.setAmount({ currency: 'USD', value: order.amount })
+      await widgets.requestPayment({
+        orderId: order.orderId,
+        orderName: order.orderName,
+        successUrl,
+        failUrl,
+        customerEmail: user.value.email,
+        customerName: info.value?.name || 'Customer',
+        foreignEasyPay: {
+          country: 'US',
+          products: [
+            {
+              name: order.orderName,
+              quantity: 1,
+              unitAmount: order.amount,
+              currency: 'USD',
+              description: 'AI-powered fortune telling service',
+            },
+          ],
+          shipping: {
+            fullName: info.value?.name || 'Customer',
+            address: { country: 'US', line1: 'Online Service', area1: 'CA', area2: 'Online', postalCode: '00000' },
+          },
+        },
+      })
+    }
   } catch (e) {
     if (e?.code !== 'USER_CANCEL') errorMsg.value = e?.message || t('checkout.err.generic')
     busy.value = false
@@ -243,6 +314,9 @@ async function pay() {
             </span>
           </div>
 
+          <!-- 해외: PayPal 위젯(토스) — 국내에서는 숨김 -->
+          <div v-show="!isKorea && widgetKey" id="paypal-widget" class="paypal-box" />
+
           <div class="cta-row">
             <button class="btn btn-primary" :disabled="busy" @click="pay">
               <span>{{ busy ? t('auth.processing') : buyLabel }}</span>
@@ -254,7 +328,7 @@ async function pay() {
             </button>
           </div>
 
-          <p v-if="!clientKey" class="config-note">{{ t('checkout.err.config') }}</p>
+          <p v-if="!payConfigured" class="config-note">{{ t('checkout.err.config') }}</p>
           <p v-if="errorMsg" class="err">{{ errorMsg }}</p>
           <p v-if="sampleNote" class="sample-note">{{ sampleNote }}</p>
 
@@ -370,6 +444,10 @@ async function pay() {
 .pm.card .dot { background: var(--text-muted); }
 
 /* CTA */
+/* PayPal 위젯(해외) — 토스 위젯이 내부 UI를 렌더 */
+.paypal-box { margin-bottom: var(--space-4); border-radius: var(--radius-md); overflow: hidden; }
+.paypal-box:empty { display: none; }
+
 .cta-row { display: flex; flex-direction: column; gap: var(--space-3); }
 .cta-row .btn { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); border-radius: var(--radius-md); font-weight: 700; transition: transform 0.15s var(--ease-out), box-shadow 0.2s, border-color 0.2s; }
 .cta-row .btn-primary { padding: var(--space-4) var(--space-6); font-size: var(--text-lg); border: 1px solid var(--gold-primary); background: var(--gold-primary); color: var(--text-on-gold); box-shadow: 0 4px 16px rgba(201,168,76,0.20); }

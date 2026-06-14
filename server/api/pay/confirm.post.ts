@@ -19,26 +19,31 @@ export default defineEventHandler(async (event) => {
 
   const { data: order, error: oErr } = await admin
     .from('purchases')
-    .select('id, owner_id, amount, status, reading_id')
+    .select('id, owner_id, amount, currency, status, reading_id, type_key')
     .eq('order_no', orderId)
     .single()
   if (oErr || !order) throw createError({ statusCode: 404, statusMessage: 'order not found' })
   if (order.owner_id !== user.id) throw createError({ statusCode: 403, statusMessage: 'forbidden' })
 
   // 멱등: 이미 승인된 주문은 재호출하지 않고 그대로 성공 반환.
-  if (order.status === 'paid') return { ok: true, readingId: order.reading_id }
+  if (order.status === 'paid') return { ok: true, readingId: order.reading_id, service: order.type_key }
 
-  const secret = useRuntimeConfig().tossSecretKey
+  // 시크릿 선택: 요청 때 쓴 클라이언트 키와 같은 연동의 시크릿이어야 승인 가능.
+  // USD(PayPal)=위젯 연동(gsk), KRW(카드)=API 개별 연동(sk).
+  const cfg = useRuntimeConfig()
+  const isUsd = order.currency === 'USD'
+  const secret = isUsd ? cfg.tossWidgetSecretKey : cfg.tossSecretKey
   if (!secret) throw createError({ statusCode: 500, statusMessage: 'payment not configured' })
 
-  // Toss 결제 승인 — 금액은 반드시 DB 저장값으로.
+  // Toss 결제 승인 — 금액은 반드시 DB 저장값으로(USD는 센트 저장 → 달러로 환산).
+  const confirmAmount = isUsd ? order.amount / 100 : order.amount
   const auth = Buffer.from(`${secret}:`).toString('base64')
   let toss: any
   try {
     toss = await $fetch('https://api.tosspayments.com/v1/payments/confirm', {
       method: 'POST',
       headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' },
-      body: { paymentKey, orderId, amount: order.amount },
+      body: { paymentKey, orderId, amount: confirmAmount },
     })
   } catch (e: any) {
     const data = e?.data ?? { message: e?.message }
@@ -55,5 +60,5 @@ export default defineEventHandler(async (event) => {
     status: 'paid', code: toss?.status ?? null, raw: toss,
   })
 
-  return { ok: true, readingId: order.reading_id }
+  return { ok: true, readingId: order.reading_id, service: order.type_key }
 })

@@ -170,8 +170,18 @@ async function loadPeople() {
   if (!user.value) { people.value = []; return }
   const { data } = await supabase.from('people').select('*').eq('owner_id', user.value.id).order('created_at', { ascending: false })
   people.value = data || []
+  autoSelectDefaultPerson()
 }
 watch(user, loadPeople, { immediate: true })
+
+// 로그인 사용자: 폼이 비어 있고 아직 아무도 선택 안 했으면 기본 대상(본인 > 최근)을 자동 선택.
+// 매번 person rail을 수동 클릭해야 하던 마찰 제거. 사용자가 이미 입력/선택했으면 덮어쓰지 않음.
+function autoSelectDefaultPerson() {
+  if (!loggedIn.value || activePersonId.value || hasDate.value) return
+  const self = people.value.find((p) => p.rel_key === 'self')
+  const def = self || people.value[0]
+  if (def) prefillFromPerson(def)
+}
 // 본인(나)이 이미 저장돼 있는지 — 새 사람 저장 시 기본 관계를 '본인'으로 두지 않기 위함.
 const hasSelf = computed(() => people.value.some((p) => p.rel_key === 'self'))
 
@@ -302,12 +312,12 @@ async function submit() {
   persistCurrent()
   if (needsLogin.value) {
     if (!loggedIn.value) return gotoLogin('pro')
-    // 결제 스킵(v1): 궁합/MBTI는 상대 선택 화면으로, 평생/신년은 바로 결과로.
+    // 궁합/MBTI는 상대 선택 화면으로, 단일 대상(평생/신년)은 결제 페이지로 직행.
     if (f.fortuneType === 'couple') return navigateTo(localePath({ path: '/celeb-select', query: { service: 'celeb' } }))
     if (f.fortuneType === 'mbti') return navigateTo(localePath({ path: '/celeb-select', query: { service: 'mbti' } }))
-    if (f.fortuneType === 'lifetime') return navigateTo(localePath({ path: '/result/premium', query: { service: 'lifetime' } }))
-    if (f.fortuneType === 'newyear') return navigateTo(localePath({ path: '/result/premium', query: { service: 'newyear' } }))
-    return navigateTo(localePath({ path: '/result/premium', query: { service: 'mbti' } }))
+    if (f.fortuneType === 'lifetime') return navigateTo(localePath({ path: '/checkout', query: { service: 'lifetime' } }))
+    if (f.fortuneType === 'newyear') return navigateTo(localePath({ path: '/checkout', query: { service: 'newyear' } }))
+    return navigateTo(localePath({ path: '/checkout', query: { service: 'lifetime' } }))
   }
   return navigateTo(localePath({ path: '/result/free', query: { service: f.fortuneType } }))
 }

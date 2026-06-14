@@ -1,7 +1,7 @@
 <script setup>
 // Toss 결제 성공 리다이렉트 착지. 쿼리의 paymentKey/orderId로 서버 승인(confirm)을 호출.
 // 승인 성공 시에만 결제 완료로 간주(쿼리 amount는 신뢰하지 않음 — 서버가 DB금액으로 검증).
-// PRO 결과 화면은 추후 — 지금은 완료 안내 + 마이페이지(구매내역)로 연결.
+// 승인 후 "결과 보러 가기"로 프리미엄 결과 페이지에 바로 연결(주문번호 전달 → 게이트 통과).
 const { t } = useI18n()
 const localePath = useLocalePath()
 const route = useRoute()
@@ -10,13 +10,22 @@ useSeoMeta({ title: () => `${t('pay.success.title')} · ${t('seo.titleSuffix')}`
 
 const state = ref('loading') // loading | done | error
 const errorMsg = ref('')
+const resultLink = ref(null)
+
+import { toServiceKey } from '~/shared/premiumService'
 
 onMounted(async () => {
   const paymentKey = route.query.paymentKey
   const orderId = route.query.orderId
   if (!paymentKey || !orderId) { state.value = 'error'; errorMsg.value = t('pay.success.bad'); return }
   try {
-    await $fetch('/api/pay/confirm', { method: 'POST', body: { paymentKey, orderId } })
+    const res = await $fetch('/api/pay/confirm', { method: 'POST', body: { paymentKey, orderId } })
+    // 승인 완료 → 결과 페이지로 바로 이동(이 화면은 보이지 않고 통과). replace로 뒤로가기 시 재진입 방지.
+    if (res?.service) {
+      const routeKey = toServiceKey(res.service)
+      return navigateTo(localePath({ path: '/result/premium', query: { service: routeKey, order: orderId } }), { replace: true })
+    }
+    // 서비스 식별 불가(예외) — 폴백으로 완료 안내 화면 표시.
     state.value = 'done'
   } catch (e) {
     state.value = 'error'
@@ -38,8 +47,9 @@ onMounted(async () => {
         <h1>{{ t('pay.success.title') }}</h1>
         <p class="muted">{{ t('pay.success.desc') }}</p>
         <div class="actions">
-          <NuxtLink :to="localePath('/mypage')" class="btn primary">{{ t('pay.success.mypage') }}</NuxtLink>
-          <NuxtLink :to="localePath('/')" class="btn">{{ t('pay.success.home') }}</NuxtLink>
+          <NuxtLink v-if="resultLink" :to="resultLink" class="btn primary">{{ t('pay.success.view') }}</NuxtLink>
+          <NuxtLink :to="localePath('/mypage')" class="btn" :class="{ primary: !resultLink }">{{ t('pay.success.mypage') }}</NuxtLink>
+          <NuxtLink v-if="!resultLink" :to="localePath('/')" class="btn">{{ t('pay.success.home') }}</NuxtLink>
         </div>
       </template>
 

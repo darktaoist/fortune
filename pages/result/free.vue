@@ -105,6 +105,7 @@ async function loadToday() {
     })
     todayFortune.value = res?.fortune || null
   } catch {
+    if (isToday.value) loadError.value = t('result.loadError')
     todayFortune.value = null
   } finally {
     todayLoading.value = false
@@ -135,6 +136,7 @@ async function loadTojung() {
     })
     tojungFortune.value = res?.fortune || null
   } catch {
+    if (isTojung.value) loadError.value = t('result.loadError')
     tojungFortune.value = null
   } finally {
     tojungLoading.value = false
@@ -166,6 +168,7 @@ async function loadMonth() {
     })
     monthFortune.value = res?.fortune || null
   } catch {
+    if (isMonth.value) loadError.value = t('result.loadError')
     monthFortune.value = null
   } finally {
     monthLoading.value = false
@@ -198,6 +201,7 @@ async function loadDate() {
     })
     dateFortune.value = res?.fortune || null
   } catch {
+    if (isDate.value) loadError.value = t('result.loadError')
     dateFortune.value = null
   } finally {
     dateLoading.value = false
@@ -229,6 +233,7 @@ async function loadLotto() {
       },
     })
   } catch {
+    if (isLotto.value) loadError.value = t('result.loadError')
     lottoData.value = null
   } finally {
     lottoLoading.value = false
@@ -284,7 +289,10 @@ async function loadManse() {
   }
 }
 
-function loadAll() { loadToday(); loadTojung(); loadMonth(); loadDate(); loadLotto(); loadLife(); loadManse() }
+// 현재 보고 있는 운세의 데이터 로드가 실패하면 채워진다(빈 화면 대신 에러+재시도 노출).
+const loadError = ref('')
+function loadAll() { loadError.value = ''; loadToday(); loadTojung(); loadMonth(); loadDate(); loadLotto(); loadLife(); loadManse() }
+function retry() { loadAll() }
 
 /* ===== 진입 게이트 =====
  * 무료 카드는 여기로 직행한다. 사주 정보가 있으면 바로 결과를, 없으면 입력 화면으로.
@@ -307,10 +315,13 @@ function personToSubject(p) {
 }
 async function ensureSubject() {
   if (hasInput.value || !user.value) return
+  // 자동 대상 기준을 saju 페이지와 통일: 본인(self) 우선, 없으면 최근.
   const { data } = await supabase
     .from('people').select('*').eq('owner_id', user.value.id)
-    .order('created_at', { ascending: false }).limit(1).maybeSingle()
-  if (data) save(personToSubject(data))
+    .order('created_at', { ascending: false })
+  const list = data || []
+  const def = list.find((p) => p.rel_key === 'self') || list[0]
+  if (def) save(personToSubject(def))
 }
 async function gateAndLoad() {
   if (!ftKey.value) { resolving.value = false; return } // unknown service → notFound UI
@@ -321,6 +332,12 @@ async function gateAndLoad() {
   }
   resolving.value = false
   loadAll()
+  // 게스트가 저장하려 로그인하고 돌아온 경우 → 자동 저장(1회) 후 플래그 제거(새로고침 재저장 방지).
+  if (route.query.save === '1' && user.value) {
+    onSave()
+    const q = { ...route.query }; delete q.save
+    navigateTo({ path: route.path, query: q }, { replace: true })
+  }
 }
 onMounted(gateAndLoad)
 watch(locale, () => { if (hasInput.value) loadAll() })
@@ -336,7 +353,9 @@ const TYPE_TINT = { today: 'gold', tojung: 'purple', date: 'rose', lotto: 'jade'
 const saving = ref(false)
 async function onSave() {
   if (!user.value) {
-    navigateTo(localePath({ path: '/login', query: { reason: 'save', redirect: route.fullPath } }))
+    // 저장 의도를 복귀 경로에 실어 보냄 → 로그인 후 돌아오면 자동 저장(버튼 재클릭 불필요).
+    const back = route.fullPath.includes('?') ? `${route.fullPath}&save=1` : `${route.fullPath}?save=1`
+    navigateTo(localePath({ path: '/login', query: { reason: 'save', redirect: back } }))
     return
   }
   if (saving.value) return
@@ -375,12 +394,18 @@ function onShare() {
 
     <div class="result-layout">
       <aside class="ad-rail">
-        <div class="ad-slot"><span class="ad-tag">{{ t('result.ad') }}</span><span class="ad-glyph">廣</span><span class="ad-size">160 × 600</span></div>
+        <AdUnit ad-slot="5610413079" :fixed="{ width: 160, height: 600 }" />
       </aside>
 
       <div class="main-col">
         <p v-if="resolving" class="resolving-note">{{ t('result.loading') }}</p>
         <template v-else>
+        <!-- 데이터 로드 실패: 빈 화면 대신 에러 + 재시도 -->
+        <div v-if="loadError" class="need-input load-error">
+          <p>{{ loadError }}</p>
+          <button class="btn btn-primary" @click="retry">{{ t('premium.retry') }}</button>
+        </div>
+
         <!-- user info (입력값이 있을 때만) -->
         <div v-if="current && current.year" class="info-card">
           <div class="info-card-head"><span class="dot" /><span>{{ t('result.userInfo') }}</span><button class="edit-saju" @click="goEdit">
@@ -452,7 +477,7 @@ function onShare() {
                       <div class="mo-head"><span class="mo-chip">{{ mo.label }}</span><span class="mo-bar" /></div>
                       <p class="mo-text pre">{{ mo.body }}</p>
                     </article>
-                    <div v-if="i === 3 || i === 7" class="ad-slot ad-inline"><span class="ad-tag">{{ t('result.ad') }}</span><span class="ad-glyph">廣</span><span class="ad-size">970 × 90</span></div>
+                    <div v-if="i === 3 || i === 7" class="ad-inline"><AdUnit ad-slot="5610413079" /></div>
                   </template>
                 </div>
               </section>
@@ -669,11 +694,16 @@ function onShare() {
 
         <!-- 후기 작성 (사주 입력이 있어 결과를 본 경우에만) -->
         <ReviewForm v-if="ftKey && current && current.year" :type-key="ftKey" />
+
+        <!-- 하단 광고 (모든 무료 운세·모든 화면폭 공통, 결과가 표시될 때만) -->
+        <div v-if="ftKey && current && current.year" class="ad-bottom">
+          <AdUnit ad-slot="5610413079" />
+        </div>
         </template>
       </div>
 
       <aside class="ad-rail">
-        <div class="ad-slot"><span class="ad-tag">{{ t('result.ad') }}</span><span class="ad-glyph">廣</span><span class="ad-size">160 × 600</span></div>
+        <AdUnit ad-slot="1831451172" :fixed="{ width: 160, height: 600 }" />
       </aside>
     </div>
   </main>
@@ -699,6 +729,7 @@ function onShare() {
 .ad-slot .ad-size { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; }
 .ad-rail .ad-slot { height: 600px; width: 100%; }
 .ad-inline { width: 100%; height: 110px; margin: var(--space-8) 0; }
+.ad-bottom { width: 100%; margin: var(--space-12) 0 0; }
 
 .info-card { background: var(--bg-secondary); border: 1px solid var(--gold-border); border-radius: var(--radius-lg); padding: var(--space-6) var(--space-8); box-shadow: var(--shadow-card), var(--shadow-inset); margin-bottom: var(--space-12); }
 .info-card-head { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: var(--text-lg); font-weight: 600; padding-bottom: var(--space-4); margin-bottom: var(--space-4); border-bottom: 1px solid var(--gold-border); }
