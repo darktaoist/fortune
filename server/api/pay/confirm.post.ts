@@ -1,4 +1,6 @@
 import { serverSupabaseUser, serverSupabaseServiceRole } from '#supabase/server'
+import { PRICES } from '../../utils/pricing'
+import { notifyPaid } from '../../utils/notify'
 
 /**
  * 결제 승인 — Toss successUrl 리다이렉트 후 호출.
@@ -58,6 +60,17 @@ export default defineEventHandler(async (event) => {
   await admin.from('payments').insert({
     owner_id: user.id, order_no: orderId, provider: 'toss',
     status: 'paid', code: toss?.status ?? null, raw: toss,
+  })
+
+  // 관리자 결제 알림(텔레그램). 실패해도 결제 성공 응답엔 영향 없음(내부에서 에러 삼킴).
+  await notifyPaid({
+    service: order.type_key,
+    orderName: PRICES[order.type_key]?.orderName,
+    amount: order.amount,
+    currency: order.currency,
+    orderNo: orderId,
+    userEmail: user.email,
+    isTest: secret.startsWith('test_'),
   })
 
   return { ok: true, readingId: order.reading_id, service: order.type_key }

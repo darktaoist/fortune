@@ -32,6 +32,9 @@ export default defineNuxtConfig({
     premiumModel: process.env.PREMIUM_MODEL || 'claude-sonnet-4-6',
     deepseekApiKey: process.env.DEEPSEEK_API_KEY || '',
     deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+    // 결제 알림(텔레그램 봇) — 둘 다 있어야 발송. 없으면 조용히 skip.
+    telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
+    telegramChatId: process.env.TELEGRAM_CHAT_ID || '',
     public: {
       paymentMode: PAY_MODE.toLowerCase(),
       tossClientKey: payKey('TOSS_CLIENT_KEY') || process.env.NUXT_PUBLIC_TOSS_CLIENT_KEY || '',

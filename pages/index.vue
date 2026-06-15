@@ -334,6 +334,7 @@ onBeforeUnmount(() => {
           <div class="section-label"><span>{{ t('premium.eyebrow') }}</span></div>
           <h2 class="section-title" v-html="t('premium.title.html')" />
           <p class="section-subtitle">{{ t('premium.subtitle') }}</p>
+          <p class="premium-pitch" v-html="t('premium.pitch.html')" />
         </div>
         <div class="nav-arrows">
           <button class="arrow-btn" type="button" :aria-label="t('common.prev')" @click="scrollCarousel(-400)">
@@ -902,6 +903,32 @@ onBeforeUnmount(() => {
 
 /* ============ PREMIUM CAROUSEL ============ */
 .premium-section { padding: var(--space-24) 0; }
+.premium-pitch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-top: var(--space-4);
+  padding: 0.5em 1.1em;
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 999px;
+  background: rgba(201, 168, 76, 0.07);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.premium-pitch::before {
+  content: '✦';
+  color: var(--gold-primary);
+  font-size: 0.85em;
+}
+.premium-pitch em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--gold-light);
+}
+@media (max-width: 640px) {
+  .premium-pitch { font-size: var(--text-xs); padding: 0.45em 0.9em; }
+}
 .section-head {
   display: flex;
   align-items: flex-end;

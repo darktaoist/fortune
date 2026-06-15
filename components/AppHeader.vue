@@ -27,6 +27,11 @@ function closeUserMenu(e) {
 onMounted(() => document.addEventListener('click', closeUserMenu))
 onBeforeUnmount(() => document.removeEventListener('click', closeUserMenu))
 
+// 모바일 햄버거 메뉴
+const mobileOpen = ref(false)
+function closeMobile() { mobileOpen.value = false }
+watch(() => route.fullPath, closeMobile)
+
 const scrolled = ref(false)
 function onScroll() {
   scrolled.value = window.scrollY > 30
@@ -74,11 +79,25 @@ const isHome = computed(() => route.path === localePath('/'))
           </div>
         </div>
 
-        <button class="icon-btn hamburger" type="button" :aria-label="t('common.menu')">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="7" x2="21" y2="7" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="17" x2="21" y2="17" /></svg>
+        <button class="icon-btn hamburger" type="button" :aria-label="t('common.menu')" :aria-expanded="mobileOpen" @click.stop="mobileOpen = !mobileOpen">
+          <svg v-if="!mobileOpen" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="3" y1="7" x2="21" y2="7" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="17" x2="21" y2="17" /></svg>
+          <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="6" y1="6" x2="18" y2="18" /><line x1="18" y1="6" x2="6" y2="18" /></svg>
         </button>
       </div>
     </div>
+
+    <Transition name="mnav">
+      <nav v-if="mobileOpen" class="nav-mobile" @click.stop>
+        <NuxtLink :to="localePath('/')" :class="{ active: isHome }" @click="closeMobile">{{ t('nav.home') }}</NuxtLink>
+        <NuxtLink :to="localePath({ path: '/', hash: '#free' })" @click="closeMobile">{{ t('nav.free') }}</NuxtLink>
+        <NuxtLink :to="localePath('/daily')" @click="closeMobile">{{ t('nav.daily') }}</NuxtLink>
+        <NuxtLink :to="localePath({ path: '/', hash: '#premium' })" @click="closeMobile">{{ t('nav.premium') }}</NuxtLink>
+        <NuxtLink :to="localePath({ path: '/celeb-select', query: { service: 'celeb' } })" @click="closeMobile">{{ t('nav.celeb') }}</NuxtLink>
+        <NuxtLink :to="localePath({ path: '/celeb-select', query: { service: 'mbti' } })" @click="closeMobile">{{ t('nav.mbti') }}</NuxtLink>
+        <a href="https://taoist.co.kr/aura" target="_blank" rel="noopener" class="external" @click="closeMobile">{{ t('nav.aura') }}</a>
+      </nav>
+    </Transition>
+    <div v-if="mobileOpen" class="nav-mobile-backdrop" @click="closeMobile" />
   </header>
 </template>
 
@@ -207,9 +226,50 @@ const isHome = computed(() => route.path === localePath('/'))
 
 .hamburger { display: none; }
 
+/* 모바일 드롭다운 메뉴 */
+.header-inner { position: relative; z-index: 2; }
+.nav-mobile {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-3);
+  background: rgba(15, 15, 22, 0.98);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--gold-border);
+  border-radius: 14px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.55);
+}
+.nav-mobile a {
+  padding: 14px 16px;
+  color: var(--text-secondary);
+  font-size: var(--text-base, 1rem);
+  font-weight: 500;
+  border-radius: 10px;
+  transition: background 0.15s var(--ease-out), color 0.15s var(--ease-out);
+}
+.nav-mobile a:hover,
+.nav-mobile a:active { background: var(--gold-border); color: var(--text-primary); }
+.nav-mobile a.active { color: var(--gold-primary); }
+.nav-mobile a.external::after { content: ' ↗'; opacity: 0.6; }
+.nav-mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: rgba(0, 0, 0, 0.45);
+}
+.mnav-enter-active, .mnav-leave-active { transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out); }
+.mnav-enter-from, .mnav-leave-to { opacity: 0; transform: translateY(-8px); }
+
 @media (max-width: 1024px) {
   .nav-main { display: none; }
   .hamburger { display: inline-flex; }
+}
+@media (min-width: 1025px) {
+  .nav-mobile, .nav-mobile-backdrop { display: none !important; }
 }
 @media (max-width: 640px) {
   .login-btn { padding: 8px 14px; }
