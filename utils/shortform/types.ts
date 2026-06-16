@@ -17,9 +17,9 @@ export interface StoryboardInput {
 }
 
 export interface RenderAssets {
-  illustrated: ImageData | null // 일러스트 처리된 연예인 사진
-  qrBitmap: ImageBitmap | null // CTA용 QR
-  logoBitmap: ImageBitmap | null
+  illustrated: ImageData | null // (미사용) 호환 유지
+  qrBitmap: CanvasImageSource | null // CTA용 QR (Image/Canvas)
+  logoBitmap: CanvasImageSource | null
 }
 
 export interface VideoOpts {
