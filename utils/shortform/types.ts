@@ -23,4 +23,4 @@ export interface VideoOpts {
   durationSec: number // 20
 }
 
-export const DEFAULT_OPTS: VideoOpts = { width: 1080, height: 1920, fps: 30, durationSec: 20 }
+export const DEFAULT_OPTS: VideoOpts = { width: 1080, height: 1920, fps: 30, durationSec: 30 }
