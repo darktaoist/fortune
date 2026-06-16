@@ -240,10 +240,10 @@ export function drawFrame(
   } else if (inReveal) {
     const out = 1 - seg(tSec, T_REVEAL - 0.5, T_REVEAL)
     ctx.globalAlpha = out
-    const gy = H * 0.48
+    const gy = H * 0.44
     if (sb.score != null) {
       const fillT = easeOutCubic(seg(tSec, T_HOOK + 0.3, T_HOOK + 3.2))
-      const R = W * 0.3
+      const R = W * 0.27
       // 게이지 링
       ctx.save()
       ctx.lineCap = 'round'
@@ -270,14 +270,15 @@ export function drawFrame(
       ctx.textBaseline = 'middle'
       ctx.fillText(`${Math.round(sb.score * fillT)}`, cx, gy + R * 0.05)
       ctx.textBaseline = 'alphabetic'
-      // 등급 + verdict
+      // 등급 + verdict (게이지와 충분히 띄움)
       const post = seg(tSec, T_HOOK + 3, T_HOOK + 4)
       if (post > 0) {
-        stars(ctx, cx, gy + R + W * 0.04, v.stars, W * 0.03, post)
+        const starsY = gy + R + W * 0.1
+        stars(ctx, cx, starsY, v.stars, W * 0.032, post)
         ctx.globalAlpha = out * Math.min(1, post * 1.5)
         ctx.fillStyle = GOLD_LT
         const ls = fitFont(ctx, v.label, maxW, Math.round(W * 0.082), 900)
-        ctx.fillText(v.label, cx, gy + R + W * 0.04 + ls * 1.3)
+        ctx.fillText(v.label, cx, starsY + W * 0.025 + ls)
         ctx.globalAlpha = out
       }
     } else {
