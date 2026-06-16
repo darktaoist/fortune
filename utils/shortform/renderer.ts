@@ -60,16 +60,28 @@ function drawWrapped(ctx: CanvasRenderingContext2D, text: string, cx: number, cy
 }
 
 // ── 도형 헬퍼 ──
-function heart(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, color: string) {
+function heart(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, _color?: string) {
+  // 풍성한 클래식 하트 + 핑크→레드 그라데이션 + 글로우 + 하이라이트
   ctx.save()
-  ctx.fillStyle = color
-  ctx.shadowColor = 'rgba(224,85,106,0.6)'
-  ctx.shadowBlur = s * 0.6
+  ctx.translate(cx, cy)
+  const g = ctx.createLinearGradient(0, -s, 0, s)
+  g.addColorStop(0, '#ff8a98')
+  g.addColorStop(1, '#d2304a')
+  ctx.fillStyle = g
+  ctx.shadowColor = 'rgba(255,90,110,0.75)'
+  ctx.shadowBlur = s * 0.9
   ctx.beginPath()
-  ctx.moveTo(cx, cy + s * 0.3)
-  ctx.bezierCurveTo(cx + s * 0.5, cy - s * 0.35, cx + s * 1.05, cy + s * 0.2, cx, cy + s * 0.72)
-  ctx.bezierCurveTo(cx - s * 1.05, cy + s * 0.2, cx - s * 0.5, cy - s * 0.35, cx, cy + s * 0.3)
+  ctx.moveTo(0, s * 0.78)
+  ctx.bezierCurveTo(-s * 1.3, -s * 0.2, -s * 0.58, -s * 0.98, 0, -s * 0.25)
+  ctx.bezierCurveTo(s * 0.58, -s * 0.98, s * 1.3, -s * 0.2, 0, s * 0.78)
   ctx.closePath()
+  ctx.fill()
+  // 작은 하이라이트
+  ctx.shadowBlur = 0
+  ctx.globalAlpha = 0.5
+  ctx.fillStyle = '#ffd0d6'
+  ctx.beginPath()
+  ctx.ellipse(-s * 0.4, -s * 0.32, s * 0.22, s * 0.13, -0.5, 0, Math.PI * 2)
   ctx.fill()
   ctx.restore()
 }
@@ -280,7 +292,7 @@ export function drawFrame(
         ctx.globalAlpha = out * Math.min(1, post * 1.5)
         ctx.fillStyle = GOLD_LT
         const ls = fitFont(ctx, v.label, maxW, Math.round(W * 0.082), 900, 22, SERIF)
-        ctx.fillText(v.label, cx, starsY + W * 0.025 + ls)
+        ctx.fillText(v.label, cx, starsY + W * 0.08 + ls)
         ctx.globalAlpha = out
       }
     } else {
@@ -293,8 +305,8 @@ export function drawFrame(
     const span = (T_BEATS_END - T_REVEAL) / sb.beats.length
     const idx = Math.min(sb.beats.length - 1, Math.floor((tSec - T_REVEAL) / span))
     const local = (tSec - T_REVEAL - idx * span) / span
-    const pop = easeOutBack(seg(local, 0, 0.24))
-    const out = 1 - seg(local, 0.9, 1)
+    const pop = easeOutBack(seg(local, 0, 0.16)) // 빨리 등장
+    const out = 1 - seg(local, 0.94, 1) // 늦게 사라짐 → 읽을 시간 ↑
     const b = sb.beats[idx]
     const baseA = Math.max(0, Math.min(1, pop)) * out
     // 글리프(큰 워터마크)
@@ -365,7 +377,7 @@ export function drawFrame(
 }
 
 function pairTitle(ctx: CanvasRenderingContext2D, n1: string, n2: string, cx: number, cy: number, maxW: number, startPx: number, a: number) {
-  const hs = startPx * 0.42
+  const hs = startPx * 0.5
   const gap = startPx * 0.55
   let px = startPx
   const widthOf = () => {

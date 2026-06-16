@@ -42,7 +42,7 @@ pctx.putImageData(ill as any, 0, 0)
 const canvas = createCanvas(o.width, o.height)
 const ctx = canvas.getContext('2d') as any
 
-const times = [2, 7, 9.3, 12, 17, 27]
+const times = [2, 9.3, 14, 31]
 for (const t of times) {
   drawFrame(ctx, sb, pc as any, { illustrated: null, qrBitmap: null, logoBitmap: null }, t, o)
   writeFileSync(`/tmp/sf/frame_${t}s.png`, canvas.toBuffer('image/png'))

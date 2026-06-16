@@ -46,6 +46,7 @@ export function buildStoryboard(a: BuildArgs): StoryboardInput {
     .filter((s) => s.key !== 'score')
     .map((s) => ({ glyph: s.glyph || '·', label: s.title || '', text: highlight(s.body) }))
     .filter((b) => b.text)
+    .slice(0, 5) // 읽을 시간 확보 위해 최대 5개(각 비트 체류시간 ↑)
   return {
     selfName: a.selfName || '나',
     partnerName: a.partnerName || '상대',
