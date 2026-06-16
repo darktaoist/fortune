@@ -27,6 +27,19 @@ const sb = buildStoryboard({
     { key: 'conflict', glyph: '和', title: '갈등', body: '정국님의 뜨거운 화 기운이 때로 부딪힐 수 있으니 호흡을 가다듬으세요.' },
     { key: 'future', glyph: '婚', title: '미래', body: '장기적으로 안정적인 관계로 발전할 가능성이 높습니다.' },
   ],
+  shorts: {
+    hook: '이 조합, 운명일까?',
+    score: 87,
+    verdict: '천생연분',
+    beats: [
+      { label: '첫끌림', text: '눈빛만 봐도 통하는 강렬한 첫 끌림' },
+      { label: '성격', text: '신중함과 활발함이 완벽한 균형을 이뤄요' },
+      { label: '연애', text: '표현이 잘 맞아 다툼은 적고 신뢰는 깊어요' },
+      { label: '갈등', text: '뜨거운 화 기운, 한 박자 쉬면 금방 풀려요' },
+      { label: '미래', text: '오래갈수록 단단해지는 안정적인 인연' },
+    ],
+    catchphrase: '둘의 운명, 지금 확인하세요',
+  },
 })
 
 // 일러스트 처리된 사진 준비

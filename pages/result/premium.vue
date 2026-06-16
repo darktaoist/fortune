@@ -117,6 +117,17 @@ const result = ref(null)
 const errorMsg = ref('')
 const comingSoon = ref(false)  // 아직 콘텐츠 미완성(준비 중)인 운세
 const sections = computed(() => result.value?.sections || [])
+// shorts 섹션은 화면에 표시하지 않고 숏폼 영상용 JSON으로만 사용.
+const displaySections = computed(() => sections.value.filter((s) => s.key !== 'shorts'))
+const shortsData = computed(() => {
+  const s = sections.value.find((x) => x.key === 'shorts')
+  if (!s?.body) return null
+  try {
+    return JSON.parse(s.body)
+  } catch {
+    return null
+  }
+})
 const manse = computed(() => result.value?.myeongsik || null)
 const partnerManse = computed(() => result.value?.partnerMyeongsik || null)
 
@@ -352,7 +363,7 @@ async function onSave() {
             <h2>{{ heroTitle }}</h2>
           </div>
           <div class="overall-list">
-            <article v-for="s in sections" :key="s.key" class="ov-card">
+            <article v-for="s in displaySections" :key="s.key" class="ov-card">
               <div class="ov-glyph">{{ s.glyph }}</div>
               <div class="ov-body">
                 <h3 class="ov-title">{{ t(s.titleKey) }}</h3>
@@ -370,7 +381,8 @@ async function onSave() {
               selfName: displaySubject?.name || '',
               partnerName: partnerName || '',
               partnerImageUrl,
-              sections: sections.map((s) => ({ key: s.key, glyph: s.glyph, title: t(s.titleKey), body: s.body })),
+              shorts: shortsData,
+              sections: displaySections.map((s) => ({ key: s.key, glyph: s.glyph, title: t(s.titleKey), body: s.body })),
               zodiacGlyph: result?.glyph || '緣',
               siteUrl: 'taoist.co.kr',
             }"

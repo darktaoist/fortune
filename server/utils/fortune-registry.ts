@@ -223,6 +223,7 @@ const GUNGHAP_SECTIONS: FortuneSection[] = [
   { key: 'ohaeng', titleKey: 'premium.gunghap.ohaeng', glyph: '五' },
   { key: 'future', titleKey: 'premium.gunghap.future', glyph: '婚' },
   { key: 'advice', titleKey: 'premium.gunghap.advice', glyph: '言' },
+  { key: 'shorts', titleKey: 'premium.gunghap.shorts', glyph: '⚡' }, // 숏폼 영상용 JSON(화면엔 미표시)
 ]
 
 const GUNGHAP_PERSONA = [
@@ -241,7 +242,7 @@ const GUNGHAP_PERSONA = [
 ].join('\n')
 
 const GUNGHAP_SECTION_GUIDE = [
-  '8개 항목(반드시 이 순서):',
+  '9개 항목(반드시 이 순서):',
   '1) score — 궁합 총평과 궁합 지수: 두 명식의 전체 상성을 종합한 총평. 본문 안에 반드시 "궁합 지수: NN점"(0~100 정수) 한 표현을 자연스럽게 포함하고, 그 점수의 근거를 짚는다.',
   '2) attraction — 첫인상과 끌림: 두 일간·도화·십신이 만드는 초기 이끌림과 첫인상, 서로에게 느끼는 매력 포인트.',
   '3) personality — 성격 궁합: 두 사람의 기질이 부딪히는 지점과 맞물리는 지점, 일상에서의 합.',
@@ -250,9 +251,12 @@ const GUNGHAP_SECTION_GUIDE = [
   '6) ohaeng — 오행 상성: 두 사주의 오행 분포를 대조해 서로를 보완하는지/과하게 하는지, 부족한 기운을 채워주는 관계인지.',
   '7) future — 결혼·미래 전망: 장기적 인연의 가능성, 함께할 때 유리한 시기와 넘어야 할 고비.',
   '8) advice — 관계를 위한 조언: 두 사람이 오래 잘 지내기 위한 구체적 실천 조언(서로의 부족한 오행 보완·태도·소통법).',
+  '9) shorts — 숏폼(릴스/쇼츠) 영상용 데이터. 산문이 아니라 정확히 아래 형식의 JSON 객체 한 개만 출력한다(다른 텍스트·마크다운 금지):',
+  '   {"hook":"(궁금증을 자극하는 18자 이내 후크)","score":NN,"verdict":"(8자 이내 한마디 등급, 예: 천생연분/환상의 케미)","beats":[{"label":"(6자 이내 주제)","text":"(35자 이내 임팩트 있는 핵심 한 문장)"} … 정확히 5개],"catchphrase":"(20자 이내 마무리 카피)"}',
+  '   beats 5개는 끌림·성격·연애·갈등·미래를 위 1~8 내용과 일관되게 짧고 강렬하게 요약. score는 1)의 궁합 지수와 동일한 정수. 모든 문구는 출력 언어로.',
 ].join('\n')
 
-const GUNGHAP_KEYS = 'score, attraction, personality, lovestyle, conflict, ohaeng, future, advice'
+const GUNGHAP_KEYS = 'score, attraction, personality, lovestyle, conflict, ohaeng, future, advice, shorts'
 
 const gunghapType: FortuneType = {
   key: 'gunghap',
@@ -269,7 +273,7 @@ const gunghapType: FortuneType = {
     '[출력 형식]',
     GUNGHAP_SECTION_GUIDE,
     '',
-    '- 위 8개 키(' + GUNGHAP_KEYS + ')를 가진 JSON 객체 하나만 출력한다(그 외 텍스트 금지).',
+    '- 위 9개 키(' + GUNGHAP_KEYS + ')를 가진 JSON 객체 하나만 출력한다(그 외 텍스트 금지). shorts 값은 9)에 정의된 형식의 JSON을 문자열로 담는다.',
     `- 모든 본문은 ${langName(lang)}로 작성한다.`,
   ].join('\n'),
   systemStream: (lang) => [
@@ -278,9 +282,10 @@ const gunghapType: FortuneType = {
     '[출력 형식]',
     GUNGHAP_SECTION_GUIDE,
     '',
-    '- 8개 항목을 위 순서대로 작성하되, 각 항목 본문 바로 앞에 정확히 한 줄로 마커를 둔다:',
-    '  [[score]] / [[attraction]] / [[personality]] / [[lovestyle]] / [[conflict]] / [[ohaeng]] / [[future]] / [[advice]]',
-    '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·JSON·마크다운은 쓰지 않는다.',
+    '- 9개 항목을 위 순서대로 작성하되, 각 항목 본문 바로 앞에 정확히 한 줄로 마커를 둔다:',
+    '  [[score]] / [[attraction]] / [[personality]] / [[lovestyle]] / [[conflict]] / [[ohaeng]] / [[future]] / [[advice]] / [[shorts]]',
+    '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·마크다운은 쓰지 않는다.',
+    '- 예외: [[shorts]] 마커 다음 본문만은 9)에 정의된 JSON 객체 한 개로 출력한다(그 JSON 외 텍스트 금지).',
     `- 모든 본문은 ${langName(lang)}로 작성한다.`,
   ].join('\n'),
   buildPrompt: ({ myeongsik, partner }) => {

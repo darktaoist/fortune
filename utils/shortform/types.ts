@@ -9,11 +9,23 @@ export interface StoryboardInput {
   selfName: string
   partnerName: string
   partnerImageUrl: string | null
-  score: number | null // 'score' 섹션 본문의 "궁합 지수: NN점"에서 파싱
-  oneLiner: string // 총평 하이라이트
-  beats: Beat[] // 섹션별 테마 비트(글리프+제목+하이라이트)
+  score: number | null // shorts.score 우선, 없으면 'score' 섹션 본문 파싱
+  oneLiner: string // 점수 없을 때 리빌 헤드라인(폴백)
+  hook: string // 훅 문구(AI shorts.hook)
+  catchphrase: string // CTA 마무리 카피(AI shorts.catchphrase)
+  verdictLabel: string // AI가 준 등급명(없으면 점수기반 verdictFor 사용)
+  beats: Beat[] // 테마 비트(글리프+라벨+핵심문장)
   zodiacGlyph: string // result.glyph || '緣'
   siteUrl: string // 'taoist.co.kr'
+}
+
+// AI가 생성하는 숏폼 전용 구조화 데이터(shorts 섹션 본문 JSON)
+export interface ShortsData {
+  hook?: string
+  score?: number
+  verdict?: string
+  beats?: { label?: string; text?: string }[]
+  catchphrase?: string
 }
 
 export interface RenderAssets {

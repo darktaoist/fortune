@@ -218,6 +218,7 @@ export function drawFrame(
   const cx = W / 2
   const D = o.durationSec
   const v = verdictFor(sb.score)
+  const vLabel = sb.verdictLabel || v.label // AI 등급명 우선, 없으면 점수기반
 
   const T_HOOK = 3.5
   const T_REVEAL = 10
@@ -249,7 +250,8 @@ export function drawFrame(
     pairTitle(ctx, sb.selfName, sb.partnerName, cx, H * 0.7, maxW, Math.round(W * 0.088), a)
     ctx.fillStyle = GOLD_LT
     ctx.font = `500 ${Math.round(W * 0.046)}px ${FAMILY}`
-    ctx.fillText('결과는…?', cx, H * 0.78)
+    fitFont(ctx, sb.hook || '결과는…?', maxW, Math.round(W * 0.046), 500, 22, SERIF)
+    ctx.fillText(sb.hook || '결과는…?', cx, H * 0.78)
     ctx.globalAlpha = 1
   } else if (inReveal) {
     const out = 1 - seg(tSec, T_REVEAL - 0.5, T_REVEAL)
@@ -291,8 +293,8 @@ export function drawFrame(
         stars(ctx, cx, starsY, v.stars, W * 0.032, post)
         ctx.globalAlpha = out * Math.min(1, post * 1.5)
         ctx.fillStyle = GOLD_LT
-        const ls = fitFont(ctx, v.label, maxW, Math.round(W * 0.082), 900, 22, SERIF)
-        ctx.fillText(v.label, cx, starsY + W * 0.08 + ls)
+        const ls = fitFont(ctx, vLabel, maxW, Math.round(W * 0.082), 900, 22, SERIF)
+        ctx.fillText(vLabel, cx, starsY + W * 0.08 + ls)
         ctx.globalAlpha = out
       }
     } else {
@@ -355,16 +357,17 @@ export function drawFrame(
     ctx.fillStyle = GOLD
     ctx.font = `900 ${Math.round(W * 0.16)}px ${SERIF}`
     ctx.fillText(sb.zodiacGlyph, cx, H * 0.52)
-    if (v.label) {
+    if (vLabel) {
       stars(ctx, cx, H * 0.58, v.stars, W * 0.026, 1)
       ctx.fillStyle = GOLD_LT
-      const txt = sb.score != null ? `${v.label} · ${sb.score}점` : v.label
+      const txt = sb.score != null ? `${vLabel} · ${sb.score}점` : vLabel
       fitFont(ctx, txt, maxW, Math.round(W * 0.062), 900, 22, SERIF)
       ctx.fillText(txt, cx, H * 0.65)
     }
+    // 캐치프레이즈(AI) 우선, 없으면 기본 CTA 문구
     ctx.fillStyle = '#fff'
-    ctx.font = `700 ${Math.round(W * 0.052)}px ${FAMILY}`
-    ctx.fillText('내 궁합도 확인해보세요', cx, H * 0.72)
+    fitFont(ctx, sb.catchphrase || '내 궁합도 확인해보세요', maxW, Math.round(W * 0.052), 700, 22, SERIF)
+    drawWrapped(ctx, sb.catchphrase || '내 궁합도 확인해보세요', cx, H * 0.72, maxW, W * 0.065, 2)
     ctx.fillStyle = GOLD_LT
     ctx.font = `700 ${Math.round(W * 0.055)}px ${FAMILY}`
     drawSpaced(ctx, sb.siteUrl, cx, H * 0.77, W * 0.005)
