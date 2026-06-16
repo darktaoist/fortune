@@ -36,7 +36,8 @@ const partnerMbti = ref(String(route.query.partnerMbti || '').toUpperCase())
 // 결제(order) 플로우는 URL에 partner/partnerImg가 없고 이름만 스냅샷에서 복원되므로 이름 매칭 필수.
 const partnerImageUrl = ref(String(route.query.partnerImg || '') || null)
 async function resolvePartnerImage() {
-  if (partnerImageUrl.value || service.value !== 'gunghap') return
+  if (partnerImageUrl.value) return
+  if (service.value !== 'gunghap' && service.value !== 'mbti') return
   const id = partnerRef.value?.id
   const nm = (partnerName.value || '').trim()
   if (!id && !nm) return
@@ -376,7 +377,7 @@ async function onSave() {
         <!-- 숏폼 영상 공유 (궁합 한정, 로컬 검증용) -->
         <ClientOnly>
           <ShareVideoModal
-            v-if="service === 'gunghap' && !loading && sections.length"
+            v-if="(service === 'gunghap' || service === 'mbti') && !loading && sections.length"
             :args="{
               selfName: displaySubject?.name || '',
               partnerName: partnerName || '',

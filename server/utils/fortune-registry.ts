@@ -314,6 +314,7 @@ const MBTI_SECTIONS: FortuneSection[] = [
   { key: 'growth', titleKey: 'premium.mbtigh.growth', glyph: '成' },
   { key: 'future', titleKey: 'premium.mbtigh.future', glyph: '來' },
   { key: 'advice', titleKey: 'premium.mbtigh.advice', glyph: '導' },
+  { key: 'shorts', titleKey: 'premium.mbtigh.shorts', glyph: '⚡' }, // 숏폼 영상용 JSON(화면엔 미표시)
 ]
 
 const MBTI_PERSONA = [
@@ -333,7 +334,7 @@ const MBTI_PERSONA = [
 ].join('\n')
 
 const MBTI_SECTION_GUIDE = [
-  '10개 항목(반드시 이 순서):',
+  '11개 항목(반드시 이 순서):',
   '1) score — 궁합 총평과 궁합 지수: 두 유형 조합을 한마디로 요약하는 위트 있는 총평. 본문 안에 반드시 "궁합 지수: NN점"(0~100 정수)을 자연스럽게 포함하고, 왜 그 점수인지 핵심을 짚는다.',
   '2) firstmeet — 첫 만남의 케미: 두 사람이 처음 마주쳤을 때 서로를 어떻게 인식하고 끌리는지, 첫인상과 호감 포인트.',
   '3) personality — 성격 케미: 두 유형의 본질적 기질이 만나 어떻게 맞물리고 어긋나는지, 닮은 점과 정반대인 점.',
@@ -344,9 +345,12 @@ const MBTI_SECTION_GUIDE = [
   '8) growth — 서로에게 주는 영향: 두 사람이 만나 서로를 어떻게 성장시키고 채워주는지, 함께라서 더 나아지는 부분.',
   '9) future — 장기 전망: 시간이 지날수록 이 관계가 어떻게 깊어지거나 시험받는지, 오래갈 인연인지에 대한 통찰.',
   '10) advice — 관계 꿀팁: 두 사람이 더 잘 지내기 위한, 각 유형 맞춤의 구체적이고 실용적인 꿀팁.',
+  '11) shorts — 숏폼(릴스/쇼츠) 영상용 데이터. 산문이 아니라 정확히 아래 형식의 JSON 객체 한 개만 출력한다(다른 텍스트·마크다운 금지):',
+  '   {"hook":"(궁금증을 자극하는 18자 이내 후크)","score":NN,"verdict":"(8자 이내 한마디 등급, 예: 환상의 케미)","beats":[{"label":"(6자 이내 주제)","text":"(70~120자, 2~3문장으로 구체적·풍부하게)"} … 정확히 5개],"catchphrase":"(20자 이내 마무리 카피)"}',
+  '   beats 5개는 첫인상·성격·소통·연애·갈등을 위 1~10 내용과 일관되게 다룬다. 각 text는 영상에서 2~3줄로 보이도록 충분히 구체적이고 흥미롭게(추상적 한 줄 금지). score는 1)의 궁합 지수와 동일한 정수. 모든 문구는 출력 언어로.',
 ].join('\n')
 
-const MBTI_KEYS = 'score, firstmeet, personality, communication, love, datestyle, conflict, growth, future, advice'
+const MBTI_KEYS = 'score, firstmeet, personality, communication, love, datestyle, conflict, growth, future, advice, shorts'
 
 const mbtiType: FortuneType = {
   key: 'mbti',
@@ -363,7 +367,7 @@ const mbtiType: FortuneType = {
     '[출력 형식]',
     MBTI_SECTION_GUIDE,
     '',
-    '- 위 6개 키(' + MBTI_KEYS + ')를 가진 JSON 객체 하나만 출력한다(그 외 텍스트 금지).',
+    '- 위 11개 키(' + MBTI_KEYS + ')를 가진 JSON 객체 하나만 출력한다(그 외 텍스트 금지). shorts 값은 11)에 정의된 형식의 JSON을 문자열로 담는다.',
     `- 모든 본문은 ${langName(lang)}로 작성한다.`,
   ].join('\n'),
   systemStream: (lang) => [
@@ -372,9 +376,10 @@ const mbtiType: FortuneType = {
     '[출력 형식]',
     MBTI_SECTION_GUIDE,
     '',
-    '- 10개 항목을 위 순서대로 작성하되, 각 항목 본문 바로 앞에 정확히 한 줄로 마커를 둔다:',
-    '  [[score]] / [[firstmeet]] / [[personality]] / [[communication]] / [[love]] / [[datestyle]] / [[conflict]] / [[growth]] / [[future]] / [[advice]]',
-    '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·JSON·마크다운은 쓰지 않는다.',
+    '- 11개 항목을 위 순서대로 작성하되, 각 항목 본문 바로 앞에 정확히 한 줄로 마커를 둔다:',
+    '  [[score]] / [[firstmeet]] / [[personality]] / [[communication]] / [[love]] / [[datestyle]] / [[conflict]] / [[growth]] / [[future]] / [[advice]] / [[shorts]]',
+    '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·마크다운은 쓰지 않는다.',
+    '- 예외: [[shorts]] 마커 다음 본문만은 11)에 정의된 JSON 객체 한 개로 출력한다(그 JSON 외 텍스트 금지).',
     `- 모든 본문은 ${langName(lang)}로 작성한다.`,
   ].join('\n'),
   buildPrompt: ({ myMbti, partnerMbti, myName, partnerName }) => {
