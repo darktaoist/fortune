@@ -32,18 +32,25 @@ const partnerRef = computed(() => {
 const partnerName = ref(String(route.query.partnerName || ''))
 const partnerMbti = ref(String(route.query.partnerMbti || '').toUpperCase())
 // 숏폼: 연예인 사진 URL 해석 (celeb만; friend/mbti는 사진 없음 → null). 클라 전용.
-// 숏폼용 연예인 사진 URL: 1순위=네비게이션 쿼리(celeb-select가 직접 전달), 2순위=API 조회 폴백.
+// 숏폼용 연예인 사진 URL — 3중 폴백: ①쿼리(partnerImg) ②partner id ③파트너 이름.
+// 결제(order) 플로우는 URL에 partner/partnerImg가 없고 이름만 스냅샷에서 복원되므로 이름 매칭 필수.
 const partnerImageUrl = ref(String(route.query.partnerImg || '') || null)
-onMounted(async () => {
-  if (partnerImageUrl.value) return
-  const p = partnerRef.value
-  if (service.value === 'gunghap' && p?.kind === 'celeb' && p.id) {
-    try {
-      const r = await $fetch('/api/celebs', { query: { lang: locale.value } })
-      partnerImageUrl.value = r.celebs?.find((c) => c.id === p.id)?.image || null
-    } catch {}
-  }
-})
+async function resolvePartnerImage() {
+  if (partnerImageUrl.value || service.value !== 'gunghap') return
+  const id = partnerRef.value?.id
+  const nm = (partnerName.value || '').trim()
+  if (!id && !nm) return
+  try {
+    const r = await $fetch('/api/celebs', { query: { lang: locale.value } })
+    const hit = r.celebs?.find(
+      (c) => (id && c.id === id) || (nm && (c.name === nm || c.names?.ko === nm || c.names?.en === nm)),
+    )
+    partnerImageUrl.value = hit?.image || null
+  } catch {}
+}
+onMounted(resolvePartnerImage)
+// 스트리밍으로 partnerName이 나중에 채워지는 경우(order 플로우) 재해석.
+watch(partnerName, () => resolvePartnerImage())
 // 보관함에서 진입(?saved=id) — 저장된 결과를 그대로 표시(재계산 X)
 const savedId = computed(() => String(route.query.saved || ''))
 import { toPurchaseKey } from '~/shared/premiumService'
