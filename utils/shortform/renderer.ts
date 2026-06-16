@@ -153,11 +153,11 @@ function drawBackground(ctx: CanvasRenderingContext2D, photo: CanvasImageSource 
   top.addColorStop(1, 'rgba(8,7,10,0)')
   ctx.fillStyle = top
   ctx.fillRect(0, 0, W, H * 0.28)
-  const botStart = 0.42
+  const botStart = 0.32
   const bot = ctx.createLinearGradient(0, H * botStart, 0, H)
   bot.addColorStop(0, 'rgba(8,7,10,0)')
-  bot.addColorStop(0.5, `rgba(8,7,10,${0.7 + focus * 0.2})`)
-  bot.addColorStop(1, `rgba(8,7,10,${0.96})`)
+  bot.addColorStop(0.45, `rgba(8,7,10,${0.72 + focus * 0.18})`)
+  bot.addColorStop(1, 'rgba(8,7,10,0.97)')
   ctx.fillStyle = bot
   ctx.fillRect(0, H * botStart, W, H * (1 - botStart))
   // focus 오버레이(점수 리빌 때 전체 살짝 더 어둡게)
@@ -311,37 +311,40 @@ export function drawFrame(
     const out = 1 - seg(local, 0.94, 1) // 늦게 사라짐 → 읽을 시간 ↑
     const b = sb.beats[idx]
     const baseA = Math.max(0, Math.min(1, pop)) * out
-    // 글리프(큰 워터마크)
+    const slide = (1 - Math.min(1, pop)) * 40
+    // 글리프(큰 워터마크) — 중앙 뒤
     ctx.save()
-    ctx.globalAlpha = baseA * 0.18
+    ctx.globalAlpha = baseA * 0.15
     ctx.fillStyle = GOLD
-    ctx.font = `900 ${Math.round(W * 0.5)}px ${SERIF}`
+    ctx.font = `900 ${Math.round(W * 0.46)}px ${SERIF}`
     ctx.textBaseline = 'middle'
-    ctx.fillText(b.glyph, cx, H * 0.6)
+    ctx.fillText(b.glyph, cx, H * 0.56)
     ctx.restore()
     ctx.textBaseline = 'alphabetic'
-    // 라벨 칩
+    // 라벨 칩 — 위쪽(0.45)으로 올림
     ctx.save()
     ctx.globalAlpha = baseA
-    const slide = (1 - Math.min(1, pop)) * 40
     ctx.font = `700 ${Math.round(W * 0.05)}px ${FAMILY}`
     const lw = ctx.measureText(b.label).width
-    const chipY = H * 0.66
-    ctx.fillStyle = 'rgba(201,168,76,0.16)'
-    roundRect(ctx, cx - lw / 2 - 28, chipY - W * 0.045 + slide, lw + 56, W * 0.082, W * 0.041)
+    const chipY = H * 0.45 + slide
+    ctx.fillStyle = 'rgba(201,168,76,0.18)'
+    roundRect(ctx, cx - lw / 2 - 28, chipY - W * 0.045, lw + 56, W * 0.082, W * 0.041)
     ctx.fill()
-    ctx.strokeStyle = 'rgba(201,168,76,0.5)'
+    ctx.strokeStyle = 'rgba(201,168,76,0.55)'
     ctx.lineWidth = 1.5
-    roundRect(ctx, cx - lw / 2 - 28, chipY - W * 0.045 + slide, lw + 56, W * 0.082, W * 0.041)
+    roundRect(ctx, cx - lw / 2 - 28, chipY - W * 0.045, lw + 56, W * 0.082, W * 0.041)
     ctx.stroke()
     ctx.fillStyle = GOLD_LT
-    ctx.fillText(b.label, cx, chipY + W * 0.013 + slide)
+    ctx.fillText(b.label, cx, chipY + W * 0.013)
     ctx.restore()
-    // 하이라이트
+    // 하이라이트 — 칩 아래부터, 작은 폰트, 최대 5줄(위→아래로 채움)
     ctx.globalAlpha = baseA
     ctx.fillStyle = TEXT
-    ctx.font = `600 ${Math.round(W * 0.055)}px ${FAMILY}`
-    drawWrapped(ctx, b.text, cx, H * 0.78, maxW, W * 0.075, 3)
+    ctx.font = `500 ${Math.round(W * 0.047)}px ${FAMILY}`
+    const blh = W * 0.066
+    const blines = wrapLines(ctx, b.text, maxW, 5)
+    const bStartY = H * 0.55 + slide
+    blines.forEach((l, i) => ctx.fillText(l, cx, bStartY + i * blh))
     // 진행 점
     ctx.globalAlpha = out
     sb.beats.forEach((_, i) => {

@@ -15,20 +15,18 @@ export function parseScore(sections: Section[]): number | null {
   return null
 }
 
-// 섹션 본문에서 짧고 의미있는 한 문장(점수/지수 노이즈 제외) — shorts 없을 때 폴백용.
-export function highlight(body: string | undefined, max = 52): string {
+// 섹션 본문에서 의미있는 1~2문장(점수/지수 노이즈 제외) — shorts 없을 때 폴백용.
+export function highlight(body: string | undefined, max = 110): string {
   const sents = (body || '')
     .replace(/\s+/g, ' ')
     .trim()
     .split(/(?<=[.!?。！？])\s/)
     .map((s) => s.trim())
-    .filter(Boolean)
-  const good =
-    sents.find((s) => s.length >= 12 && s.length <= max && !/지수|\d+\s*점/.test(s)) ||
-    sents.find((s) => s.length >= 10 && !/지수|\d+\s*점/.test(s)) ||
-    sents[0] ||
-    ''
-  return good.length > max ? good.slice(0, max - 1) + '…' : good
+    .filter((s) => s && !/지수|\d+\s*점/.test(s))
+  if (!sents.length) return ''
+  let out = sents[0]
+  if (out.length < max - 20 && sents[1]) out += ' ' + sents[1] // 2문장까지 합침
+  return out.length > max ? out.slice(0, max - 1) + '…' : out
 }
 
 function oneLinerSection(sections: Section[]): Section | undefined {
