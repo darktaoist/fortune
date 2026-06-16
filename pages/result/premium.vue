@@ -31,6 +31,17 @@ const partnerRef = computed(() => {
 })
 const partnerName = ref(String(route.query.partnerName || ''))
 const partnerMbti = ref(String(route.query.partnerMbti || '').toUpperCase())
+// 숏폼: 연예인 사진 URL 해석 (celeb만; friend/mbti는 사진 없음 → null). 클라 전용.
+const partnerImageUrl = ref(null)
+onMounted(async () => {
+  const p = partnerRef.value
+  if (service.value === 'gunghap' && p?.kind === 'celeb' && p.id) {
+    try {
+      const r = await $fetch('/api/celebs', { query: { lang: locale.value } })
+      partnerImageUrl.value = r.celebs?.find((c) => c.id === p.id)?.image || null
+    } catch {}
+  }
+})
 // 보관함에서 진입(?saved=id) — 저장된 결과를 그대로 표시(재계산 X)
 const savedId = computed(() => String(route.query.saved || ''))
 import { toPurchaseKey } from '~/shared/premiumService'
@@ -341,6 +352,22 @@ async function onSave() {
             </article>
           </div>
         </template>
+
+        <!-- 숏폼 영상 공유 (궁합 한정, 로컬 검증용) -->
+        <ClientOnly>
+          <ShareVideoModal
+            v-if="service === 'gunghap' && !loading && sections.length"
+            :args="{
+              selfName: displaySubject?.name || '',
+              partnerName: partnerName || '',
+              partnerImageUrl,
+              score: result?.score ?? null,
+              sections,
+              zodiacGlyph: result?.glyph || '緣',
+              siteUrl: 'taoist.co.kr',
+            }"
+          />
+        </ClientOnly>
 
         <!-- 생성 중 (첫 진입=큰 스피너, 섹션 도착 후=하단 작은 표시) -->
         <div v-if="loading" class="gen-note" :class="{ inline: sections.length }">
