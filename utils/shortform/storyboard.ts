@@ -1,56 +1,69 @@
-import type { StoryboardInput } from './types'
+import type { StoryboardInput, Beat } from './types'
 
-type Section = { key?: string; title?: string; body?: string }
+type Section = { key?: string; glyph?: string; title?: string; body?: string }
 
-function firstSentence(body: string | undefined, max: number): string {
-  if (!body) return ''
-  const t = body.replace(/\s+/g, ' ').trim()
-  if (!t) return ''
-  const s = t.split(/(?<=[.!?。！？])\s/)[0]
-  return s.length > max ? s.slice(0, max - 1) + '…' : s
-}
-
-// 섹션 배열에서 키포인트(짧은 첫 문장)를 추출. 추가 LLM 호출 없음.
-export function extractPoints(sections: Section[], limit = 3): string[] {
-  const out: string[] = []
-  for (const s of sections) {
-    const f = firstSentence(s.body, 44)
-    if (f) out.push(f)
-    if (out.length >= limit) break
+// 본문에서 "궁합 지수: NN점" / "NN점" 형태의 점수 파싱(0~100).
+export function parseScore(sections: Section[]): number | null {
+  const ordered = [...sections].sort((a) => (a.key === 'score' ? -1 : 0)) // score 섹션 우선
+  for (const s of ordered) {
+    const m = (s.body || '').match(/(\d{1,3})\s*점/)
+    if (m) {
+      const n = +m[1]
+      if (n >= 0 && n <= 100) return n
+    }
   }
-  return out
+  return null
 }
 
-// 한줄평 출처: 'summary'/'총평' 류 우선, 없으면 첫 섹션.
-function oneLinerSection(sections: Section[]): Section | undefined {
-  return sections.find((s) => /summary|한줄|총평|overview/i.test(`${s.key} ${s.title}`)) || sections[0]
-}
-
-export function pickOneLiner(sections: Section[]): string {
-  return firstSentence(oneLinerSection(sections)?.body, 60)
+// 섹션 본문에서 짧고 의미있는 한 문장을 뽑음(점수/지수 노이즈 제외).
+export function highlight(body: string | undefined, max = 52): string {
+  const sents = (body || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(/(?<=[.!?。！？])\s/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  const good =
+    sents.find((s) => s.length >= 12 && s.length <= max && !/지수|\d+\s*점/.test(s)) ||
+    sents.find((s) => s.length >= 10 && !/지수|\d+\s*점/.test(s)) ||
+    sents[0] ||
+    ''
+  return good.length > max ? good.slice(0, max - 1) + '…' : good
 }
 
 export interface BuildArgs {
   selfName: string
   partnerName: string
   partnerImageUrl: string | null
-  score: number | null
   sections: Section[]
   zodiacGlyph: string
   siteUrl?: string
 }
 
 export function buildStoryboard(a: BuildArgs): StoryboardInput {
-  const olSrc = oneLinerSection(a.sections)
-  const rest = a.sections.filter((s) => s !== olSrc) // 한줄평 출처는 키포인트에서 제외(중복 방지)
+  const scoreSec = a.sections.find((s) => s.key === 'score')
+  const beats: Beat[] = a.sections
+    .filter((s) => s.key !== 'score')
+    .map((s) => ({ glyph: s.glyph || '·', label: s.title || '', text: highlight(s.body) }))
+    .filter((b) => b.text)
   return {
     selfName: a.selfName || '나',
-    partnerName: a.partnerName || '?',
+    partnerName: a.partnerName || '상대',
     partnerImageUrl: a.partnerImageUrl,
-    score: typeof a.score === 'number' ? a.score : null,
-    oneLiner: firstSentence(olSrc?.body, 60),
-    points: extractPoints(rest),
+    score: parseScore(a.sections),
+    oneLiner: highlight(scoreSec?.body || a.sections[0]?.body, 56),
+    beats,
     zodiacGlyph: a.zodiacGlyph || '緣',
     siteUrl: a.siteUrl || 'taoist.co.kr',
   }
+}
+
+// 점수 → 등급(별 개수 1~5)과 verdict 라벨.
+export function verdictFor(score: number | null): { stars: number; label: string } {
+  if (score == null) return { stars: 0, label: '' }
+  if (score >= 90) return { stars: 5, label: '천생연분' }
+  if (score >= 78) return { stars: 4, label: '환상의 케미' }
+  if (score >= 64) return { stars: 3, label: '좋은 인연' }
+  if (score >= 50) return { stars: 2, label: '노력하면 좋은 사이' }
+  return { stars: 1, label: '서로 다른 매력' }
 }

@@ -1,5 +1,6 @@
 import type { StoryboardInput, RenderAssets, VideoOpts } from './types'
-import { seg, easeOutCubic, easeInOutQuad } from './easing'
+import { verdictFor } from './storyboard'
+import { seg, easeOutCubic, easeOutBack, easeInOutQuad } from './easing'
 
 const GOLD = '#c9a84c'
 const GOLD_LT = '#e8c97e'
@@ -7,7 +8,6 @@ const BG = '#0a0a0f'
 const TEXT = '#ece7dc'
 const FAMILY = "'Noto Sans KR', sans-serif"
 
-// 폰트 자동 축소: maxW 안에 들어가는 가장 큰 px(좌우 잘림 방지).
 function fitFont(ctx: CanvasRenderingContext2D, text: string, maxW: number, startPx: number, weight = 700, minPx = 22) {
   let px = startPx
   while (px > minPx) {
@@ -19,7 +19,6 @@ function fitFont(ctx: CanvasRenderingContext2D, text: string, maxW: number, star
   return px
 }
 
-// 공백 기준 줄바꿈(한국어 어절 포함). maxLines 초과분은 … 처리.
 function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxLines: number) {
   const words = text.split(' ')
   const lines: string[] = []
@@ -39,7 +38,16 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxW: number, ma
   return lines
 }
 
-// 골드 하트(Noto Sans KR에 ♥ 글리프가 없어 직접 그림).
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+}
+
 function drawHeart(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: number, color: string) {
   ctx.save()
   ctx.fillStyle = color
@@ -52,9 +60,8 @@ function drawHeart(ctx: CanvasRenderingContext2D, cx: number, cy: number, s: num
   ctx.restore()
 }
 
-// "이름1 ♥ 이름2" 한 줄을 중앙 정렬로 그림(하트는 직접 그림).
 function drawPairTitle(ctx: CanvasRenderingContext2D, n1: string, n2: string, cx: number, cy: number, maxW: number, startPx: number) {
-  const hs = startPx * 0.42 // 하트 크기
+  const hs = startPx * 0.42
   const gap = startPx * 0.5
   let px = startPx
   const widthOf = () => {
@@ -72,21 +79,51 @@ function drawPairTitle(ctx: CanvasRenderingContext2D, n1: string, n2: string, cx
   ctx.fillStyle = '#fff'
   ctx.fillText(n1, x, cy)
   x += w1 + gap
-  drawHeart(ctx, x + hs, cy, hs, '#d9434e')
+  drawHeart(ctx, x + hs, cy, hs, '#e0556a')
   x += hs * 2 + gap
   ctx.fillText(n2, x, cy)
   ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+function drawStars(ctx: CanvasRenderingContext2D, cx: number, cy: number, n: number, size: number) {
+  const gap = size * 1.5
+  const startX = cx - ((5 - 1) * gap) / 2
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = i < n ? GOLD : 'rgba(201,168,76,0.25)'
+    star(ctx, startX + i * gap, cy, size)
+  }
+}
+function star(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
   ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.arcTo(x + w, y, x + w, y + h, r)
-  ctx.arcTo(x + w, y + h, x, y + h, r)
-  ctx.arcTo(x, y + h, x, y, r)
-  ctx.arcTo(x, y, x + w, y, r)
+  for (let i = 0; i < 10; i++) {
+    const ang = (Math.PI / 5) * i - Math.PI / 2
+    const rad = i % 2 === 0 ? r : r * 0.45
+    ctx.lineTo(cx + Math.cos(ang) * rad, cy + Math.sin(ang) * rad)
+  }
   ctx.closePath()
+  ctx.fill()
+}
+
+// 원형 게이지(프랙션 0..1)
+function drawGauge(ctx: CanvasRenderingContext2D, cx: number, cy: number, R: number, frac: number) {
+  ctx.save()
+  ctx.lineCap = 'round'
+  // 배경 링
+  ctx.beginPath()
+  ctx.arc(cx, cy, R, 0, Math.PI * 2)
+  ctx.strokeStyle = 'rgba(201,168,76,0.18)'
+  ctx.lineWidth = R * 0.12
+  ctx.stroke()
+  // 진행 아크 + 글로우
+  ctx.beginPath()
+  ctx.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac)
+  ctx.strokeStyle = GOLD
+  ctx.lineWidth = R * 0.12
+  ctx.shadowColor = 'rgba(233,201,126,0.8)'
+  ctx.shadowBlur = R * 0.25
+  ctx.stroke()
+  ctx.restore()
 }
 
 export function drawFrame(
@@ -99,9 +136,11 @@ export function drawFrame(
 ) {
   const W = o.width
   const H = o.height
-  const M = Math.round(W * 0.08) // 좌우 여백
+  const M = Math.round(W * 0.08)
   const maxW = W - 2 * M
   const cx = W / 2
+  const D = o.durationSec
+  const v = verdictFor(sb.score)
 
   // ── 배경 ──
   ctx.fillStyle = BG
@@ -112,48 +151,48 @@ export function drawFrame(
   ctx.fillStyle = glow
   ctx.fillRect(0, 0, W, H)
 
-  // ── 상단 사진 프레임(고정 영역, 텍스트와 분리) ──
-  const pf = { x: M, y: Math.round(H * 0.06), w: maxW, h: Math.round(H * 0.42) }
+  // ── 상단 사진 프레임(고정) ──
+  const pf = { x: M, y: Math.round(H * 0.06), w: maxW, h: Math.round(H * 0.4) }
   ctx.save()
   roundRect(ctx, pf.x, pf.y, pf.w, pf.h, 28)
   ctx.clip()
   ctx.fillStyle = '#15151c'
   ctx.fillRect(pf.x, pf.y, pf.w, pf.h)
   if (photo) {
-    const zoom = 1.04 + 0.08 * easeInOutQuad(seg(tSec, 0, o.durationSec)) // 켄번스
-    // cover
+    const zoom = 1.04 + 0.08 * easeInOutQuad(seg(tSec, 0, D))
     const iw = pf.w * zoom
     const ih = pf.h * zoom
     ctx.globalAlpha = 0.96
     ctx.drawImage(photo, pf.x + (pf.w - iw) / 2, pf.y + (pf.h - ih) / 2, iw, ih)
     ctx.globalAlpha = 1
   }
-  // 프레임 하단 페이드
-  const fade = ctx.createLinearGradient(0, pf.y + pf.h * 0.55, 0, pf.y + pf.h)
+  const fade = ctx.createLinearGradient(0, pf.y + pf.h * 0.5, 0, pf.y + pf.h)
   fade.addColorStop(0, 'rgba(10,10,15,0)')
-  fade.addColorStop(1, 'rgba(10,10,15,0.85)')
+  fade.addColorStop(1, 'rgba(10,10,15,0.9)')
   ctx.fillStyle = fade
-  ctx.fillRect(pf.x, pf.y + pf.h * 0.55, pf.w, pf.h * 0.45)
+  ctx.fillRect(pf.x, pf.y + pf.h * 0.5, pf.w, pf.h * 0.5)
   ctx.restore()
-  // 프레임 테두리
   ctx.strokeStyle = 'rgba(201,168,76,0.4)'
   ctx.lineWidth = 2
   roundRect(ctx, pf.x, pf.y, pf.w, pf.h, 28)
   ctx.stroke()
-
-  // 상대 이름(사진 위 하단)
+  // 상대 이름
   ctx.textAlign = 'center'
   ctx.fillStyle = GOLD_LT
-  fitFont(ctx, sb.partnerName, maxW * 0.8, Math.round(W * 0.06), 700)
-  ctx.fillText(sb.partnerName, cx, pf.y + pf.h - 28)
+  fitFont(ctx, sb.partnerName, maxW * 0.8, Math.round(W * 0.058), 700)
+  ctx.fillText(sb.partnerName, cx, pf.y + pf.h - 26)
 
-  // ── 하단 텍스트 존(겹침 없음: 시간대별 한 그룹만) ──
-  const zoneY = Math.round(H * 0.6) // 텍스트 그룹 세로 중심 기준
+  const zoneY = Math.round(H * 0.62)
 
-  // 0–4.5s 훅 (라벨 / 제목 / 부제 — 세로 간격 충분히)
-  if (tSec < 4.5) {
+  // ── 타임라인 ──
+  const T_HOOK = 3.5
+  const T_REVEAL = 10
+  const T_BEATS_END = D - 5
+
+  if (tSec < T_HOOK) {
+    // 훅
     const a = easeOutCubic(seg(tSec, 0, 1))
-    const out = 1 - seg(tSec, 4, 4.5)
+    const out = 1 - seg(tSec, T_HOOK - 0.5, T_HOOK)
     ctx.globalAlpha = a * out
     ctx.fillStyle = GOLD
     fitFont(ctx, '운 명 의  궁 합', maxW, Math.round(W * 0.045), 700)
@@ -163,79 +202,120 @@ export function drawFrame(
     fitFont(ctx, '결과는…?', maxW, Math.round(W * 0.048), 500)
     ctx.fillText('결과는…?', cx, zoneY + W * 0.12)
     ctx.globalAlpha = 1
-  }
-
-  // 4.5–10s 리빌: 점수(있으면) / 없으면 한줄 헤드라인
-  else if (tSec < 10) {
-    const a = easeOutCubic(seg(tSec, 4.5, 5.5))
-    const out = 1 - seg(tSec, 9.5, 10)
-    ctx.globalAlpha = a * out
+  } else if (tSec < T_REVEAL) {
+    // 점수 게이지 리빌 (클라이맥스)
+    const local = seg(tSec, T_HOOK, T_REVEAL)
+    const out = 1 - seg(tSec, T_REVEAL - 0.4, T_REVEAL)
+    ctx.globalAlpha = out
+    const gy = zoneY + W * 0.02
+    const R = W * 0.2
     if (sb.score != null) {
+      const fillT = easeOutCubic(seg(tSec, T_HOOK + 0.3, T_HOOK + 3)) // 게이지 채우기
+      drawGauge(ctx, cx, gy, R, (sb.score / 100) * fillT)
       ctx.fillStyle = GOLD_LT
-      fitFont(ctx, '궁합 점수', maxW, Math.round(W * 0.055), 700)
-      ctx.fillText('궁합 점수', cx, zoneY - W * 0.08)
-      ctx.fillStyle = GOLD
-      ctx.font = `900 ${Math.round(W * 0.26)}px ${FAMILY}`
-      ctx.fillText(`${Math.round(sb.score * a)}`, cx, zoneY + W * 0.1)
-    } else if (sb.oneLiner) {
+      fitFont(ctx, '궁합 점수', maxW, Math.round(W * 0.045), 700)
+      ctx.fillText('궁합 점수', cx, gy - R - W * 0.03)
       ctx.fillStyle = '#fff'
-      ctx.font = `700 ${Math.round(W * 0.052)}px ${FAMILY}`
+      ctx.font = `900 ${Math.round(W * 0.13)}px ${FAMILY}`
+      ctx.fillText(`${Math.round(sb.score * fillT)}`, cx, gy + W * 0.045)
+      // 채운 뒤 등급/verdict 등장
+      const post = easeOutBack(seg(tSec, T_HOOK + 3, T_HOOK + 3.8))
+      if (post > 0) {
+        ctx.save()
+        ctx.globalAlpha = out * Math.min(1, post)
+        drawStars(ctx, cx, gy + R + W * 0.06, v.stars, W * 0.028)
+        ctx.fillStyle = GOLD
+        const ls = fitFont(ctx, v.label, maxW, Math.round(W * 0.07), 800)
+        ctx.fillText(v.label, cx, gy + R + W * 0.06 + ls * 1.1)
+        ctx.restore()
+      }
+    } else {
+      // 점수 없음: 총평 헤드라인
+      const a = easeOutCubic(local)
+      ctx.globalAlpha = out * a
+      ctx.fillStyle = '#fff'
+      ctx.font = `700 ${Math.round(W * 0.054)}px ${FAMILY}`
       const lines = wrapLines(ctx, sb.oneLiner, maxW, 3)
-      const lh = W * 0.07
+      const lh = W * 0.072
       lines.forEach((l, i) => ctx.fillText(l, cx, zoneY - ((lines.length - 1) * lh) / 2 + i * lh))
     }
     ctx.globalAlpha = 1
-  }
-
-  // 10–(끝-7)s 키포인트: 한 번에 하나씩(겹침 0)
-  else if (tSec < o.durationSec - 7) {
-    const pts = sb.points.length ? sb.points : sb.oneLiner ? [sb.oneLiner] : []
-    if (pts.length) {
-      const span = (o.durationSec - 7 - 10) / pts.length
-      const idx = Math.min(pts.length - 1, Math.floor((tSec - 10) / span))
-      const local = (tSec - 10 - idx * span) / span // 0..1
-      const a = easeOutCubic(seg(local, 0, 0.18)) * (1 - seg(local, 0.85, 1))
-      ctx.globalAlpha = a
-      // 진행 점
-      pts.forEach((_, i) => {
-        ctx.fillStyle = i === idx ? GOLD : 'rgba(201,168,76,0.3)'
-        ctx.beginPath()
-        ctx.arc(cx - ((pts.length - 1) * 24) / 2 + i * 24, zoneY - W * 0.16, 6, 0, Math.PI * 2)
-        ctx.fill()
-      })
-      ctx.fillStyle = TEXT
-      ctx.font = `600 ${Math.round(W * 0.056)}px ${FAMILY}`
-      const lines = wrapLines(ctx, pts[idx], maxW, 3)
-      const lh = W * 0.075
-      lines.forEach((l, i) => ctx.fillText(l, cx, zoneY - ((lines.length - 1) * lh) / 2 + i * lh))
-      ctx.globalAlpha = 1
-    }
-  }
-
-  // 마지막 7s CTA
-  else {
-    const a = easeOutCubic(seg(tSec, o.durationSec - 7, o.durationSec - 6))
-    ctx.globalAlpha = a
+  } else if (tSec < T_BEATS_END && sb.beats.length) {
+    // 테마 비트(한 번에 하나, 팝 애니메이션)
+    const span = (T_BEATS_END - T_REVEAL) / sb.beats.length
+    const idx = Math.min(sb.beats.length - 1, Math.floor((tSec - T_REVEAL) / span))
+    const local = (tSec - T_REVEAL - idx * span) / span
+    const pop = easeOutBack(seg(local, 0, 0.22))
+    const out = 1 - seg(local, 0.88, 1)
+    const b = sb.beats[idx]
+    ctx.globalAlpha = Math.max(0, Math.min(1, pop)) * out
+    // 큰 글리프(배경)
+    ctx.save()
+    ctx.globalAlpha *= 0.16
     ctx.fillStyle = GOLD
-    ctx.font = `900 ${Math.round(W * 0.14)}px serif`
-    ctx.fillText(sb.zodiacGlyph, cx, zoneY - W * 0.1)
-    ctx.fillStyle = '#fff'
-    fitFont(ctx, '내 궁합도 확인해보세요', maxW, Math.round(W * 0.06), 700)
-    ctx.fillText('내 궁합도 확인해보세요', cx, zoneY + W * 0.02)
+    ctx.font = `900 ${Math.round(W * 0.42)}px serif`
+    ctx.fillText(b.glyph, cx, zoneY + W * 0.08)
+    ctx.restore()
+    // 라벨 칩
+    ctx.save()
+    ctx.globalAlpha = Math.max(0, Math.min(1, pop)) * out
+    const scale = 0.9 + 0.1 * Math.min(1, pop)
+    ctx.translate(cx, zoneY - W * 0.12)
+    ctx.scale(scale, scale)
+    ctx.fillStyle = GOLD
+    fitFont(ctx, b.label, maxW * 0.7, Math.round(W * 0.05), 800)
+    const lw = ctx.measureText(b.label).width
+    ctx.fillStyle = 'rgba(201,168,76,0.14)'
+    roundRect(ctx, -lw / 2 - 26, -W * 0.04, lw + 52, W * 0.075, W * 0.04)
+    ctx.fill()
     ctx.fillStyle = GOLD_LT
-    fitFont(ctx, sb.siteUrl, maxW, Math.round(W * 0.058), 700)
-    ctx.fillText(sb.siteUrl, cx, zoneY + W * 0.1)
+    ctx.fillText(b.label, 0, W * 0.008)
+    ctx.restore()
+    // 하이라이트 텍스트
+    ctx.fillStyle = TEXT
+    ctx.font = `600 ${Math.round(W * 0.052)}px ${FAMILY}`
+    const lines = wrapLines(ctx, b.text, maxW, 3)
+    const lh = W * 0.07
+    lines.forEach((l, i) => ctx.fillText(l, cx, zoneY + W * 0.02 + i * lh))
+    // 진행 점
+    ctx.globalAlpha = out
+    sb.beats.forEach((_, i) => {
+      ctx.fillStyle = i === idx ? GOLD : 'rgba(201,168,76,0.3)'
+      ctx.beginPath()
+      ctx.arc(cx - ((sb.beats.length - 1) * 22) / 2 + i * 22, zoneY + W * 0.22, 5, 0, Math.PI * 2)
+      ctx.fill()
+    })
+    ctx.globalAlpha = 1
+  } else {
+    // CTA + verdict 리캡
+    const a = easeOutBack(seg(tSec, T_BEATS_END, T_BEATS_END + 0.8))
+    ctx.globalAlpha = Math.min(1, a)
+    ctx.fillStyle = GOLD
+    ctx.font = `900 ${Math.round(W * 0.13)}px serif`
+    ctx.fillText(sb.zodiacGlyph, cx, zoneY - W * 0.12)
+    if (v.label) {
+      ctx.fillStyle = GOLD_LT
+      fitFont(ctx, sb.score != null ? `${v.label} · ${sb.score}점` : v.label, maxW, Math.round(W * 0.06), 800)
+      ctx.fillText(sb.score != null ? `${v.label} · ${sb.score}점` : v.label, cx, zoneY - W * 0.01)
+    }
+    ctx.fillStyle = '#fff'
+    fitFont(ctx, '내 궁합도 확인해보세요', maxW, Math.round(W * 0.055), 700)
+    ctx.fillText('내 궁합도 확인해보세요', cx, zoneY + W * 0.08)
+    ctx.fillStyle = GOLD_LT
+    fitFont(ctx, sb.siteUrl, maxW, Math.round(W * 0.055), 700)
+    ctx.fillText(sb.siteUrl, cx, zoneY + W * 0.155)
     if (assets.qrBitmap) {
-      const q = Math.round(W * 0.2)
-      ctx.drawImage(assets.qrBitmap, cx - q / 2, zoneY + W * 0.15, q, q)
+      const q = Math.round(W * 0.18)
+      ctx.drawImage(assets.qrBitmap, cx - q / 2, zoneY + W * 0.2, q, q)
     }
     ctx.globalAlpha = 1
   }
 
-  // ── 워터마크(상시, 맨 아래) ──
-  if (tSec < o.durationSec - 7) {
+  // ── 워터마크 ──
+  if (tSec < T_BEATS_END) {
     ctx.globalAlpha = 0.8
     ctx.fillStyle = GOLD_LT
+    ctx.textAlign = 'center'
     ctx.font = `600 ${Math.round(W * 0.034)}px ${FAMILY}`
     ctx.fillText('道 ' + sb.siteUrl, cx, H - Math.round(H * 0.04))
     ctx.globalAlpha = 1

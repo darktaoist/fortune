@@ -361,8 +361,7 @@ async function onSave() {
               selfName: displaySubject?.name || '',
               partnerName: partnerName || '',
               partnerImageUrl,
-              score: result?.score ?? null,
-              sections,
+              sections: sections.map((s) => ({ key: s.key, glyph: s.glyph, title: t(s.titleKey), body: s.body })),
               zodiacGlyph: result?.glyph || '緣',
               siteUrl: 'taoist.co.kr',
             }"

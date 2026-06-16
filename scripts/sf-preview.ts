@@ -18,12 +18,14 @@ const sb = buildStoryboard({
   selfName: '정송엽',
   partnerName: '정국',
   partnerImageUrl: null,
-  score: null,
   zodiacGlyph: '緣',
   sections: [
-    { key: 'summary', title: '총평', body: '정송엽님은 계수(癸水) 일간으로 사주 전체에 수의 기운이 강한 신강한 명식입니다. 두 사람은 서로를 보완하는 깊은 인연입니다.' },
-    { key: 'love', title: '연애운', body: '표현 방식이 잘 맞아 다툼이 적고 신뢰가 깊어집니다. 함께 있을 때 안정감을 느낍니다.' },
-    { key: 'caution', title: '주의', body: '정국님의 뜨겁고 활발한 화 기운이 때로 부딪힐 수 있으니 호흡을 가다듬으세요.' },
+    { key: 'score', glyph: '緣', title: '궁합 총평', body: '두 사람의 궁합 지수: 87점. 서로를 깊이 보완하는 운명적인 인연입니다.' },
+    { key: 'attraction', glyph: '心', title: '끌림', body: '첫 만남부터 강렬한 끌림이 흐릅니다. 서로의 부족한 오행을 본능적으로 채워줍니다.' },
+    { key: 'personality', glyph: '性', title: '성격 궁합', body: '한 사람은 신중하고 한 사람은 활발해 일상에서 균형이 잘 잡힙니다.' },
+    { key: 'lovestyle', glyph: '戀', title: '연애 스타일', body: '표현 방식이 잘 맞아 다툼이 적고 신뢰가 깊어집니다.' },
+    { key: 'conflict', glyph: '和', title: '갈등', body: '정국님의 뜨거운 화 기운이 때로 부딪힐 수 있으니 호흡을 가다듬으세요.' },
+    { key: 'future', glyph: '婚', title: '미래', body: '장기적으로 안정적인 관계로 발전할 가능성이 높습니다.' },
   ],
 })
 
@@ -40,7 +42,7 @@ pctx.putImageData(ill as any, 0, 0)
 const canvas = createCanvas(o.width, o.height)
 const ctx = canvas.getContext('2d') as any
 
-const times = [2, 6, 13, 19, 26]
+const times = [2, 7, 9.3, 12, 17, 27]
 for (const t of times) {
   drawFrame(ctx, sb, pc as any, { illustrated: null, qrBitmap: null, logoBitmap: null }, t, o)
   writeFileSync(`/tmp/sf/frame_${t}s.png`, canvas.toBuffer('image/png'))
