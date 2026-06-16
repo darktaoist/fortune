@@ -78,6 +78,7 @@ export function useShortform() {
     try {
       const sb: StoryboardInput = buildStoryboard(args)
       const o = DEFAULT_OPTS
+      console.log('[shortform] partnerImageUrl =', sb.partnerImageUrl, '| beats =', sb.beats.length, '| score =', sb.score)
 
       const photo = sb.partnerImageUrl ? await loadIllustratedPhoto(sb.partnerImageUrl, o.width, o.height) : null
       const assets: RenderAssets = {

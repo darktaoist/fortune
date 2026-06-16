@@ -32,8 +32,10 @@ const partnerRef = computed(() => {
 const partnerName = ref(String(route.query.partnerName || ''))
 const partnerMbti = ref(String(route.query.partnerMbti || '').toUpperCase())
 // 숏폼: 연예인 사진 URL 해석 (celeb만; friend/mbti는 사진 없음 → null). 클라 전용.
-const partnerImageUrl = ref(null)
+// 숏폼용 연예인 사진 URL: 1순위=네비게이션 쿼리(celeb-select가 직접 전달), 2순위=API 조회 폴백.
+const partnerImageUrl = ref(String(route.query.partnerImg || '') || null)
 onMounted(async () => {
+  if (partnerImageUrl.value) return
   const p = partnerRef.value
   if (service.value === 'gunghap' && p?.kind === 'celeb' && p.id) {
     try {

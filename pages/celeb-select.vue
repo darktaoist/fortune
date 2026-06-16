@@ -99,14 +99,15 @@ function fmtBirth(b) {
 
 /* ---- selection → 결과 직행 (v1: 결제 스킵) ---- */
 // celeb 모드는 gunghap(사주 궁합), mbti 모드는 mbti 결과로. partnerKind로 연예인/지인 구분.
-function goResult(name, id, kind, mbti) {
+function goResult(name, id, kind, mbti, img) {
   const svc = service.value === 'mbti' ? 'mbti' : 'gunghap'
   const q = { service: svc, partnerName: name || '', partnerKind: kind }
   if (id) q.partner = id
   if (mbti && svc === 'mbti') q.partnerMbti = mbti   // MBTI 궁합: 상대 유형 전달
+  if (img && kind === 'celeb') q.partnerImg = img    // 숏폼용 연예인 사진 URL 직접 전달
   navigateTo(localePath({ path: '/result/premium', query: q }))
 }
-function selectCeleb(c) { goResult(c.name, c.id, 'celeb', c.mbti) }
+function selectCeleb(c) { goResult(c.name, c.id, 'celeb', c.mbti, c.image) }
 function selectFriend(f) { goResult(f.name, f.id, 'friend', f.mbti) }
 function onRegister() {
   if (import.meta.client) window.alert(t('cel.alert.register'))
