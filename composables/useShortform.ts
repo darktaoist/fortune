@@ -44,7 +44,8 @@ async function makeQr(url: string): Promise<ImageBitmap | null> {
 async function loadAudio(): Promise<AudioBuffer | null> {
   try {
     const res = await fetch('/shortform/audio/track1.mp3')
-    if (!res.ok) return null
+    // dev 서버는 없는 public 파일에 404 대신 HTML 200을 주기도 함 → content-type로 걸러냄.
+    if (!res.ok || !(res.headers.get('content-type') || '').includes('audio')) return null
     const arr = await res.arrayBuffer()
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
     const ac = new AC()
@@ -89,14 +90,24 @@ export function useShortform() {
       const draw = (ctx: CanvasRenderingContext2D, tSec: number) =>
         drawFrame(ctx, sb, illustratedBitmap, assets, tSec, o)
 
-      let blob: Blob
+      // 인코딩: mp4(WebCodecs) → webm(MediaRecorder) → png(정지) 순으로 폴백.
+      let blob: Blob | null = null
       if (supportsWebCodecs()) {
-        blob = await encodeMp4(draw, audio, o, (p) => (progress.value = p))
-      } else if (typeof MediaRecorder !== 'undefined') {
-        blob = await encodeWebm(draw, o, (p) => (progress.value = p))
-      } else {
-        blob = await encodePoster((ctx) => draw(ctx, o.durationSec - 1), o)
+        try {
+          blob = await encodeMp4(draw, audio, o, (p) => (progress.value = p))
+        } catch (e) {
+          console.warn('[shortform] mp4 인코딩 실패, webm 폴백:', e)
+        }
       }
+      if (!blob && typeof MediaRecorder !== 'undefined') {
+        try {
+          progress.value = 0
+          blob = await encodeWebm(draw, o, (p) => (progress.value = p))
+        } catch (e) {
+          console.warn('[shortform] webm 인코딩 실패, png 폴백:', e)
+        }
+      }
+      if (!blob) blob = await encodePoster((ctx) => draw(ctx, o.durationSec - 1), o)
       resultBlob.value = blob
       resultUrl.value = URL.createObjectURL(blob)
       progress.value = 1

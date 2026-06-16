@@ -5,16 +5,57 @@ export type FrameDrawer = (ctx: CanvasRenderingContext2D, tSec: number) => void
 export type Progress = (p: number) => void
 
 export function supportsWebCodecs(): boolean {
-  return typeof window !== 'undefined' && 'VideoEncoder' in window && 'AudioEncoder' in window
+  return typeof window !== 'undefined' && 'VideoEncoder' in window
 }
 
-// 메인: WebCodecs로 MP4 생성. 오디오는 audioBuffer 있으면 포함.
+const VIDEO_CODECS = ['avc1.42E01F', 'avc1.4D401F', 'avc1.42E028', 'avc1.640028', 'avc1.42001E']
+
+async function pickVideoCodec(o: VideoOpts): Promise<string | null> {
+  for (const codec of VIDEO_CODECS) {
+    try {
+      const s = await VideoEncoder.isConfigSupported({
+        codec,
+        width: o.width,
+        height: o.height,
+        bitrate: 6_000_000,
+        framerate: o.fps,
+      })
+      if (s.supported) return codec
+    } catch {
+      /* try next */
+    }
+  }
+  return null
+}
+
+async function audioSupported(sampleRate: number): Promise<boolean> {
+  try {
+    const s = await AudioEncoder.isConfigSupported({
+      codec: 'mp4a.40.2',
+      sampleRate,
+      numberOfChannels: 1,
+      bitrate: 128_000,
+    })
+    return !!s.supported
+  } catch {
+    return false
+  }
+}
+
+// 메인: WebCodecs로 MP4 생성. 실패 시 throw → 호출부가 폴백.
 export async function encodeMp4(
   draw: FrameDrawer,
   audioBuffer: AudioBuffer | null,
   o: VideoOpts,
   onProgress?: Progress,
 ): Promise<Blob> {
+  if (typeof VideoEncoder === 'undefined') throw new Error('VideoEncoder unavailable')
+  const codec = await pickVideoCodec(o)
+  if (!codec) throw new Error('no supported H.264 encoder config')
+
+  const includeAudio =
+    !!audioBuffer && 'AudioEncoder' in window && (await audioSupported(audioBuffer.sampleRate))
+
   const canvas = new OffscreenCanvas(o.width, o.height)
   const ctx = canvas.getContext('2d') as unknown as CanvasRenderingContext2D
   const totalFrames = o.fps * o.durationSec
@@ -22,41 +63,36 @@ export async function encodeMp4(
   const muxer = new Muxer({
     target: new ArrayBufferTarget(),
     video: { codec: 'avc', width: o.width, height: o.height },
-    audio: audioBuffer
-      ? { codec: 'aac', sampleRate: audioBuffer.sampleRate, numberOfChannels: 1 }
+    audio: includeAudio
+      ? { codec: 'aac', sampleRate: audioBuffer!.sampleRate, numberOfChannels: 1 }
       : undefined,
     fastStart: 'in-memory',
   })
 
+  let encoderError: unknown = null
   const videoEncoder = new VideoEncoder({
     output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
     error: (e) => {
-      throw e
+      encoderError = e
     },
   })
-  videoEncoder.configure({
-    codec: 'avc1.42002a',
-    width: o.width,
-    height: o.height,
-    bitrate: 7_000_000,
-    framerate: o.fps,
-  })
+  videoEncoder.configure({ codec, width: o.width, height: o.height, bitrate: 6_000_000, framerate: o.fps })
 
   for (let f = 0; f < totalFrames; f++) {
+    if (encoderError) throw encoderError
     const tSec = f / o.fps
     draw(ctx, tSec)
-    const frame = new VideoFrame(canvas, {
-      timestamp: (f * 1e6) / o.fps,
-      duration: 1e6 / o.fps,
-    })
+    const frame = new VideoFrame(canvas, { timestamp: (f * 1e6) / o.fps, duration: 1e6 / o.fps })
     videoEncoder.encode(frame, { keyFrame: f % o.fps === 0 })
     frame.close()
-    if (videoEncoder.encodeQueueSize > 8) await new Promise((r) => setTimeout(r, 0))
     onProgress?.((f / totalFrames) * 0.9)
+    // 매 프레임 이벤트 루프에 양보 → 진행바 갱신 + 인코더 큐 배압 완화.
+    if (f % 4 === 0 || videoEncoder.encodeQueueSize > 8) await new Promise((r) => setTimeout(r, 0))
   }
   await videoEncoder.flush()
+  if (encoderError) throw encoderError
 
-  if (audioBuffer) await encodeAudio(audioBuffer, o.durationSec, muxer)
+  if (includeAudio) await encodeAudio(audioBuffer!, o.durationSec, muxer)
 
   muxer.finalize()
   onProgress?.(1)
@@ -68,21 +104,23 @@ async function encodeAudio(buf: AudioBuffer, durationSec: number, muxer: Muxer<A
   const sampleRate = buf.sampleRate
   const ch = buf.getChannelData(0)
   const total = Math.min(ch.length, Math.floor(sampleRate * durationSec))
+  let err: unknown = null
   const enc = new AudioEncoder({
     output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
     error: (e) => {
-      throw e
+      err = e
     },
   })
   enc.configure({ codec: 'mp4a.40.2', sampleRate, numberOfChannels: 1, bitrate: 128_000 })
   const chunk = 1024
   const fadeSamples = sampleRate * 0.5
   for (let i = 0; i < total; i += chunk) {
+    if (err) throw err
     const n = Math.min(chunk, total - i)
     const data = new Float32Array(n)
     for (let j = 0; j < n; j++) {
       const k = i + j
-      const fade = k > total - fadeSamples ? (total - k) / fadeSamples : 1 // 마지막 0.5s 페이드아웃
+      const fade = k > total - fadeSamples ? (total - k) / fadeSamples : 1
       data[j] = ch[k] * fade
     }
     const ad = new AudioData({
@@ -97,10 +135,12 @@ async function encodeAudio(buf: AudioBuffer, durationSec: number, muxer: Muxer<A
     ad.close()
   }
   await enc.flush()
+  if (err) throw err
 }
 
 // 폴백 1: MediaRecorder로 WebM(실시간 캡처).
 export async function encodeWebm(draw: FrameDrawer, o: VideoOpts, onProgress?: Progress): Promise<Blob> {
+  if (typeof MediaRecorder === 'undefined') throw new Error('MediaRecorder unavailable')
   const canvas = document.createElement('canvas')
   canvas.width = o.width
   canvas.height = o.height
