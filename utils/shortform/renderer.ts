@@ -5,17 +5,19 @@ import { seg, easeOutCubic, easeOutBack, easeInOutQuad } from './easing'
 const GOLD = '#c9a84c'
 const GOLD_LT = '#f0d68c'
 const TEXT = '#f2efe7'
-const FAMILY = "'Noto Sans KR', sans-serif"
+const SANS = "'Noto Sans KR', sans-serif"
+const SERIF = "'Noto Serif KR', serif" // 디스플레이용(우아함, 900 weight 로드됨)
+const FAMILY = SANS // 본문 기본
 
 // ── 텍스트 헬퍼 ──
-function fitFont(ctx: CanvasRenderingContext2D, text: string, maxW: number, startPx: number, weight = 700, minPx = 22) {
+function fitFont(ctx: CanvasRenderingContext2D, text: string, maxW: number, startPx: number, weight = 700, minPx = 22, family = SANS) {
   let px = startPx
   while (px > minPx) {
-    ctx.font = `${weight} ${px}px ${FAMILY}`
+    ctx.font = `${weight} ${px}px ${family}`
     if (ctx.measureText(text).width <= maxW) break
     px -= 2
   }
-  ctx.font = `${weight} ${px}px ${FAMILY}`
+  ctx.font = `${weight} ${px}px ${family}`
   return px
 }
 // 수동 자간(중앙정렬)
@@ -126,7 +128,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, photo: CanvasImageSource 
     ctx.save()
     ctx.globalAlpha = 0.08
     ctx.fillStyle = GOLD
-    ctx.font = `900 ${Math.round(W * 0.95)}px serif`
+    ctx.font = `900 ${Math.round(W * 0.95)}px ${SERIF}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(sb.zodiacGlyph, W / 2, H * 0.42)
@@ -183,7 +185,7 @@ function drawLogo(ctx: CanvasRenderingContext2D, sb: StoryboardInput, o: VideoOp
   ctx.globalAlpha = 0.92
   ctx.fillStyle = GOLD_LT
   ctx.textAlign = 'left'
-  ctx.font = `800 ${Math.round(o.width * 0.04)}px ${FAMILY}`
+  ctx.font = `700 ${Math.round(o.width * 0.04)}px ${FAMILY}`
   ctx.fillText('道 타오운세', Math.round(o.width * 0.07), Math.round(o.height * 0.07))
   ctx.textAlign = 'center'
   ctx.globalAlpha = 1
@@ -229,7 +231,7 @@ export function drawFrame(
     const out = 1 - seg(tSec, T_HOOK - 0.5, T_HOOK)
     ctx.globalAlpha = a * out
     ctx.fillStyle = GOLD
-    ctx.font = `600 ${Math.round(W * 0.042)}px ${FAMILY}`
+    ctx.font = `500 ${Math.round(W * 0.044)}px ${SERIF}`
     drawSpaced(ctx, '운명의 궁합', cx, H * 0.6, W * 0.03)
     // 이름 ♥ 이름
     pairTitle(ctx, sb.selfName, sb.partnerName, cx, H * 0.7, maxW, Math.round(W * 0.088), a)
@@ -266,7 +268,7 @@ export function drawFrame(
       drawSpaced(ctx, '궁합 점수', cx, gy - R * 0.42, W * 0.02)
       ctx.fillStyle = '#fff'
       const pop = 0.7 + 0.3 * easeOutBack(seg(tSec, T_HOOK + 0.3, T_HOOK + 1.2))
-      ctx.font = `900 ${Math.round(W * 0.17 * pop)}px ${FAMILY}`
+      ctx.font = `900 ${Math.round(W * 0.18 * pop)}px ${SERIF}`
       ctx.textBaseline = 'middle'
       ctx.fillText(`${Math.round(sb.score * fillT)}`, cx, gy + R * 0.05)
       ctx.textBaseline = 'alphabetic'
@@ -277,13 +279,13 @@ export function drawFrame(
         stars(ctx, cx, starsY, v.stars, W * 0.032, post)
         ctx.globalAlpha = out * Math.min(1, post * 1.5)
         ctx.fillStyle = GOLD_LT
-        const ls = fitFont(ctx, v.label, maxW, Math.round(W * 0.082), 900)
+        const ls = fitFont(ctx, v.label, maxW, Math.round(W * 0.082), 900, 22, SERIF)
         ctx.fillText(v.label, cx, starsY + W * 0.025 + ls)
         ctx.globalAlpha = out
       }
     } else {
       ctx.fillStyle = '#fff'
-      ctx.font = `800 ${Math.round(W * 0.058)}px ${FAMILY}`
+      ctx.font = `700 ${Math.round(W * 0.058)}px ${SERIF}`
       drawWrapped(ctx, sb.oneLiner, cx, H * 0.62, maxW, W * 0.078, 3)
     }
     ctx.globalAlpha = 1
@@ -299,7 +301,7 @@ export function drawFrame(
     ctx.save()
     ctx.globalAlpha = baseA * 0.18
     ctx.fillStyle = GOLD
-    ctx.font = `900 ${Math.round(W * 0.5)}px serif`
+    ctx.font = `900 ${Math.round(W * 0.5)}px ${SERIF}`
     ctx.textBaseline = 'middle'
     ctx.fillText(b.glyph, cx, H * 0.6)
     ctx.restore()
@@ -308,7 +310,7 @@ export function drawFrame(
     ctx.save()
     ctx.globalAlpha = baseA
     const slide = (1 - Math.min(1, pop)) * 40
-    ctx.font = `800 ${Math.round(W * 0.05)}px ${FAMILY}`
+    ctx.font = `700 ${Math.round(W * 0.05)}px ${FAMILY}`
     const lw = ctx.measureText(b.label).width
     const chipY = H * 0.66
     ctx.fillStyle = 'rgba(201,168,76,0.16)'
@@ -339,13 +341,13 @@ export function drawFrame(
     const a = Math.min(1, easeOutBack(seg(tSec, T_BEATS_END, T_BEATS_END + 0.8)))
     ctx.globalAlpha = a
     ctx.fillStyle = GOLD
-    ctx.font = `900 ${Math.round(W * 0.16)}px serif`
+    ctx.font = `900 ${Math.round(W * 0.16)}px ${SERIF}`
     ctx.fillText(sb.zodiacGlyph, cx, H * 0.52)
     if (v.label) {
       stars(ctx, cx, H * 0.58, v.stars, W * 0.026, 1)
       ctx.fillStyle = GOLD_LT
       const txt = sb.score != null ? `${v.label} · ${sb.score}점` : v.label
-      fitFont(ctx, txt, maxW, Math.round(W * 0.062), 900)
+      fitFont(ctx, txt, maxW, Math.round(W * 0.062), 900, 22, SERIF)
       ctx.fillText(txt, cx, H * 0.65)
     }
     ctx.fillStyle = '#fff'
@@ -367,11 +369,11 @@ function pairTitle(ctx: CanvasRenderingContext2D, n1: string, n2: string, cx: nu
   const gap = startPx * 0.55
   let px = startPx
   const widthOf = () => {
-    ctx.font = `800 ${px}px ${FAMILY}`
+    ctx.font = `700 ${px}px ${SERIF}`
     return ctx.measureText(n1).width + ctx.measureText(n2).width + hs * 2 + gap * 2
   }
   while (px > 28 && widthOf() > maxW) px -= 2
-  ctx.font = `800 ${px}px ${FAMILY}`
+  ctx.font = `700 ${px}px ${SERIF}`
   const w1 = ctx.measureText(n1).width
   const w2 = ctx.measureText(n2).width
   const total = w1 + w2 + hs * 2 + gap * 2

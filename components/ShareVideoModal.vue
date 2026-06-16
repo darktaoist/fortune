@@ -32,6 +32,7 @@ async function share() {
 <template>
   <div class="sf-wrap">
     <button class="sf-btn" :disabled="busy" @click="start">🎬 영상으로 공유</button>
+    <p class="sf-desc">궁합 결과를 틱톡·인스타 릴스·유튜브 쇼츠로 공유해 보세요</p>
 
     <div v-if="open" class="sf-modal" @click.self="open = false">
       <div class="sf-card">
@@ -59,7 +60,8 @@ async function share() {
 </template>
 
 <style scoped>
-.sf-wrap { display: flex; justify-content: center; margin: 24px 0; }
+.sf-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 24px 0; }
+.sf-desc { font-size: 13px; color: var(--text-muted, #8a8070); margin: 0; text-align: center; }
 .sf-btn {
   background: var(--gold-primary, #c9a84c);
   color: #0a0a0f;

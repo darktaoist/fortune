@@ -46,6 +46,24 @@ async function makeQr(url: string): Promise<HTMLImageElement | null> {
   }
 }
 
+// 캔버스는 이미 로드된 폰트만 사용 → 인코딩 전 필요한 패밀리/weight를 명시적으로 로드.
+async function ensureFonts(): Promise<void> {
+  try {
+    if (typeof document === 'undefined' || !document.fonts) return
+    await Promise.all([
+      document.fonts.load("900 80px 'Noto Serif KR'"),
+      document.fonts.load("700 80px 'Noto Serif KR'"),
+      document.fonts.load("500 80px 'Noto Serif KR'"),
+      document.fonts.load("700 40px 'Noto Sans KR'"),
+      document.fonts.load("600 40px 'Noto Sans KR'"),
+      document.fonts.load("500 40px 'Noto Sans KR'"),
+    ])
+    await document.fonts.ready
+  } catch {
+    /* 폴백 폰트로 진행 */
+  }
+}
+
 async function loadAudio(): Promise<AudioBuffer | null> {
   try {
     const res = await fetch('/shortform/audio/track1.mp3')
@@ -80,6 +98,7 @@ export function useShortform() {
       const o = DEFAULT_OPTS
       console.log('[shortform] partnerImageUrl =', sb.partnerImageUrl, '| beats =', sb.beats.length, '| score =', sb.score)
 
+      await ensureFonts()
       const photo = sb.partnerImageUrl ? await loadIllustratedPhoto(sb.partnerImageUrl, o.width, o.height) : null
       const assets: RenderAssets = {
         illustrated: null,
