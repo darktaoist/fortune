@@ -845,7 +845,6 @@
   "mypage.purchase.order": "訂單編號",
   "mypage.purchase.view": "查看結果",
   "mypage.purchase.receipt": "收據",
-  "mypage.purchase.view": "查看結果",
   "mypage.status.paid": "已付款",
   "mypage.status.refunded": "已退款",
   "mypage.copied": "已複製",
@@ -1009,5 +1008,16 @@
   "premium.life.career": "職業天賦與事業運",
   "premium.life.daeun": "十年大運分析",
   "premium.life.caution": "需留意的流年",
-  "premium.life.gaewoon": "提升運勢之法"
+  "premium.life.gaewoon": "提升運勢之法",
+  "cel.reg.title": "申請新增明星",
+  "cel.reg.desc": "找不到想要的明星嗎？告訴我們，我們會審核後新增。",
+  "cel.reg.name": "明星姓名",
+  "cel.reg.namePh": "例如：IU",
+  "cel.reg.note": "留言",
+  "cel.reg.notePh": "請自由說明為什麼想新增（選填）",
+  "cel.reg.submit": "送出申請",
+  "cel.reg.sending": "傳送中…",
+  "cel.reg.done": "已收到您的申請，我們會審核後新增。謝謝！",
+  "cel.reg.needName": "請輸入明星姓名。",
+  "cel.reg.fail": "傳送失敗，請稍後再試。"
 }

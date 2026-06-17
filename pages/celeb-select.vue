@@ -109,8 +109,36 @@ function goResult(name, id, kind, mbti, img) {
 }
 function selectCeleb(c) { goResult(c.name, c.id, 'celeb', c.mbti, c.image) }
 function selectFriend(f) { goResult(f.name, f.id, 'friend', f.mbti) }
+/* ---- 연예인 등록 요청 모달 ---- */
+const regOpen = ref(false)
+const reg = reactive({ name: '', note: '' })
+const regBusy = ref(false)
+const regDone = ref(false)
+const regErr = ref('')
 function onRegister() {
-  if (import.meta.client) window.alert(t('cel.alert.register'))
+  reg.name = ''
+  reg.note = ''
+  regDone.value = false
+  regErr.value = ''
+  regOpen.value = true
+}
+function closeRegister() { regOpen.value = false }
+async function submitRegister() {
+  const name = reg.name.trim()
+  if (!name) { regErr.value = t('cel.reg.needName'); return }
+  regBusy.value = true
+  regErr.value = ''
+  try {
+    await $fetch('/api/celeb-request', {
+      method: 'POST',
+      body: { name, note: reg.note.trim(), lang: locale.value },
+    })
+    regDone.value = true
+  } catch {
+    regErr.value = t('cel.reg.fail')
+  } finally {
+    regBusy.value = false
+  }
 }
 
 /* ---- modal (직접 입력 / 지인 추가) ---- */
@@ -351,6 +379,46 @@ if (import.meta.client) {
         </div>
       </div>
     </div>
+
+    <!-- 연예인 등록 요청 MODAL -->
+    <div v-if="regOpen" class="modal-overlay open" @click.self="closeRegister">
+      <div class="modal" role="dialog" aria-modal="true">
+        <div class="modal-head">
+          <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14" /></svg></span>
+          <h2>{{ t('cel.reg.title') }}</h2>
+          <button class="modal-close" :aria-label="t('cel.modal.cancel')" @click="closeRegister"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+        </div>
+        <template v-if="!regDone">
+          <div class="modal-body">
+            <p class="reg-desc">{{ t('cel.reg.desc') }}</p>
+            <div class="field">
+              <label>{{ t('cel.reg.name') }}</label>
+              <input v-model="reg.name" type="text" class="inp" :placeholder="t('cel.reg.namePh')" maxlength="80" @keyup.enter="submitRegister" />
+            </div>
+            <div class="field">
+              <label><span>{{ t('cel.reg.note') }}</span><span class="opt">{{ t('common.optional') }}</span></label>
+              <textarea v-model="reg.note" class="inp reg-ta" rows="3" :placeholder="t('cel.reg.notePh')" maxlength="500"></textarea>
+            </div>
+            <p v-if="regErr" class="reg-err">{{ regErr }}</p>
+          </div>
+          <div class="modal-foot">
+            <button class="btn btn-secondary" @click="closeRegister">{{ t('cel.modal.cancel') }}</button>
+            <button class="btn btn-primary" :disabled="regBusy" @click="submitRegister">
+              <span>{{ regBusy ? t('cel.reg.sending') : t('cel.reg.submit') }}</span>
+            </button>
+          </div>
+        </template>
+        <template v-else>
+          <div class="modal-body reg-done">
+            <p class="reg-done-ic">✓</p>
+            <p>{{ t('cel.reg.done') }}</p>
+          </div>
+          <div class="modal-foot">
+            <button class="btn btn-primary" @click="closeRegister">{{ t('cel.modal.confirm') }}</button>
+          </div>
+        </template>
+      </div>
+    </div>
   </main>
 </template>
 
@@ -477,6 +545,11 @@ if (import.meta.client) {
 .field > label .opt { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-left: 6px; letter-spacing: 0.06em; }
 .inp, .sel { width: 100%; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--gold-border); background: var(--bg-tertiary); color: var(--text-primary); font-family: var(--font-body); font-size: var(--text-base); transition: border-color 0.2s; }
 .inp:focus, .sel:focus { outline: none; border-color: var(--gold-primary); }
+.reg-desc { font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.6; margin: 0 0 4px; }
+.reg-ta { resize: vertical; font-family: var(--font-body); }
+.reg-err { color: #e06b6b; font-size: var(--text-sm); margin: 4px 0 0; }
+.reg-done { text-align: center; padding: 16px 8px; }
+.reg-done-ic { width: 56px; height: 56px; line-height: 56px; margin: 0 auto 12px; border-radius: 50%; background: rgba(201,168,76,0.15); color: var(--gold-primary); font-size: 28px; font-weight: 700; }
 .sel { appearance: none; -webkit-appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6557' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
 .seg { display: inline-flex; gap: 4px; background: var(--bg-tertiary); padding: 4px; border-radius: var(--radius-md); border: 1px solid var(--gold-border); align-self: flex-start; }
 .seg button { padding: 8px 18px; border-radius: var(--radius-sm); font-size: var(--text-sm); color: var(--text-secondary); transition: all 0.18s; }

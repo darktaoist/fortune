@@ -845,7 +845,6 @@
   "mypage.purchase.order": "Order No.",
   "mypage.purchase.view": "View result",
   "mypage.purchase.receipt": "Receipt",
-  "mypage.purchase.view": "View result",
   "mypage.status.paid": "Paid",
   "mypage.status.refunded": "Refunded",
   "mypage.copied": "Copied",
@@ -1009,5 +1008,16 @@
   "premium.life.career": "Career & Aptitude",
   "premium.life.daeun": "Decade Fortunes",
   "premium.life.caution": "Years to Watch",
-  "premium.life.gaewoon": "Boosting Your Luck"
+  "premium.life.gaewoon": "Boosting Your Luck",
+  "cel.reg.title": "Request a Celebrity",
+  "cel.reg.desc": "Can't find who you're looking for? Tell us and we'll review and add them.",
+  "cel.reg.name": "Celebrity name",
+  "cel.reg.namePh": "e.g. IU",
+  "cel.reg.note": "Message",
+  "cel.reg.notePh": "Tell us why we should add them (optional)",
+  "cel.reg.submit": "Send request",
+  "cel.reg.sending": "Sending…",
+  "cel.reg.done": "Your request has been received. We'll review and add them. Thank you!",
+  "cel.reg.needName": "Please enter the celebrity's name.",
+  "cel.reg.fail": "Failed to send. Please try again in a moment."
 }

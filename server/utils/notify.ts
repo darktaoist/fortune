@@ -52,3 +52,40 @@ export async function notifyPaid(notice: PaidNotice): Promise<void> {
     console.error('[notify] telegram send failed:', e?.data ?? e?.message ?? e)
   }
 }
+
+interface CelebRequestNotice {
+  name: string
+  note?: string | null
+  lang?: string | null
+}
+
+// 연예인 등록 요청 알림(텔레그램). 실패해도 요청 흐름을 깨지 않는다.
+export async function notifyCelebRequest(n: CelebRequestNotice): Promise<void> {
+  try {
+    const cfg = useRuntimeConfig()
+    const token = cfg.telegramBotToken
+    const chatId = cfg.telegramChatId
+    if (!token || !chatId) return
+
+    const lines = [
+      '🙋 *\\[연예인 등록 요청\\]*',
+      '',
+      `🎤 이름\\: *${esc(n.name)}*`,
+      n.note ? `📝 한마디\\: ${esc(n.note)}` : null,
+      n.lang ? `🌐 언어\\: ${esc(n.lang)}` : null,
+    ].filter(Boolean)
+
+    await $fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      body: {
+        chat_id: chatId,
+        text: lines.join('\n'),
+        parse_mode: 'MarkdownV2',
+        disable_web_page_preview: true,
+      },
+      timeout: 5000,
+    })
+  } catch (e: any) {
+    console.error('[notify] celeb request send failed:', e?.data ?? e?.message ?? e)
+  }
+}

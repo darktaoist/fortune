@@ -845,7 +845,6 @@
   "mypage.purchase.order": "注文番号",
   "mypage.purchase.view": "結果を見る",
   "mypage.purchase.receipt": "領収書",
-  "mypage.purchase.view": "結果を見る",
   "mypage.status.paid": "決済完了",
   "mypage.status.refunded": "返金済み",
   "mypage.copied": "コピーしました",
@@ -1009,5 +1008,16 @@
   "premium.life.career": "職業適性と職業運",
   "premium.life.daeun": "10年大運分析",
   "premium.life.caution": "注意すべき年",
-  "premium.life.gaewoon": "開運の方法"
+  "premium.life.gaewoon": "開運の方法",
+  "cel.reg.title": "芸能人の登録リクエスト",
+  "cel.reg.desc": "お探しの芸能人がいませんか？登録してほしい方を教えていただければ、確認して追加します。",
+  "cel.reg.name": "芸能人の名前",
+  "cel.reg.namePh": "例: IU",
+  "cel.reg.note": "ひとこと",
+  "cel.reg.notePh": "追加してほしい理由を自由にどうぞ（任意）",
+  "cel.reg.submit": "リクエスト送信",
+  "cel.reg.sending": "送信中…",
+  "cel.reg.done": "リクエストを受け付けました。確認のうえ反映します。ありがとうございます！",
+  "cel.reg.needName": "芸能人の名前を入力してください。",
+  "cel.reg.fail": "送信に失敗しました。しばらくして再度お試しください。"
 }
