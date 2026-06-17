@@ -64,11 +64,11 @@ const isHome = computed(() => route.path === localePath('/'))
       </nav>
 
       <div class="header-right">
-        <button class="icon-btn" type="button" :aria-label="t('common.search')">
+        <button class="icon-btn search-btn" type="button" :aria-label="t('common.search')">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
         </button>
 
-        <LangSwitcher />
+        <LangSwitcher class="lang-top" />
 
         <NuxtLink v-if="!user" :to="localePath('/login')" class="login-btn">{{ t('common.login') }}</NuxtLink>
         <div v-else class="user-menu">
@@ -95,6 +95,9 @@ const isHome = computed(() => route.path === localePath('/'))
         <NuxtLink :to="localePath({ path: '/celeb-select', query: { service: 'celeb' } })" @click="closeMobile">{{ t('nav.celeb') }}</NuxtLink>
         <NuxtLink :to="localePath({ path: '/celeb-select', query: { service: 'mbti' } })" @click="closeMobile">{{ t('nav.mbti') }}</NuxtLink>
         <a href="https://taoist.co.kr/aura" target="_blank" rel="noopener" class="external" @click="closeMobile">{{ t('nav.aura') }}</a>
+        <div class="nav-mobile-lang">
+          <LangSwitcher />
+        </div>
       </nav>
     </Transition>
     <div v-if="mobileOpen" class="nav-mobile-backdrop" @click="closeMobile" />
@@ -210,6 +213,7 @@ const isHome = computed(() => route.path === localePath('/'))
   color: var(--gold-light);
   font-size: var(--text-sm);
   font-weight: 600;
+  white-space: nowrap;
   transition: all 0.2s;
 }
 /* 로그인 상태: 아바타 + 드롭다운 */
@@ -255,6 +259,13 @@ const isHome = computed(() => route.path === localePath('/'))
 .nav-mobile a:active { background: var(--gold-border); color: var(--text-primary); }
 .nav-mobile a.active { color: var(--gold-primary); }
 .nav-mobile a.external::after { content: ' ↗'; opacity: 0.6; }
+.nav-mobile-lang {
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--gold-border);
+  display: flex;
+  justify-content: flex-start;
+}
 .nav-mobile-backdrop {
   position: fixed;
   inset: 0;
@@ -267,11 +278,18 @@ const isHome = computed(() => route.path === localePath('/'))
 @media (max-width: 1024px) {
   .nav-main { display: none; }
   .hamburger { display: inline-flex; }
+  /* 모바일 상단 정리: 검색·언어는 햄버거 메뉴로 이동(상단바엔 로고/로그인/메뉴만). */
+  .search-btn { display: none; }
+  .lang-top { display: none; }
 }
 @media (min-width: 1025px) {
   .nav-mobile, .nav-mobile-backdrop { display: none !important; }
+  /* 데스크톱에선 모바일 메뉴 안의 언어 스위처 숨김(상단바 lang-top 사용). */
+  .nav-mobile-lang { display: none; }
 }
 @media (max-width: 640px) {
   .login-btn { padding: 8px 14px; }
+  /* 폰에선 로고 한자(悟運勢) 숨겨 줄바꿈 방지 → '道 타오운세'로 깔끔하게. */
+  .logo-text .hanja { display: none; }
 }
 </style>

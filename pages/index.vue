@@ -119,11 +119,14 @@ const STATS = [
   { labelKey: 'trust.heritage', target: 40, decimals: 0, unitKey: 'trust.heritage.unit' },
 ]
 const unitText = (s) => (s.unitKey ? t(s.unitKey) : s.unit)
-const counts = ref(STATS.map(() => '0'))
-const trustGrid = ref(null)
 function fmt(v, decimals) {
-  return decimals ? (v / Math.pow(10, decimals)).toFixed(decimals) : Math.floor(v).toLocaleString()
+  if (decimals) return (v / Math.pow(10, decimals)).toFixed(decimals)
+  // 결정적 천단위 콤마(서버/클라 동일) — toLocaleString은 환경별 차이로 하이드레이션 불일치 유발.
+  return Math.floor(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
+// SSR/크롤러가 최종 숫자를 보도록 처음부터 목표값으로 렌더. 카운트업은 스크롤 진입 시 재생(0→목표).
+const counts = ref(STATS.map((s) => fmt(s.target, s.decimals)))
+const trustGrid = ref(null)
 function animateCounts() {
   STATS.forEach((s, i) => {
     const dur = 1800
@@ -358,8 +361,8 @@ onBeforeUnmount(() => {
             <div class="premium-foot">
               <div class="premium-price">
                 <span class="price-old">{{ priceOld(p) }}</span>
-                <span v-if="isKo" class="price-new">1,000<span class="unit">원</span></span>
-                <span v-else class="price-new"><span class="unit">$</span>1</span>
+                <span v-if="isKo" class="price-new">2,000<span class="unit">원</span></span>
+                <span v-else class="price-new"><span class="unit">$</span>2</span>
               </div>
               <span class="premium-arrow">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>

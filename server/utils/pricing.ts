@@ -8,10 +8,10 @@ export interface PriceInfo {
 }
 
 export const PRICES: Record<string, PriceInfo> = {
-  newyear: { krw: 1000, usdCents: 100, orderName: '2026 AI 신년운세' },
-  lifetime: { krw: 1000, usdCents: 100, orderName: 'AI 평생운세' },
-  celeb: { krw: 1000, usdCents: 100, orderName: '연예인 궁합' },
-  mbti: { krw: 1000, usdCents: 100, orderName: 'MBTI 궁합' },
+  newyear: { krw: 2000, usdCents: 200, orderName: '2026 AI 신년운세' },
+  lifetime: { krw: 2000, usdCents: 200, orderName: 'AI 평생운세' },
+  celeb: { krw: 2000, usdCents: 200, orderName: '연예인 궁합' },
+  mbti: { krw: 2000, usdCents: 200, orderName: 'MBTI 궁합' },
 }
 
 export function getPrice(service: unknown): PriceInfo | null {

@@ -302,8 +302,8 @@ async function pay() {
             </div>
             <div class="price-right">
               <span class="price-old">{{ priceOld }}</span>
-              <span v-if="isKorea" class="price-new">1,000<span class="unit">{{ t('pay.won') }}</span></span>
-              <span v-else class="price-new"><span class="unit">$</span>1</span>
+              <span v-if="isKorea" class="price-new">2,000<span class="unit">{{ t('pay.won') }}</span></span>
+              <span v-else class="price-new"><span class="unit">$</span>2</span>
             </div>
           </div>
 
