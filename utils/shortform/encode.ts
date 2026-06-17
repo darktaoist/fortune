@@ -4,22 +4,28 @@ import type { VideoOpts } from './types'
 export type FrameDrawer = (ctx: CanvasRenderingContext2D, tSec: number) => void
 export type Progress = (p: number) => void
 
+// 인코딩 튜닝: 모바일은 물리 해상도/비트레이트를 낮춰 메모리·인코더 부하를 줄인다.
+// scale<1 이면 렌더러는 논리 1080×1920 좌표를 그대로 쓰되 물리 캔버스만 축소(ctx 변환).
+export interface EncodeTune {
+  scale?: number // 물리 해상도 배율(기본 1)
+  bitrate?: number // 비디오 비트레이트(기본 6Mbps)
+}
+
+// H.264는 짝수 폭/높이 필요.
+function evenScaled(v: number, scale: number): number {
+  return Math.max(2, Math.round((v * scale) / 2) * 2)
+}
+
 export function supportsWebCodecs(): boolean {
   return typeof window !== 'undefined' && 'VideoEncoder' in window
 }
 
 const VIDEO_CODECS = ['avc1.42E01F', 'avc1.4D401F', 'avc1.42E028', 'avc1.640028', 'avc1.42001E']
 
-async function pickVideoCodec(o: VideoOpts): Promise<string | null> {
+async function pickVideoCodec(width: number, height: number, fps: number, bitrate: number): Promise<string | null> {
   for (const codec of VIDEO_CODECS) {
     try {
-      const s = await VideoEncoder.isConfigSupported({
-        codec,
-        width: o.width,
-        height: o.height,
-        bitrate: 6_000_000,
-        framerate: o.fps,
-      })
+      const s = await VideoEncoder.isConfigSupported({ codec, width, height, bitrate, framerate: fps })
       if (s.supported) return codec
     } catch {
       /* try next */
@@ -48,21 +54,30 @@ export async function encodeMp4(
   audioBuffer: AudioBuffer | null,
   o: VideoOpts,
   onProgress?: Progress,
+  tune: EncodeTune = {},
 ): Promise<Blob> {
   if (typeof VideoEncoder === 'undefined') throw new Error('VideoEncoder unavailable')
-  const codec = await pickVideoCodec(o)
+  const scale = tune.scale ?? 1
+  const bitrate = tune.bitrate ?? 6_000_000
+  // 물리(인코딩) 해상도 — 모바일은 축소. 렌더러는 논리 o.width/height 좌표를 유지.
+  const pw = scale === 1 ? o.width : evenScaled(o.width, scale)
+  const ph = scale === 1 ? o.height : evenScaled(o.height, scale)
+  const sx = pw / o.width
+  const sy = ph / o.height
+
+  const codec = await pickVideoCodec(pw, ph, o.fps, bitrate)
   if (!codec) throw new Error('no supported H.264 encoder config')
 
   const includeAudio =
     !!audioBuffer && 'AudioEncoder' in window && (await audioSupported(audioBuffer.sampleRate))
 
-  const canvas = new OffscreenCanvas(o.width, o.height)
+  const canvas = new OffscreenCanvas(pw, ph)
   const ctx = canvas.getContext('2d') as unknown as CanvasRenderingContext2D
   const totalFrames = o.fps * o.durationSec
 
   const muxer = new Muxer({
     target: new ArrayBufferTarget(),
-    video: { codec: 'avc', width: o.width, height: o.height },
+    video: { codec: 'avc', width: pw, height: ph },
     audio: includeAudio
       ? { codec: 'aac', sampleRate: audioBuffer!.sampleRate, numberOfChannels: 1 }
       : undefined,
@@ -76,18 +91,27 @@ export async function encodeMp4(
       encoderError = e
     },
   })
-  videoEncoder.configure({ codec, width: o.width, height: o.height, bitrate: 6_000_000, framerate: o.fps })
+  videoEncoder.configure({ codec, width: pw, height: ph, bitrate, framerate: o.fps })
 
   for (let f = 0; f < totalFrames; f++) {
     if (encoderError) throw encoderError
     const tSec = f / o.fps
+    // 논리 좌표(1080×1920)를 물리 캔버스에 맞게 스케일. setTransform이 매 프레임 변환을 초기화.
+    if (sx !== 1 || sy !== 1) ctx.setTransform(sx, 0, 0, sy, 0, 0)
     draw(ctx, tSec)
     const frame = new VideoFrame(canvas, { timestamp: (f * 1e6) / o.fps, duration: 1e6 / o.fps })
     videoEncoder.encode(frame, { keyFrame: f % o.fps === 0 })
     frame.close()
     onProgress?.((f / totalFrames) * 0.9)
-    // 매 프레임 이벤트 루프에 양보 → 진행바 갱신 + 인코더 큐 배압 완화.
-    if (f % 4 === 0 || videoEncoder.encodeQueueSize > 8) await new Promise((r) => setTimeout(r, 0))
+    // 배압: 큐가 깊어지면 인코더가 따라잡을 때까지 대기(모바일 메모리 폭주·탭 강제종료 방지).
+    if (videoEncoder.encodeQueueSize > 8) {
+      while (videoEncoder.encodeQueueSize > 4) {
+        await new Promise((r) => setTimeout(r, 8))
+        if (encoderError) throw encoderError
+      }
+    } else if (f % 4 === 0) {
+      await new Promise((r) => setTimeout(r, 0)) // 진행바 갱신용 양보
+    }
   }
   await videoEncoder.flush()
   if (encoderError) throw encoderError
@@ -139,12 +163,18 @@ async function encodeAudio(buf: AudioBuffer, durationSec: number, muxer: Muxer<A
 }
 
 // 폴백 1: MediaRecorder로 WebM(실시간 캡처).
-export async function encodeWebm(draw: FrameDrawer, o: VideoOpts, onProgress?: Progress): Promise<Blob> {
+export async function encodeWebm(draw: FrameDrawer, o: VideoOpts, onProgress?: Progress, tune: EncodeTune = {}): Promise<Blob> {
   if (typeof MediaRecorder === 'undefined') throw new Error('MediaRecorder unavailable')
+  const scale = tune.scale ?? 1
+  const pw = scale === 1 ? o.width : evenScaled(o.width, scale)
+  const ph = scale === 1 ? o.height : evenScaled(o.height, scale)
+  const sx = pw / o.width
+  const sy = ph / o.height
   const canvas = document.createElement('canvas')
-  canvas.width = o.width
-  canvas.height = o.height
+  canvas.width = pw
+  canvas.height = ph
   const ctx = canvas.getContext('2d')!
+  if (sx !== 1 || sy !== 1) ctx.setTransform(sx, 0, 0, sy, 0, 0) // 캡처 캔버스 고정 변환
   const stream = canvas.captureStream(o.fps)
   const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
     ? 'video/webm;codecs=vp9'

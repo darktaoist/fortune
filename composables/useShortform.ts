@@ -108,10 +108,16 @@ export function useShortform() {
       const audio = await loadAudio()
       const draw = (ctx: CanvasRenderingContext2D, tSec: number) => drawFrame(ctx, sb, photo, assets, tSec, o)
 
+      // 모바일은 물리 해상도/비트레이트를 낮춰 인코더 메모리 폭주(탭 강제종료)를 방지.
+      // 레이아웃은 논리 1080×1920 그대로(ctx 스케일) → 화질만 720p로.
+      const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+      const tune = isMobile ? { scale: 720 / o.width, bitrate: 3_500_000 } : {}
+      console.log('[shortform] isMobile =', isMobile, '| tune =', tune)
+
       let blob: Blob | null = null
       if (supportsWebCodecs()) {
         try {
-          blob = await encodeMp4(draw, audio, o, (p) => (progress.value = p))
+          blob = await encodeMp4(draw, audio, o, (p) => (progress.value = p), tune)
         } catch (e) {
           console.warn('[shortform] mp4 인코딩 실패, webm 폴백:', e)
         }
@@ -119,7 +125,7 @@ export function useShortform() {
       if (!blob && typeof MediaRecorder !== 'undefined') {
         try {
           progress.value = 0
-          blob = await encodeWebm(draw, o, (p) => (progress.value = p))
+          blob = await encodeWebm(draw, o, (p) => (progress.value = p), tune)
         } catch (e) {
           console.warn('[shortform] webm 인코딩 실패, png 폴백:', e)
         }
