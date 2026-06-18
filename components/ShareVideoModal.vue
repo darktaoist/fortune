@@ -3,7 +3,14 @@ import { useShortform } from '~/composables/useShortform'
 
 const props = defineProps({ args: { type: Object, required: true } })
 const open = ref(false)
-const { busy, progress, resultUrl, errorMsg, generate } = useShortform()
+const { busy, progress, resultBlob, resultUrl, errorMsg, stage, generate } = useShortform()
+
+// 안드로이드 폴백은 webm으로 떨어지므로 blob 타입에 맞춰 확장자 결정.
+const fileName = computed(() => {
+  const t = resultBlob.value?.type || ''
+  const ext = t.includes('webm') ? 'webm' : t.includes('png') ? 'png' : 'mp4'
+  return `taoist-gunghap.${ext}`
+})
 
 async function start() {
   open.value = true
@@ -13,14 +20,14 @@ function download() {
   if (!resultUrl.value) return
   const a = document.createElement('a')
   a.href = resultUrl.value
-  a.download = 'taoist-gunghap.mp4'
+  a.download = fileName.value
   a.click()
 }
 async function share() {
   if (!resultUrl.value) return
   try {
-    const blob = await (await fetch(resultUrl.value)).blob()
-    const file = new File([blob], 'taoist-gunghap.mp4', { type: blob.type })
+    const blob = resultBlob.value || (await (await fetch(resultUrl.value)).blob())
+    const file = new File([blob], fileName.value, { type: blob.type })
     if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file] })
     else download()
   } catch {
@@ -38,6 +45,7 @@ async function share() {
       <div class="sf-card">
         <div v-if="busy" class="sf-progress">
           <p>영상 만드는 중… {{ Math.round(progress * 100) }}%</p>
+        <p class="sf-stage">{{ stage }}</p>
           <div class="sf-bar"><div :style="{ width: progress * 100 + '%' }" /></div>
         </div>
 
@@ -93,6 +101,7 @@ async function share() {
   text-align: center;
 }
 .sf-video { width: 100%; border-radius: 12px; aspect-ratio: 9 / 16; background: #000; }
+.sf-stage { font-size: 12px; color: var(--text-muted, #8a8070); margin: 4px 0 0; text-align: center; }
 .sf-bar { height: 8px; background: #2a2a35; border-radius: 4px; overflow: hidden; margin-top: 10px; }
 .sf-bar > div { height: 100%; background: #c9a84c; transition: width 0.2s; }
 .sf-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; }

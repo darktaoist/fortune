@@ -83,12 +83,15 @@ export function useShortform() {
   const resultBlob = ref<Blob | null>(null)
   const resultUrl = ref<string | null>(null)
   const errorMsg = ref('')
+  // 진단용: 죽기 직전 화면에 마지막 단계가 남도록(모바일은 콘솔이 안 보임).
+  const stage = ref('')
 
   async function generate(args: BuildArgs) {
     busy.value = true
     progress.value = 0
     resultBlob.value = null
     errorMsg.value = ''
+    stage.value = '준비'
     if (resultUrl.value) {
       URL.revokeObjectURL(resultUrl.value)
       resultUrl.value = null
@@ -98,25 +101,34 @@ export function useShortform() {
       const o = DEFAULT_OPTS
       console.log('[shortform] partnerImageUrl =', sb.partnerImageUrl, '| beats =', sb.beats.length, '| score =', sb.score)
 
+      stage.value = '폰트 로딩'
       await ensureFonts()
+      stage.value = sb.partnerImageUrl ? '사진 처리' : '준비'
       const photo = sb.partnerImageUrl ? await loadIllustratedPhoto(sb.partnerImageUrl, o.width, o.height) : null
+      stage.value = 'QR 생성'
       const assets: RenderAssets = {
         illustrated: null,
         qrBitmap: await makeQr(sb.siteUrl),
         logoBitmap: null,
       }
+      stage.value = '오디오 로딩'
       const audio = await loadAudio()
       const draw = (ctx: CanvasRenderingContext2D, tSec: number) => drawFrame(ctx, sb, photo, assets, tSec, o)
 
-      // 모바일은 물리 해상도/비트레이트를 낮춰 인코더 메모리 폭주(탭 강제종료)를 방지.
-      // 레이아웃은 논리 1080×1920 그대로(ctx 스케일) → 화질만 720p로.
-      const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+      // 모바일은 물리 해상도/비트레이트를 낮춰 메모리 부하를 줄인다(논리 1080×1920 유지, ctx 스케일).
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+      const isAndroid = /Android/i.test(ua)
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua)
       const tune = isMobile ? { scale: 720 / o.width, bitrate: 3_500_000 } : {}
-      console.log('[shortform] isMobile =', isMobile, '| tune =', tune)
+      // 안드로이드는 WebCodecs HW 인코더가 브라우저 프로세스째 죽이는 사례가 있어 MediaRecorder(webm)로 우회.
+      // MediaRecorder는 프레임을 버릴지언정 큐를 쌓지 않아 OOM에 강하다. iPhone은 기존 WebCodecs(mp4) 유지.
+      const useWebCodecs = supportsWebCodecs() && !isAndroid
+      console.log('[shortform] ua-android =', isAndroid, '| useWebCodecs =', useWebCodecs, '| tune =', tune)
 
       let blob: Blob | null = null
-      if (supportsWebCodecs()) {
+      if (useWebCodecs) {
         try {
+          stage.value = '인코딩(mp4)'
           blob = await encodeMp4(draw, audio, o, (p) => (progress.value = p), tune)
         } catch (e) {
           console.warn('[shortform] mp4 인코딩 실패, webm 폴백:', e)
@@ -125,12 +137,14 @@ export function useShortform() {
       if (!blob && typeof MediaRecorder !== 'undefined') {
         try {
           progress.value = 0
+          stage.value = '인코딩(webm)'
           blob = await encodeWebm(draw, o, (p) => (progress.value = p), tune)
         } catch (e) {
           console.warn('[shortform] webm 인코딩 실패, png 폴백:', e)
         }
       }
-      if (!blob) blob = await encodePoster((ctx) => draw(ctx, o.durationSec - 1), o)
+      if (!blob) { stage.value = '이미지 폴백'; blob = await encodePoster((ctx) => draw(ctx, o.durationSec - 1), o) }
+      stage.value = '완료'
 
       resultBlob.value = blob
       resultUrl.value = URL.createObjectURL(blob)
@@ -144,5 +158,5 @@ export function useShortform() {
     }
   }
 
-  return { busy, progress, resultBlob, resultUrl, errorMsg, generate }
+  return { busy, progress, resultBlob, resultUrl, errorMsg, stage, generate }
 }
