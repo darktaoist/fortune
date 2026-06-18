@@ -989,6 +989,8 @@
   "premium.comingSoon.sub": "이 운세는 현재 막바지 준비 중이에요. 조금만 기다려 주세요.",
   "premium.comingSoon.cta": "다른 프리미엄 운세 보기",
   "premium.badge": "AI 명리 분석",
+  "premium.sample.badge": "샘플 미리보기",
+  "premium.sample.note": "예시 인물(홍길동)로 생성한 샘플이에요. 구매하시면 본인 사주로 분석한 결과를 받아보실 수 있어요.",
   "premium.generating": "AI가 명식을 풀이하는 중…",
   "premium.generating.sub": "사주 명식을 바탕으로 운세를 작성하고 있어요. 잠시만 기다려 주세요.",
   "premium.retry": "다시 시도",

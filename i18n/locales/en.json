@@ -989,6 +989,8 @@
   "premium.comingSoon.sub": "This reading is in the final stages of preparation. Please check back shortly.",
   "premium.comingSoon.cta": "See other premium readings",
   "premium.badge": "AI Saju Analysis",
+  "premium.sample.badge": "Sample Preview",
+  "premium.sample.note": "A sample generated for a sample person. Purchase to receive a reading analyzed from your own birth chart.",
   "premium.generating": "The AI is reading your chart…",
   "premium.generating.sub": "We are crafting your reading from your saju chart. This takes a moment.",
   "premium.retry": "Try again",

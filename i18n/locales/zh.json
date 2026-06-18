@@ -989,6 +989,8 @@
   "premium.comingSoon.sub": "此運勢正在最後準備中，敬請稍候。",
   "premium.comingSoon.cta": "查看其他付費運勢",
   "premium.badge": "AI 命理分析",
+  "premium.sample.badge": "範例預覽",
+  "premium.sample.note": "以範例人物生成的樣本。購買後即可獲得依您本人八字分析的結果。",
   "premium.generating": "AI 正在解讀您的命盤…",
   "premium.generating.sub": "正在根據八字命盤撰寫運勢，請稍候。",
   "premium.retry": "再試一次",

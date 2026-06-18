@@ -16,7 +16,7 @@ const SERVICE = {
   mbti: { glyph: '合', titleKey: 'premium.mbti.title' },
 }
 const service = computed(() => {
-  const raw = String(route.query.service || '').toLowerCase()
+  const raw = String(route.query.service || route.query.sample || '').toLowerCase()
   return SERVICE[raw] ? raw : null
 })
 const cfg = computed(() => (service.value ? SERVICE[service.value] : null))
@@ -54,6 +54,12 @@ onMounted(resolvePartnerImage)
 watch(partnerName, () => resolvePartnerImage())
 // 보관함에서 진입(?saved=id) — 저장된 결과를 그대로 표시(재계산 X)
 const savedId = computed(() => String(route.query.saved || ''))
+// 공개 샘플(?sample=service) — 예시 인물 결과를 게이트 없이 표시(마케팅용 미리보기)
+const sampleKey = computed(() => {
+  const raw = String(route.query.sample || '').toLowerCase()
+  return SERVICE[raw] ? raw : ''
+})
+const sampleMode = computed(() => !!sampleKey.value)
 import { toPurchaseKey } from '~/shared/premiumService'
 // 게이트를 통과한 주문번호 — 생성 요청에 함께 보내 서버가 결제를 검증/리플레이.
 const orderRef = ref('')
@@ -242,8 +248,34 @@ async function loadSaved() {
     loading.value = false
   }
 }
+// 공개 샘플(?sample=service) — 게이트·로그인·생성·과금 없이 예시 결과를 그대로 표시.
+async function loadSample() {
+  loading.value = true
+  errorMsg.value = ''
+  comingSoon.value = false
+  try {
+    const data = await $fetch('/api/fortune/sample', { query: { service: sampleKey.value, lang: locale.value } })
+    result.value = {
+      glyph: data.glyph || cfg.value?.glyph || '命',
+      tint: data.tint || 'gold',
+      myeongsik: data.myeongsik || null,
+      partnerMyeongsik: data.partnerMyeongsik || null,
+      sections: data.sections || [],
+      score: data.score ?? null,
+      subject: data.subject || null,
+    }
+    partnerName.value = data.partnerName || ''
+    partnerMbti.value = (data.partnerMbti || '').toUpperCase()
+  } catch {
+    errorMsg.value = t('premium.error')
+  } finally {
+    loading.value = false
+  }
+}
 async function gateAndLoad() {
   if (!service.value) { resolving.value = false; return }
+  // 공개 샘플 진입: 예시 결과만 표시(게이트 없음)
+  if (sampleMode.value) { resolving.value = false; return loadSample() }
   // 보관함 진입: 저장본만 표시(게이트·생성·과금 없음 — RLS가 본인 소유만 허용)
   if (savedId.value) { resolving.value = false; return loadSaved() }
   // 1) 로그인 게이트
@@ -270,13 +302,17 @@ async function gateAndLoad() {
   load()
 }
 onMounted(gateAndLoad)
-// 저장본은 저장 당시 언어로 고정 — 생성 모드일 때만 언어 변경 시 재생성.
-watch(locale, () => { if (hasInput.value && !savedId.value) load() })
+// 저장본은 고정 언어. 생성 모드는 재생성, 샘플 모드는 해당 언어 샘플로 재로드.
+watch(locale, () => {
+  if (sampleMode.value) { loadSample(); return }
+  if (hasInput.value && !savedId.value) load()
+})
 
 function goEdit() { navigateTo(localePath({ path: '/saju', query: { service: service.value || 'lifetime' } })) }
 
 // 뒤로가기 출발지: 보관함 진입(saved)→보관함, 결제건(order)→마이페이지, 그 외→사주 입력.
 const backTo = computed(() => {
+  if (sampleMode.value) return localePath({ path: '/checkout', query: { service: service.value || 'lifetime' } })
   if (savedId.value) return localePath('/library')
   if (orderRef.value) return localePath('/mypage')
   return localePath({ path: '/saju', query: { service: service.value || 'lifetime' } })
@@ -334,11 +370,18 @@ async function onSave() {
       </div>
 
       <template v-else>
+        <!-- 공개 샘플 안내 + 구매 유도 -->
+        <div v-if="sampleMode" class="sample-banner">
+          <span class="sample-badge">{{ t('premium.sample.badge') }}</span>
+          <p class="sample-note">{{ t('premium.sample.note') }}</p>
+          <NuxtLink class="btn btn-primary" :to="localePath({ path: '/checkout', query: { service } })">{{ t('pay.buy') }}</NuxtLink>
+        </div>
+
         <!-- 사용자 정보 -->
-        <div v-if="current && current.year" class="info-card">
+        <div v-if="(current && current.year) || (sampleMode && userGrid.length)" class="info-card">
           <div class="info-card-head">
             <span class="dot" /><span>{{ t('result.userInfo') }}</span>
-            <button class="edit-saju" @click="goEdit">{{ t('result.changeSaju') }}</button>
+            <button v-if="!sampleMode" class="edit-saju" @click="goEdit">{{ t('result.changeSaju') }}</button>
           </div>
           <div class="info-grid">
             <div v-for="([k, v], i) in userGrid" :key="i" class="info-item"><span class="k">{{ k }}</span><span class="v">{{ v }}</span></div>
@@ -377,7 +420,7 @@ async function onSave() {
         <!-- 숏폼 영상 공유 (궁합 한정, 로컬 검증용) -->
         <ClientOnly>
           <ShareVideoModal
-            v-if="(service === 'gunghap' || service === 'mbti') && !loading && sections.length"
+            v-if="(service === 'gunghap' || service === 'mbti') && !loading && sections.length && !sampleMode"
             :args="{
               selfName: displaySubject?.name || '',
               partnerName: partnerName || '',
@@ -412,6 +455,12 @@ async function onSave() {
           <button class="btn btn-primary" @click="load">{{ t('premium.retry') }}</button>
         </div>
 
+        <!-- 샘플: 하단 구매 유도 (저장/후기 대신) -->
+        <div v-else-if="sampleMode && sections.length" class="result-actions sample-cta">
+          <p class="save-hint">{{ t('premium.sample.note') }}</p>
+          <NuxtLink class="btn btn-primary" :to="localePath({ path: '/checkout', query: { service } })">{{ t('pay.buy') }}</NuxtLink>
+        </div>
+
         <!-- 저장 (완료 후) — 결제 생성분은 서버가 보관함에 자동 저장 -->
         <div v-else-if="sections.length && !savedId" class="result-actions">
           <p v-if="orderRef" class="save-hint">{{ t('premium.autoSaved') }}</p>
@@ -422,7 +471,7 @@ async function onSave() {
         </div>
 
         <!-- 후기 등록 (결과 완료 후) -->
-        <ReviewForm v-if="!loading && sections.length && service && current && current.year" :type-key="service" />
+        <ReviewForm v-if="!loading && sections.length && service && current && current.year && !sampleMode" :type-key="service" />
       </template>
     </div>
   </main>
@@ -448,6 +497,11 @@ async function onSave() {
 .info-item { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid rgba(201, 168, 76, 0.1); }
 .info-item .k { color: var(--text-muted); font-size: var(--text-sm); }
 .info-item .v { color: var(--text-primary); font-size: var(--text-sm); font-weight: 500; }
+
+.sample-banner { text-align: center; background: var(--bg-secondary); border: 1px solid var(--gold-border-strong); border-radius: var(--radius-lg); padding: var(--space-6) var(--space-8); box-shadow: var(--shadow-card), var(--shadow-inset); margin-bottom: var(--space-8); display: flex; flex-direction: column; align-items: center; gap: var(--space-3); }
+.sample-badge { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold-primary); padding: 5px 14px; border: 1px solid var(--gold-border); border-radius: var(--radius-full); }
+.sample-note { color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.7; max-width: 560px; }
+.sample-cta { text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
 
 .section-head { margin: var(--space-12) 0 var(--space-8); }
 .section-head .eyebrow { display: inline-flex; align-items: center; gap: var(--space-2); font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold-primary); margin-bottom: var(--space-3); }

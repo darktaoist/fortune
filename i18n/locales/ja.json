@@ -989,6 +989,8 @@
   "premium.comingSoon.sub": "この運勢は現在最終準備中です。今しばらくお待ちください。",
   "premium.comingSoon.cta": "他のプレミアム運勢を見る",
   "premium.badge": "AI命理分析",
+  "premium.sample.badge": "サンプルプレビュー",
+  "premium.sample.note": "サンプル人物で生成した見本です。ご購入いただくと、ご本人の命式で分析した結果をご覧いただけます。",
   "premium.generating": "AIが命式を読み解いています…",
   "premium.generating.sub": "四柱命式をもとに運勢を作成しています。少々お待ちください。",
   "premium.retry": "再試行",

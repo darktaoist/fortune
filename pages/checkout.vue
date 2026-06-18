@@ -60,10 +60,17 @@ async function loadInfo() {
 onMounted(loadInfo)
 watch(current, loadInfo, { deep: true })
 
-// ── 샘플 보기: 무료 버전이 있는 서비스만 결과 미리보기로 이동 ──
-const SAMPLE_FREE = { lifetime: 'hour', newyear: 'toJung' }
+// ── 샘플 보기 ──
+// SAMPLE_REAL: 예시 인물로 만든 "실제 결과" 샘플이 등록된 서비스(공개 미리보기).
+// SAMPLE_FREE: 그 외엔 무료 버전 결과로 폴백.
+const SAMPLE_REAL = { lifetime: true }
+const SAMPLE_FREE = { newyear: 'toJung' }
 const sampleNote = ref('')
 function onSample() {
+  if (SAMPLE_REAL[service.value]) {
+    navigateTo(localePath({ path: '/result/premium', query: { sample: service.value } }))
+    return
+  }
   const m = SAMPLE_FREE[service.value]
   if (m) navigateTo(localePath({ path: '/result/free', query: { service: m } }))
   else sampleNote.value = t('pay.alert.sample')
