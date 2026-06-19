@@ -25,10 +25,10 @@ const EXACT: Record<string, string> = {
   '/celebritymbti': '/celeb-select?service=mbti',
   '/celebritymbtidetail': '/celeb-select?service=mbti',
   '/mbtipay': '/celeb-select?service=mbti',
-  // 운세 — 오늘류
-  '/today': '/daily',
+  // 운세 — 오늘류 (1.0 의미 그대로 매핑: /today=개인 사주 오늘운세, /todaydate=데이트운세, /daily-horoscope=띠별)
+  '/today': '/result/free?service=today',
   '/daily-horoscope': '/daily',
-  '/todaydate': '/daily',
+  '/todaydate': '/fortune/date',
   // 운세 — 색인 랜딩으로
   '/tojung': '/fortune/tojung',
   '/aitojung': '/fortune/tojung',
