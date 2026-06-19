@@ -14,10 +14,16 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
 
   // Order matters: i18n before sitemap so the sitemap picks up localized routes.
-  modules: ['@nuxtjs/supabase', '@nuxtjs/i18n', '@nuxtjs/sitemap', '@nuxtjs/robots'],
+  modules: ['@nuxtjs/supabase', '@nuxtjs/i18n', '@nuxtjs/sitemap', '@nuxtjs/robots', 'nuxt-gtag'],
 
   supabase: {
     redirect: false,
+  },
+
+  // Google Analytics 4. 측정 ID는 public(클라이언트 노출 정상) — env 우선, 미설정 시 운영 ID 기본값.
+  // nuxt-gtag 가 SPA 라우트 이동마다 page_view 를 자동 전송한다(수동 스니펫의 첫진입-only 한계 회피).
+  gtag: {
+    id: process.env.NUXT_PUBLIC_GTAG_ID || 'G-7TR1J714E8',
   },
 
   // 결제(Toss Payments v2) 키. 시크릿은 서버 전용, 클라이언트/위젯 키만 public.
