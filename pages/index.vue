@@ -99,9 +99,11 @@ const scrollCarousel = (dx) => carousel.value?.scrollBy({ left: dx, behavior: 's
 
 /* ===================== Free grid ===================== */
 // 색인용 공개 랜딩(/fortune/*)을 경유한다. 랜딩이 검색 유입을 받고, 거기서 결과로
-// 연결된다(홈→랜딩→결과 내부링크로 고아 페이지 방지). 오늘운세는 이미 색인 가능한 /daily.
+// 연결된다(홈→랜딩→결과 내부링크로 고아 페이지 방지).
+// ⚠️ '오늘의 운세'는 개인 사주 기반 오늘운세(/result/free?service=today)다.
+//    /daily 는 별개 상품(띠별 오늘운세)이므로 여기에 연결하면 안 된다.
 const FREE = [
-  { to: '/daily', glyph: '日', titleKey: 'free.today.title', descKey: 'free.today.desc', badge: 'free' },
+  { to: { path: '/result/free', query: { service: 'today' } }, glyph: '日', titleKey: 'free.today.title', descKey: 'free.today.desc', badge: 'free' },
   { to: '/fortune/tojung', glyph: '秘', titleKey: 'free.tojung.title', descKey: 'free.tojung.desc', badge: 'free' },
   { to: '/fortune/date', glyph: '情', titleKey: 'free.date.title', descKey: 'free.date.desc', badge: 'free' },
   { to: '/fortune/lotto', glyph: '財', titleKey: 'free.lotto.title', descKey: 'free.lotto.desc', badge: 'free' },
@@ -551,7 +553,7 @@ onBeforeUnmount(() => {
           <div class="footer-col">
             <h4>{{ t('footer.col.fortune') }}</h4>
             <ul>
-              <li><NuxtLink :to="localePath('/daily')">{{ t('footer.link.today') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath({ path: '/result/free', query: { service: 'today' } })">{{ t('footer.link.today') }}</NuxtLink></li>
               <li><NuxtLink :to="localePath('/fortune/tojung')">{{ t('footer.link.tojung') }}</NuxtLink></li>
               <li><NuxtLink :to="localePath('/fortune/lifetime')">{{ t('footer.link.life') }}</NuxtLink></li>
               <li><NuxtLink :to="localePath('/fortune/lotto')">{{ t('footer.link.lotto') }}</NuxtLink></li>
