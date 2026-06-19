@@ -98,15 +98,15 @@ const carousel = ref(null)
 const scrollCarousel = (dx) => carousel.value?.scrollBy({ left: dx, behavior: 'smooth' })
 
 /* ===================== Free grid ===================== */
-// 무료 운세는 결과로 직행한다. 결과 페이지가 게이트: 사주 정보가 있으면(로그인 →
-// 저장된 사람, 게스트 → 브라우저 저장값) 바로 결과를, 없으면 /saju 입력 화면으로 보낸다.
+// 색인용 공개 랜딩(/fortune/*)을 경유한다. 랜딩이 검색 유입을 받고, 거기서 결과로
+// 연결된다(홈→랜딩→결과 내부링크로 고아 페이지 방지). 오늘운세는 이미 색인 가능한 /daily.
 const FREE = [
-  { to: { path: '/result/free', query: { service: 'today' } }, glyph: '日', titleKey: 'free.today.title', descKey: 'free.today.desc', badge: 'free' },
-  { to: { path: '/result/free', query: { service: 'toJung' } }, glyph: '秘', titleKey: 'free.tojung.title', descKey: 'free.tojung.desc', badge: 'free' },
-  { to: { path: '/result/free', query: { service: 'date' } }, glyph: '情', titleKey: 'free.date.title', descKey: 'free.date.desc', badge: 'free' },
-  { to: { path: '/result/free', query: { service: 'lotto' } }, glyph: '財', titleKey: 'free.lotto.title', descKey: 'free.lotto.desc', badge: 'free' },
-  { to: { path: '/result/free', query: { service: 'month' } }, glyph: '月', titleKey: 'free.month.title', descKey: 'free.month.desc', badge: 'free' },
-  { to: { path: '/result/free', query: { service: 'hour' } }, glyph: '平', titleKey: 'free.hour.title', descKey: 'free.hour.desc', badge: 'new' },
+  { to: '/daily', glyph: '日', titleKey: 'free.today.title', descKey: 'free.today.desc', badge: 'free' },
+  { to: '/fortune/tojung', glyph: '秘', titleKey: 'free.tojung.title', descKey: 'free.tojung.desc', badge: 'free' },
+  { to: '/fortune/date', glyph: '情', titleKey: 'free.date.title', descKey: 'free.date.desc', badge: 'free' },
+  { to: '/fortune/lotto', glyph: '財', titleKey: 'free.lotto.title', descKey: 'free.lotto.desc', badge: 'free' },
+  { to: '/fortune/month', glyph: '月', titleKey: 'free.month.title', descKey: 'free.month.desc', badge: 'free' },
+  { to: '/fortune/lifetime', glyph: '平', titleKey: 'free.hour.title', descKey: 'free.hour.desc', badge: 'new' },
 ]
 
 /* ===================== Trust counters ===================== */
@@ -551,10 +551,12 @@ onBeforeUnmount(() => {
           <div class="footer-col">
             <h4>{{ t('footer.col.fortune') }}</h4>
             <ul>
-              <li><NuxtLink :to="localePath({ path: '/result/free', query: { service: 'today' } })">{{ t('footer.link.today') }}</NuxtLink></li>
-              <li><NuxtLink :to="localePath({ path: '/result/free', query: { service: 'toJung' } })">{{ t('footer.link.tojung') }}</NuxtLink></li>
-              <li><NuxtLink :to="localePath({ path: '/saju', query: { service: 'lifetime' } })">{{ t('footer.link.life') }}</NuxtLink></li>
-              <li><NuxtLink :to="localePath({ path: '/result/free', query: { service: 'lotto' } })">{{ t('footer.link.lotto') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath('/daily')">{{ t('footer.link.today') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath('/fortune/tojung')">{{ t('footer.link.tojung') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath('/fortune/lifetime')">{{ t('footer.link.life') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath('/fortune/lotto')">{{ t('footer.link.lotto') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath('/fortune/month')">{{ t('free.month.title') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath('/fortune/newyear')">{{ t('premium.newyear.title') }}</NuxtLink></li>
             </ul>
           </div>
 
@@ -563,7 +565,7 @@ onBeforeUnmount(() => {
             <ul>
               <li><NuxtLink :to="localePath({ path: '/celeb-select', query: { service: 'celeb' } })">{{ t('footer.link.celeb') }}</NuxtLink></li>
               <li><NuxtLink :to="localePath({ path: '/celeb-select', query: { service: 'mbti' } })">{{ t('footer.link.mbti') }}</NuxtLink></li>
-              <li><NuxtLink :to="localePath({ path: '/result/free', query: { service: 'date' } })">{{ t('footer.link.date') }}</NuxtLink></li>
+              <li><NuxtLink :to="localePath('/fortune/date')">{{ t('footer.link.date') }}</NuxtLink></li>
               <li><a href="https://taoist.co.kr/aura" target="_blank" rel="noopener"><span>{{ t('nav.aura') }}</span> ↗</a></li>
             </ul>
           </div>
