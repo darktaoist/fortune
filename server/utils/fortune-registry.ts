@@ -35,6 +35,18 @@ export interface FortuneType {
 const LANG_NAME: Record<string, string> = { ko: '한국어', en: 'English', ja: '日本語(자연스러운 일본어)', zh: '繁體中文(대만)' }
 export const langName = (l: string) => LANG_NAME[l] || '한국어'
 
+// 언어 강제 지시 — 출력 언어 그 자체로 작성해 모델이 "그 언어 안"에서 규칙을 읽게 하고,
+// 비-한국어일 때 한글(U+AC00–D7A3, 한국어 전용 문자) 사용을 명시적으로 금지한다.
+// 명식 포맷이 한국어 라벨(년주·신강/신약·오행·십신·대운 등)로 포화돼 있어, 중국계 모델(DeepSeek)이
+// 일본어/중국어(같은 CJK) 대신 한국어로 본문을 이어쓰는 누수가 발생 → 이 지시로 차단한다.
+const LANG_DIRECTIVE: Record<string, string> = {
+  ko: '- 모든 본문은 한국어로 작성한다.',
+  en: '- 【LANGUAGE — TOP PRIORITY】 Write EVERY sentence of the body in natural English ONLY. Do NOT output any Korean / Hangul characters (가-힣) anywhere. Translate every fortune-telling term into English; keep only the Chinese-character 간지 (e.g. 癸未) as-is. 한국어(한글)로 절대 쓰지 말 것.',
+  ja: '- 【言語 — 最優先】本文はすべて必ず自然な日本語だけで書く。韓国語・ハングル（가-힣）は一文字たりとも使わない。占い用語もすべて日本語に訳す（干支の漢字「癸未」などのみ原文のまま）。※絶対に韓国語で書かないこと。한국어(한글)로 절대 쓰지 말 것.',
+  zh: '- 【語言 — 最優先】正文一律使用自然的繁體中文（台灣）書寫。絕對不可出現任何韓文／諺文（가-힣），一個字都不行。所有命理術語都譯成中文（僅保留干支漢字如「癸未」）。※絕對不要用韓文書寫。한국어(한글)로 절대 쓰지 말 것.',
+}
+export const langDirective = (l: string) => LANG_DIRECTIVE[l] || LANG_DIRECTIVE.ko
+
 // 모든 프리미엄 프롬프트 공통 규칙 — 한자 단독 노출 금지(독자가 못 읽음).
 const HANJA_RULE = '- 【매우 중요】 한자(漢字)를 음(독음) 없이 단독으로 절대 쓰지 마라. 사주의 간지·오행·십신 등 모든 한자는 출력 언어의 발음을 우선해 적는다. 한국어 본문이라면 반드시 한글 독음으로 쓰고(예: 癸水→계수, 巳火→사화, 甲木→갑목, 子午沖→자오충, 未土→미토, 壬子→임자, 食神→식신, 偏官→편관), 한자를 함께 보이려면 "계수(癸水)"처럼 한글을 앞세워 괄호로만 병기한다. 한국어 결과에 "癸水"·"巳火"·"子午沖"처럼 한자만 단독으로 노출되는 일이 절대 없어야 한다.'
 
@@ -109,7 +121,7 @@ const lifetime: FortuneType = {
     LIFE_SECTION_GUIDE,
     '',
     '- 위 11개 키(saju, personality, health, wealth, relations, love, children, career, daeun, caution, gaewoon)를 가진 JSON 객체 하나만 출력한다(그 외 텍스트 금지).',
-    `- 모든 본문은 ${langName(lang)}로 작성한다. daeun 항목의 대운별 라벨 줄(회차·나이·연도 단위어 포함)과 그 풀이도 예외 없이 ${langName(lang)}로 쓴다 — 간지 한자(癸未 등)만 그대로 둔다.`,
+    langDirective(lang) + ' daeun 항목의 대운별 라벨 줄(회차·나이·연도 단위어 포함)과 그 풀이도 예외 없이 같은 출력 언어로 쓴다 — 간지 한자(癸未 등)만 그대로 둔다.',
   ].join('\n'),
   // 스트리밍: [[key]] 마커 구분 텍스트
   systemStream: (lang) => [
@@ -121,12 +133,13 @@ const lifetime: FortuneType = {
     '- 11개 항목을 위 순서대로 작성하되, 각 항목 본문 바로 앞에 정확히 한 줄로 마커를 둔다:',
     '  [[saju]] / [[personality]] / [[health]] / [[wealth]] / [[relations]] / [[love]] / [[children]] / [[career]] / [[daeun]] / [[caution]] / [[gaewoon]]',
     '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·JSON·마크다운은 쓰지 않는다(단, daeun 항목 내부의 대운별 라벨 줄은 허용).',
-    `- 모든 본문은 ${langName(lang)}로 작성한다. daeun 항목의 대운별 라벨 줄(회차·나이·연도 단위어 포함)과 그 풀이도 예외 없이 ${langName(lang)}로 쓴다 — 간지 한자(癸未 등)만 그대로 둔다.`,
+    langDirective(lang) + ' daeun 항목의 대운별 라벨 줄(회차·나이·연도 단위어 포함)과 그 풀이도 예외 없이 같은 출력 언어로 쓴다 — 간지 한자(癸未 등)만 그대로 둔다.',
   ].join('\n'),
-  buildPrompt: ({ myeongsik }) => [
+  buildPrompt: ({ myeongsik, lang }) => [
     formatMyeongsikForPrompt(myeongsik),
     '',
     '위 명식을 바탕으로 이 사람의 평생운세를 11개 항목으로 깊이 있게 풀이하세요.',
+    langDirective(lang),
   ].join('\n'),
 }
 
@@ -195,7 +208,7 @@ const newyearType: FortuneType = {
     YEAR_SECTION_GUIDE,
     '',
     '- 위 11개 키(' + YEAR_KEYS + ')를 가진 JSON 객체 하나만 출력한다(그 외 텍스트 금지).',
-    `- 모든 본문은 ${langName(lang)}로 작성한다.`,
+    langDirective(lang),
   ].join('\n'),
   systemStream: (lang) => [
     YEAR_PERSONA,
@@ -206,12 +219,13 @@ const newyearType: FortuneType = {
     '- 11개 항목을 위 순서대로 작성하되, 각 항목 본문 바로 앞에 정확히 한 줄로 마커를 둔다:',
     '  [[overview]] / [[wealth]] / [[career]] / [[love]] / [[health]] / [[relations]] / [[study]] / [[monthly]] / [[caution]] / [[wealthboost]] / [[gaewoon]]',
     '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·JSON·마크다운은 쓰지 않는다(단, monthly 항목 내부의 "N월:" 라벨 줄은 허용).',
-    `- 모든 본문은 ${langName(lang)}로 작성한다.`,
+    langDirective(lang),
   ].join('\n'),
-  buildPrompt: ({ myeongsik }) => [
+  buildPrompt: ({ myeongsik, lang }) => [
     formatMyeongsikForPrompt(myeongsik),
     '',
     '위 명식을 바탕으로 ' + YEAR + '년 ' + YEAR_GANJI + ' 한 해의 운세를 11개 항목으로 깊이 있게 풀이하세요.',
+    langDirective(lang),
   ].join('\n'),
 }
 
@@ -276,7 +290,7 @@ const gunghapType: FortuneType = {
     GUNGHAP_SECTION_GUIDE,
     '',
     '- 위 9개 키(' + GUNGHAP_KEYS + ')를 가진 JSON 객체 하나만 출력한다(그 외 텍스트 금지). shorts 값은 9)에 정의된 형식의 JSON을 문자열로 담는다.',
-    `- 모든 본문은 ${langName(lang)}로 작성한다.`,
+    langDirective(lang),
   ].join('\n'),
   systemStream: (lang) => [
     GUNGHAP_PERSONA,
@@ -288,9 +302,9 @@ const gunghapType: FortuneType = {
     '  [[score]] / [[attraction]] / [[personality]] / [[lovestyle]] / [[conflict]] / [[ohaeng]] / [[future]] / [[advice]] / [[shorts]]',
     '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·마크다운은 쓰지 않는다.',
     '- 예외: [[shorts]] 마커 다음 본문만은 9)에 정의된 JSON 객체 한 개로 출력한다(그 JSON 외 텍스트 금지).',
-    `- 모든 본문은 ${langName(lang)}로 작성한다.`,
+    langDirective(lang),
   ].join('\n'),
-  buildPrompt: ({ myeongsik, partner }) => {
+  buildPrompt: ({ myeongsik, partner, lang }) => {
     const meName = (myeongsik?.user?.name || '').trim() || '본인'
     const youName = (partner?.user?.name || '').trim() || '상대방'
     return [
@@ -300,6 +314,7 @@ const gunghapType: FortuneType = {
       '',
       `위 두 사람(${meName} ↔ ${youName})의 명식을 대조하여 궁합을 8개 항목으로 깊이 있게 풀이하세요.`,
       `본문에서 두 사람을 반드시 실제 이름 "${meName}", "${youName}"으로 지칭하세요(예: "${youName}님의 일간은…", "${meName}님과 ${youName}님은…").`,
+      langDirective(lang),
     ].join('\n')
   },
 }
@@ -370,7 +385,7 @@ const mbtiType: FortuneType = {
     MBTI_SECTION_GUIDE,
     '',
     '- 위 11개 키(' + MBTI_KEYS + ')를 가진 JSON 객체 하나만 출력한다(그 외 텍스트 금지). shorts 값은 11)에 정의된 형식의 JSON을 문자열로 담는다.',
-    `- 모든 본문은 ${langName(lang)}로 작성한다.`,
+    langDirective(lang),
   ].join('\n'),
   systemStream: (lang) => [
     MBTI_PERSONA,
@@ -382,9 +397,9 @@ const mbtiType: FortuneType = {
     '  [[score]] / [[firstmeet]] / [[personality]] / [[communication]] / [[love]] / [[datestyle]] / [[conflict]] / [[growth]] / [[future]] / [[advice]] / [[shorts]]',
     '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·마크다운은 쓰지 않는다.',
     '- 예외: [[shorts]] 마커 다음 본문만은 11)에 정의된 JSON 객체 한 개로 출력한다(그 JSON 외 텍스트 금지).',
-    `- 모든 본문은 ${langName(lang)}로 작성한다.`,
+    langDirective(lang),
   ].join('\n'),
-  buildPrompt: ({ myMbti, partnerMbti, myName, partnerName }) => {
+  buildPrompt: ({ myMbti, partnerMbti, myName, partnerName, lang }) => {
     const me = (myName || '').trim() || '본인'
     const you = (partnerName || '').trim() || '상대방'
     const meType = (myMbti || '').toUpperCase() || '미상'
@@ -395,6 +410,7 @@ const mbtiType: FortuneType = {
       '',
       `위 두 사람(${me} ↔ ${you})의 MBTI 유형을 바탕으로 궁합을 6개 항목으로 깊이 있게 풀이하세요.`,
       `본문에서 두 사람을 반드시 실제 이름 "${me}", "${you}"으로 지칭하세요.`,
+      langDirective(lang),
     ].join('\n')
   },
 }

@@ -54,8 +54,10 @@ export default defineEventHandler((event) => {
   const url = getRequestURL(event)
   const [prefix, rest] = splitLocale(url.pathname)
 
-  // 트레일링 슬래시 정규화(루트 제외)는 건드리지 않음 — i18n/nitro 기본에 위임.
-  const target = EXACT[rest]
+  // 끝 슬래시 정규화: 옛 SPA 링크·북마크·검색 색인 URL은 '/tojung/' 처럼 슬래시가
+  // 붙는 경우가 흔하다. 슬래시를 떼고 매핑을 조회해 404 대신 301로 흘려보낸다.
+  const norm = rest.length > 1 && rest.endsWith('/') ? rest.slice(0, -1) : rest
+  const target = EXACT[norm]
   if (!target) return
 
   // 새 경로에 쿼리가 있으면 그대로, 없으면 원 요청 쿼리는 버린다(옛 파라미터는 의미 없음).

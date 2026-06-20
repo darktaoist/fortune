@@ -43,15 +43,27 @@ export interface BuildArgs {
   zodiacGlyph: string
   siteUrl?: string
   shorts?: ShortsData | null // AI 숏폼 데이터(있으면 최우선)
+  lang?: string // 영상 언어(ko|en|ja|zh) — 고정 라벨 현지화
+}
+
+// 이름 미입력 시 폴백(언어별). 영상에 한국어 '나/상대'가 새던 문제 방지.
+const NAME_FALLBACK: Record<string, [string, string]> = {
+  ko: ['나', '상대'],
+  en: ['You', 'Partner'],
+  ja: ['あなた', 'お相手'],
+  zh: ['你', '對方'],
 }
 
 export function buildStoryboard(a: BuildArgs): StoryboardInput {
+  const lang = a.lang || 'ko'
+  const [selfFb, partnerFb] = NAME_FALLBACK[lang] || NAME_FALLBACK.ko
   const base = {
-    selfName: a.selfName || '나',
-    partnerName: a.partnerName || '상대',
+    selfName: a.selfName || selfFb,
+    partnerName: a.partnerName || partnerFb,
     partnerImageUrl: a.partnerImageUrl,
     zodiacGlyph: a.zodiacGlyph || '緣',
     siteUrl: a.siteUrl || 'taoist.co.kr',
+    lang,
   }
 
   // 1순위: AI가 생성한 구조화 shorts

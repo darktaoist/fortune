@@ -17,6 +17,7 @@ export interface StoryboardInput {
   beats: Beat[] // 테마 비트(글리프+라벨+핵심문장)
   zodiacGlyph: string // result.glyph || '緣'
   siteUrl: string // 'taoist.co.kr'
+  lang: string // 'ko' | 'en' | 'ja' | 'zh' — 영상 내 고정 라벨 현지화에 사용
 }
 
 // AI가 생성하는 숏폼 전용 구조화 데이터(shorts 섹션 본문 JSON)

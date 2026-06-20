@@ -9,6 +9,29 @@ const SANS = "'Noto Sans KR', sans-serif"
 const SERIF = "'Noto Serif KR', serif" // 디스플레이용(우아함, 900 weight 로드됨)
 const FAMILY = SANS // 본문 기본
 
+// ── 영상 내 고정 라벨 현지화 ──
+// 렌더러는 Vue 밖이라 t()를 못 쓴다. 영상 언어(sb.lang)별 라벨을 자체 보유한다.
+// (i18n 키: brand=hero.title.ko, score=cpl.score 와 동일 문구로 맞춤)
+type SfLang = 'ko' | 'en' | 'ja' | 'zh'
+interface SfLabels {
+  brand: string
+  destiny: string // '운명의 궁합'
+  score: string // '궁합 점수'
+  point: (n: number) => string // 점수 단위 ('78점')
+  hookFallback: string // 훅 미생성 시
+  ctaFallback: string // 캐치프레이즈 미생성 시
+  verdicts: [string, string, string, string, string] // 별 5→1 등급명(AI 등급 없을 때)
+}
+const SF_LABELS: Record<SfLang, SfLabels> = {
+  ko: { brand: '타오운세', destiny: '운명의 궁합', score: '궁합 점수', point: (n) => `${n}점`, hookFallback: '결과는…?', ctaFallback: '내 궁합도 확인해보세요', verdicts: ['천생연분', '환상의 케미', '좋은 인연', '노력하면 좋은 사이', '서로 다른 매력'] },
+  en: { brand: 'TAOIST', destiny: 'Destined Match', score: 'Match Score', point: (n) => `${n} pts`, hookFallback: 'The verdict…?', ctaFallback: 'Check your match too', verdicts: ['Soulmates', 'Amazing Chemistry', 'A Good Match', 'Worth the Effort', 'Opposites Attract'] },
+  ja: { brand: 'タオ運勢', destiny: '運命の相性', score: '相性スコア', point: (n) => `${n}点`, hookFallback: '結果は…？', ctaFallback: 'あなたの相性も占おう', verdicts: ['運命の相手', '最高の相性', '良いご縁', '努力で深まる仲', '惹かれ合う違い'] },
+  zh: { brand: '道悟運勢', destiny: '命定緣分', score: '合盤分數', point: (n) => `${n}分`, hookFallback: '結果是…？', ctaFallback: '測測你的緣分', verdicts: ['天生一對', '絕佳默契', '良緣', '用心經營', '互補吸引'] },
+}
+function L(sb: StoryboardInput): SfLabels {
+  return SF_LABELS[(sb.lang as SfLang)] || SF_LABELS.ko
+}
+
 // ── 텍스트 헬퍼 ──
 function fitFont(ctx: CanvasRenderingContext2D, text: string, maxW: number, startPx: number, weight = 700, minPx = 22, family = SANS) {
   let px = startPx
@@ -35,18 +58,37 @@ function drawSpaced(ctx: CanvasRenderingContext2D, text: string, cx: number, y: 
   }
   ctx.textAlign = prev
 }
+// CJK(한자·가나·한글)는 글자 단위, 라틴 단어는 공백 단위로 끊는 혼합 줄바꿈.
+// 공백이 없는 중국어·일본어·한국어가 통째로 한 줄을 넘어 화면 밖으로 새던 버그를
+// 막는다. 한 토큰이 maxW보다 길면(아주 긴 라틴 단어·URL) 글자 단위로 강제 분해해
+// 어떤 경우에도 maxW를 넘지 않게 한다.
+// 줄 첫머리에 오면 안 되는 닫는 부호(약물 금칙). 직전 줄 끝에 붙여 흘려보낸다.
+const NO_LINE_START = '，、。．・：；！？）］｝」』〉》”’%,.!?:;)]}'
 function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxW: number, maxLines: number) {
-  const words = text.split(' ')
+  // 토큰화: 공백 / CJK 1글자 / 그 외 연속(라틴 단어·숫자·기호)
+  const tokens = text.match(/\s+|[　-〿぀-ヿ㐀-䶿一-鿿가-힣豈-﫿＀-￯]|[^\s　-〿぀-ヿ㐀-䶿一-鿿가-힣豈-﫿＀-￯]+/g) || []
   const lines: string[] = []
   let line = ''
-  for (const w of words) {
-    const test = line ? line + ' ' + w : w
-    if (ctx.measureText(test).width > maxW && line) {
-      lines.push(line)
-      line = w
-    } else line = test
+  const fits = (s: string) => ctx.measureText(s).width <= maxW
+  const flush = () => { if (line.trim()) lines.push(line.trim()); line = '' }
+  for (const tk of tokens) {
+    if (/^\s+$/.test(tk)) { if (line && fits(line + ' ')) line += ' '; continue }
+    // 토큰 자체가 한 줄보다 길면 글자 단위로 강제 분해
+    if (!fits(tk)) {
+      for (const ch of tk) {
+        if (line && !fits(line + ch)) flush()
+        line += ch
+      }
+      continue
+    }
+    if (line && !fits(line + tk)) {
+      // 금칙: 닫는 부호는 새 줄 첫머리로 보내지 않고 직전 줄에 붙인다(여백 안이라 안전)
+      if (NO_LINE_START.includes(tk)) { line += tk; continue }
+      flush()
+    }
+    line += tk
   }
-  if (line) lines.push(line)
+  if (line.trim()) lines.push(line.trim())
   if (lines.length > maxLines) {
     lines.length = maxLines
     lines[maxLines - 1] = lines[maxLines - 1].replace(/.$/, '…')
@@ -198,7 +240,7 @@ function drawLogo(ctx: CanvasRenderingContext2D, sb: StoryboardInput, o: VideoOp
   ctx.fillStyle = GOLD_LT
   ctx.textAlign = 'left'
   ctx.font = `700 ${Math.round(o.width * 0.04)}px ${FAMILY}`
-  ctx.fillText('道 타오운세', Math.round(o.width * 0.07), Math.round(o.height * 0.07))
+  ctx.fillText(`道 ${L(sb).brand}`, Math.round(o.width * 0.07), Math.round(o.height * 0.07))
   ctx.textAlign = 'center'
   ctx.globalAlpha = 1
 }
@@ -218,7 +260,8 @@ export function drawFrame(
   const cx = W / 2
   const D = o.durationSec
   const v = verdictFor(sb.score)
-  const vLabel = sb.verdictLabel || v.label // AI 등급명 우선, 없으면 점수기반
+  // AI 등급명 우선, 없으면 점수기반 등급을 영상 언어로 현지화(별 5→1 = verdicts[0..4])
+  const vLabel = sb.verdictLabel || (v.stars ? L(sb).verdicts[5 - v.stars] : '')
 
   const T_HOOK = 3.5
   const T_REVEAL = 10
@@ -245,13 +288,13 @@ export function drawFrame(
     ctx.globalAlpha = a * out
     ctx.fillStyle = GOLD
     ctx.font = `500 ${Math.round(W * 0.044)}px ${SERIF}`
-    drawSpaced(ctx, '운명의 궁합', cx, H * 0.6, W * 0.03)
+    drawSpaced(ctx, L(sb).destiny, cx, H * 0.6, W * 0.03)
     // 이름 ♥ 이름
     pairTitle(ctx, sb.selfName, sb.partnerName, cx, H * 0.7, maxW, Math.round(W * 0.088), a)
     ctx.fillStyle = GOLD_LT
     ctx.font = `500 ${Math.round(W * 0.046)}px ${FAMILY}`
-    fitFont(ctx, sb.hook || '결과는…?', maxW, Math.round(W * 0.046), 500, 22, SERIF)
-    ctx.fillText(sb.hook || '결과는…?', cx, H * 0.78)
+    fitFont(ctx, sb.hook || L(sb).hookFallback, maxW, Math.round(W * 0.046), 500, 22, SERIF)
+    ctx.fillText(sb.hook || L(sb).hookFallback, cx, H * 0.78)
     ctx.globalAlpha = 1
   } else if (inReveal) {
     const out = 1 - seg(tSec, T_REVEAL - 0.5, T_REVEAL)
@@ -279,7 +322,7 @@ export function drawFrame(
       // 라벨 + 숫자
       ctx.fillStyle = GOLD_LT
       ctx.font = `700 ${Math.round(W * 0.045)}px ${FAMILY}`
-      drawSpaced(ctx, '궁합 점수', cx, gy - R * 0.42, W * 0.02)
+      drawSpaced(ctx, L(sb).score, cx, gy - R * 0.42, W * 0.02)
       ctx.fillStyle = '#fff'
       const pop = 0.7 + 0.3 * easeOutBack(seg(tSec, T_HOOK + 0.3, T_HOOK + 1.2))
       ctx.font = `900 ${Math.round(W * 0.18 * pop)}px ${SERIF}`
@@ -363,14 +406,14 @@ export function drawFrame(
     if (vLabel) {
       stars(ctx, cx, H * 0.58, v.stars, W * 0.026, 1)
       ctx.fillStyle = GOLD_LT
-      const txt = sb.score != null ? `${vLabel} · ${sb.score}점` : vLabel
+      const txt = sb.score != null ? `${vLabel} · ${L(sb).point(sb.score)}` : vLabel
       fitFont(ctx, txt, maxW, Math.round(W * 0.062), 900, 22, SERIF)
       ctx.fillText(txt, cx, H * 0.65)
     }
     // 캐치프레이즈(AI) 우선, 없으면 기본 CTA 문구
     ctx.fillStyle = '#fff'
-    fitFont(ctx, sb.catchphrase || '내 궁합도 확인해보세요', maxW, Math.round(W * 0.052), 700, 22, SERIF)
-    drawWrapped(ctx, sb.catchphrase || '내 궁합도 확인해보세요', cx, H * 0.72, maxW, W * 0.065, 2)
+    fitFont(ctx, sb.catchphrase || L(sb).ctaFallback, maxW, Math.round(W * 0.052), 700, 22, SERIF)
+    drawWrapped(ctx, sb.catchphrase || L(sb).ctaFallback, cx, H * 0.72, maxW, W * 0.065, 2)
     ctx.fillStyle = GOLD_LT
     ctx.font = `700 ${Math.round(W * 0.055)}px ${FAMILY}`
     drawSpaced(ctx, sb.siteUrl, cx, H * 0.77, W * 0.005)

@@ -7,6 +7,12 @@ import { requirePaidPurchase } from '../../utils/paywall'
 
 const LANGS = new Set(['ko', 'en', 'ja', 'zh'])
 
+// 한글(U+AC00–D7A3)은 한국어 전용 문자 — 비-ko 결과에 한글이 섞이면 언어 누수로 판정한다.
+// 간지 한자(癸未 등)는 공용 한자라 허용. 임계값(8자)으로 우발적 1~2자 오검출을 피한다.
+const HANGUL = /[가-힣]/g
+const hangulLeak = (text: string, lang: string) =>
+  lang !== 'ko' && (String(text).match(HANGUL) || []).length >= 8
+
 /**
  * 프리미엄 운세 스트리밍(SSE) — 섹션이 완성되는 대로 push해 점진 렌더.
  * 이벤트: meta(glyph/tint/myeongsik) → section(키별, 완성 즉시) → done. 오류는 error.
@@ -55,8 +61,12 @@ export default defineEventHandler(async (event) => {
   const send = (obj: any) => es.push(JSON.stringify(obj))
 
   // ── 리플레이: 이미 생성된 결과가 있으면 AI 재호출 없이 그대로 송출 ──
+  // 단, 저장본이 비-ko인데 한글이 섞인(과거 누수) 경우는 리플레이를 건너뛰고 아래에서 재생성한다
+  //  → 기존 스테일 행이 다음 조회 때 자동으로 올바른 언어로 재생성·재저장되어 자가치유된다.
   const savedPayload = reading?.payload
-  if (Array.isArray(savedPayload?.sections) && savedPayload.sections.length) {
+  const savedLeak = Array.isArray(savedPayload?.sections)
+    && hangulLeak(savedPayload.sections.map((s: any) => s?.body || '').join('\n'), String(savedPayload?.lang || ''))
+  if (Array.isArray(savedPayload?.sections) && savedPayload.sections.length && !savedLeak) {
     ;(async () => {
       try {
         send({
@@ -184,12 +194,50 @@ export default defineEventHandler(async (event) => {
         return
       }
 
+      // ── 언어 누수 가드 ── 비-ko인데 한글이 섞이면(같은 CJK라 모델이 한국어로 새는 현상),
+      // 언어 준수가 강한 Claude로 1회 재생성한 뒤 같은 key로 다시 send(클라가 제자리 교체).
+      // 재생성도 실패하면 아래 저장 게이트가 막아 다음 진입 때 다시 시도된다.
+      let finalSections = sectionsOut
+      if (hangulLeak(finalSections.map((s) => s.body).join('\n'), lang)) {
+        try {
+          let rbuf = ''
+          await streamText({
+            system: (type.systemStream || type.system)(lang),
+            user: userPrompt,
+            maxTokens: type.maxTokens,
+            onText: (d) => { rbuf += d },
+          }, 'claude')
+          const reparsed: typeof sectionsOut = []
+          const rms = [...rbuf.matchAll(MARK)]
+          const seen = new Set<string>()
+          for (let i = 0; i < rms.length; i++) {
+            const key = rms[i][1].toLowerCase()
+            if (!keyset.has(key) || seen.has(key)) continue
+            const start = (rms[i].index || 0) + rms[i][0].length
+            const end = i + 1 < rms.length ? (rms[i + 1].index || rbuf.length) : rbuf.length
+            const t = rbuf.slice(start, end).trim()
+            if (!t) continue
+            seen.add(key)
+            const s = secByKey[key]
+            reparsed.push({ key, titleKey: s.titleKey, glyph: s.glyph, body: t })
+          }
+          if (reparsed.length && !hangulLeak(reparsed.map((s) => s.body).join('\n'), lang)) {
+            finalSections = reparsed
+            for (const out of reparsed) send({ type: 'section', ...out }) // 같은 key → 클라 제자리 교체
+          }
+        } catch (e: any) {
+          console.warn('[premium-stream] 언어 누수 재생성 실패:', e?.statusMessage || e?.message)
+        }
+      }
+
       // ── 결과를 주문 스냅샷에 저장(구매 1건 = 생성 1회, 재방문은 리플레이) ──
-      if (purchase.reading_id && sectionsOut.length) {
+      // 단, 비-ko인데 한글이 남아있으면 저장하지 않아 리플레이 영구 고착을 막는다(다음 진입 시 재생성).
+      const stillLeaking = hangulLeak(finalSections.map((s) => s.body).join('\n'), lang)
+      if (purchase.reading_id && finalSections.length && !stillLeaking) {
         await admin.from('saved_readings').update({
           subject: (reading?.subject && (reading.subject.year || reading.subject.mbti)) ? reading.subject : (body?.subject || null),
           payload: {
-            sections: sectionsOut,
+            sections: finalSections,
             myeongsik: myeongsik || null,
             partnerMyeongsik: partner || null,
             partnerName: partnerName || '',

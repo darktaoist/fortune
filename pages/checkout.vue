@@ -63,8 +63,8 @@ watch(current, loadInfo, { deep: true })
 // ── 샘플 보기 ──
 // SAMPLE_REAL: 예시 인물로 만든 "실제 결과" 샘플이 등록된 서비스(공개 미리보기).
 // SAMPLE_FREE: 그 외엔 무료 버전 결과로 폴백.
-const SAMPLE_REAL = { lifetime: true }
-const SAMPLE_FREE = { newyear: 'toJung' }
+const SAMPLE_REAL = { lifetime: true, newyear: true, gunghap: true, mbti: true }
+const SAMPLE_FREE = {}
 const sampleNote = ref('')
 function onSample() {
   if (SAMPLE_REAL[service.value]) {

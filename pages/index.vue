@@ -98,17 +98,17 @@ const carousel = ref(null)
 const scrollCarousel = (dx) => carousel.value?.scrollBy({ left: dx, behavior: 'smooth' })
 
 /* ===================== Free grid ===================== */
-// 색인용 공개 랜딩(/fortune/*)을 경유한다. 랜딩이 검색 유입을 받고, 거기서 결과로
-// 연결된다(홈→랜딩→결과 내부링크로 고아 페이지 방지).
+// 홈 제품 카드는 결과로 직행한다(앱 내 동선 = 1클릭). 색인용 공개 랜딩(/fortune/*)은
+// 푸터 '운세' 칼럼이 링크해 검색 유입·크롤을 받으므로 고아가 되지 않는다(관심사 분리).
 // ⚠️ '오늘의 운세'는 개인 사주 기반 오늘운세(/result/free?service=today)다.
 //    /daily 는 별개 상품(띠별 오늘운세)이므로 여기에 연결하면 안 된다.
 const FREE = [
   { to: { path: '/result/free', query: { service: 'today' } }, glyph: '日', titleKey: 'free.today.title', descKey: 'free.today.desc', badge: 'free' },
-  { to: '/fortune/tojung', glyph: '秘', titleKey: 'free.tojung.title', descKey: 'free.tojung.desc', badge: 'free' },
-  { to: '/fortune/date', glyph: '情', titleKey: 'free.date.title', descKey: 'free.date.desc', badge: 'free' },
-  { to: '/fortune/lotto', glyph: '財', titleKey: 'free.lotto.title', descKey: 'free.lotto.desc', badge: 'free' },
-  { to: '/fortune/month', glyph: '月', titleKey: 'free.month.title', descKey: 'free.month.desc', badge: 'free' },
-  { to: '/fortune/lifetime', glyph: '平', titleKey: 'free.hour.title', descKey: 'free.hour.desc', badge: 'new' },
+  { to: { path: '/result/free', query: { service: 'tojung' } }, glyph: '秘', titleKey: 'free.tojung.title', descKey: 'free.tojung.desc', badge: 'free' },
+  { to: { path: '/result/free', query: { service: 'date' } }, glyph: '情', titleKey: 'free.date.title', descKey: 'free.date.desc', badge: 'free' },
+  { to: { path: '/result/free', query: { service: 'lotto' } }, glyph: '財', titleKey: 'free.lotto.title', descKey: 'free.lotto.desc', badge: 'free' },
+  { to: { path: '/result/free', query: { service: 'month' } }, glyph: '月', titleKey: 'free.month.title', descKey: 'free.month.desc', badge: 'free' },
+  { to: { path: '/result/free', query: { service: 'hour' } }, glyph: '平', titleKey: 'free.hour.title', descKey: 'free.hour.desc', badge: 'new' },
 ]
 
 /* ===================== Trust counters ===================== */
@@ -387,7 +387,7 @@ onBeforeUnmount(() => {
         <div class="free-grid">
           <FortuneCard
             v-for="f in FREE"
-            :key="f.to"
+            :key="f.glyph"
             :to="f.to"
             :glyph="f.glyph"
             :title-key="f.titleKey"

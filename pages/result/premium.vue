@@ -429,6 +429,7 @@ async function onSave() {
               sections: displaySections.map((s) => ({ key: s.key, glyph: s.glyph, title: t(s.titleKey), body: s.body })),
               zodiacGlyph: result?.glyph || '緣',
               siteUrl: 'taoist.co.kr',
+              lang: locale,
             }"
           />
         </ClientOnly>
