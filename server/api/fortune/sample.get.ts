@@ -32,7 +32,7 @@ const SAMPLE_READINGS: Record<string, Record<string, string>> = {
   },
   mbti: {
     ko: '7a82963a-0cb5-4f6d-af9e-fb5794af6a7c', // 홍길동 × 제니(ISFP)
-    en: 'dbea502d-e09e-49b2-845f-83c8ea2f81e7', // John Doe × Rosé (미생성 — ko 폴백)
+    en: 'bbb32c37-7fb9-4481-94ea-7cfa1dac2367', // John Doe × Rosé
     ja: 'bdfcbb94-c6eb-453a-ad35-82a3e694aa68', // 山田太郎 × リサ(ESFJ)
     zh: '0f7099f1-64a7-40a0-8ecd-1fa3d2e50683', // 張三 × 金智秀(ESTJ)
   },
