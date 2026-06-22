@@ -42,7 +42,7 @@ const dateLabel = computed(() => {
   const lg = locale.value
   if (lg === 'en') return new Date(Date.UTC(y, m - 1, day)).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
   if (lg === 'ja' || lg === 'zh') return `${y}年${m}月${day}日`
-  return `${y}년 ${m}월 ${day}일`
+  return `${y}년 ${m}월 ${day}일` // i18n-ok: ko fallback (en/ja/zh 위에서 처리)
 })
 
 /* 내 띠 찾기 */

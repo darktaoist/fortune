@@ -94,7 +94,7 @@ function fmtBirth(b) {
   const lg = locale.value
   if (lg === 'en') return `${MONTHS_EN[b.m - 1]} ${b.d}, ${b.y}`
   if (lg === 'ja' || lg === 'zh') return `${b.y}年${b.m}月${b.d}日${t('cel.born.suffix')}`
-  return `${b.y}년 ${b.m}월 ${b.d}일${t('cel.born.suffix')}`
+  return `${b.y}년 ${b.m}월 ${b.d}일${t('cel.born.suffix')}` // i18n-ok: ko fallback (en/ja/zh 위에서 처리)
 }
 
 /* ---- selection → 결과 직행 (v1: 결제 스킵) ---- */

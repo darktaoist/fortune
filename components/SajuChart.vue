@@ -5,7 +5,7 @@
 const { t, locale } = useI18n()
 
 const SAJU_SAMPLE = {
-  user: { name: '회원님', meta: '', solar: '1972.7.1', lunar: '1972.5.21', hour: '卯(05:31~07:30)시' },
+  user: { name: '회원님', meta: '', solar: '1972.7.1', lunar: '1972.5.21', hour: '卯(05:31~07:30)시' }, // i18n-ok: 샘플 데이터(실데이터로 대체됨)
   pillars: { year: ['壬', '子'], month: ['丙', '午'], day: ['癸', '巳'], hour: ['乙', '卯'] },
   ohaeng: { mok: 40, hwa: 46, to: 17, geum: 7, su: 40 },
   strongWeak: { type: 'weak', score: '47 : 103' },

@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "i18n:check": "node scripts/i18n/check-leaks.mjs",
+    "prebuild": "node scripts/i18n/check-leaks.mjs",
     "build": "nuxt build",
     "dev": "cross-env TMPDIR=/tmp nuxt dev",
     "generate": "nuxt generate",
