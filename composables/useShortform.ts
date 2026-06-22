@@ -91,7 +91,7 @@ export function useShortform() {
     progress.value = 0
     resultBlob.value = null
     errorMsg.value = ''
-    stage.value = '준비'
+    stage.value = 'ready'
     if (resultUrl.value) {
       URL.revokeObjectURL(resultUrl.value)
       resultUrl.value = null
@@ -101,17 +101,17 @@ export function useShortform() {
       const o = DEFAULT_OPTS
       console.log('[shortform] partnerImageUrl =', sb.partnerImageUrl, '| beats =', sb.beats.length, '| score =', sb.score)
 
-      stage.value = '폰트 로딩'
+      stage.value = 'fonts'
       await ensureFonts()
-      stage.value = sb.partnerImageUrl ? '사진 처리' : '준비'
+      stage.value = sb.partnerImageUrl ? 'image' : 'ready'
       const photo = sb.partnerImageUrl ? await loadIllustratedPhoto(sb.partnerImageUrl, o.width, o.height) : null
-      stage.value = 'QR 생성'
+      stage.value = 'QR'
       const assets: RenderAssets = {
         illustrated: null,
         qrBitmap: await makeQr(sb.siteUrl),
         logoBitmap: null,
       }
-      stage.value = '오디오 로딩'
+      stage.value = 'audio'
       const audio = await loadAudio()
       const draw = (ctx: CanvasRenderingContext2D, tSec: number) => drawFrame(ctx, sb, photo, assets, tSec, o)
 
@@ -128,7 +128,7 @@ export function useShortform() {
       let blob: Blob | null = null
       if (useWebCodecs) {
         try {
-          stage.value = '인코딩(mp4)'
+          stage.value = 'encoding (mp4)'
           blob = await encodeMp4(draw, audio, o, (p) => (progress.value = p), tune)
         } catch (e) {
           console.warn('[shortform] mp4 인코딩 실패, webm 폴백:', e)
@@ -137,14 +137,14 @@ export function useShortform() {
       if (!blob && typeof MediaRecorder !== 'undefined') {
         try {
           progress.value = 0
-          stage.value = '인코딩(webm)'
+          stage.value = 'encoding (webm)'
           blob = await encodeWebm(draw, o, (p) => (progress.value = p), tune)
         } catch (e) {
           console.warn('[shortform] webm 인코딩 실패, png 폴백:', e)
         }
       }
-      if (!blob) { stage.value = '이미지 폴백'; blob = await encodePoster((ctx) => draw(ctx, o.durationSec - 1), o) }
-      stage.value = '완료'
+      if (!blob) { stage.value = 'image fallback'; blob = await encodePoster((ctx) => draw(ctx, o.durationSec - 1), o) }
+      stage.value = 'done'
 
       resultBlob.value = blob
       resultUrl.value = URL.createObjectURL(blob)

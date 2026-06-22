@@ -1,6 +1,7 @@
 <script setup>
 import { useShortform } from '~/composables/useShortform'
 
+const { t } = useI18n()
 const props = defineProps({ args: { type: Object, required: true } })
 const open = ref(false)
 const { busy, progress, resultBlob, resultUrl, errorMsg, stage, generate } = useShortform()
@@ -38,13 +39,13 @@ async function share() {
 
 <template>
   <div class="sf-wrap">
-    <button class="sf-btn" :disabled="busy" @click="start">🎬 영상으로 공유</button>
-    <p class="sf-desc">궁합 결과를 틱톡·인스타 릴스·유튜브 쇼츠로 공유해 보세요</p>
+    <button class="sf-btn" :disabled="busy" @click="start">🎬 {{ t('sfvideo.cta') }}</button>
+    <p class="sf-desc">{{ t('sfvideo.desc') }}</p>
 
     <div v-if="open" class="sf-modal" @click.self="open = false">
       <div class="sf-card">
         <div v-if="busy" class="sf-progress">
-          <p>영상 만드는 중… {{ Math.round(progress * 100) }}%</p>
+          <p>{{ t('sfvideo.making') }} {{ Math.round(progress * 100) }}%</p>
         <p class="sf-stage">{{ stage }}</p>
           <div class="sf-bar"><div :style="{ width: progress * 100 + '%' }" /></div>
         </div>
@@ -52,15 +53,15 @@ async function share() {
         <template v-else-if="resultUrl">
           <video :src="resultUrl" controls autoplay loop playsinline muted class="sf-video" />
           <div class="sf-actions">
-            <button @click="share">공유</button>
-            <button @click="download">다운로드</button>
-            <button @click="open = false">닫기</button>
+            <button @click="share">{{ t('sfvideo.share') }}</button>
+            <button @click="download">{{ t('sfvideo.download') }}</button>
+            <button @click="open = false">{{ t('sfvideo.close') }}</button>
           </div>
         </template>
 
         <div v-else class="sf-error">
-          <p>영상을 만들지 못했어요. {{ errorMsg }}</p>
-          <button @click="open = false">닫기</button>
+          <p>{{ t('sfvideo.error') }} {{ errorMsg }}</p>
+          <button @click="open = false">{{ t('sfvideo.close') }}</button>
         </div>
       </div>
     </div>
