@@ -4,6 +4,7 @@ import { FORTUNE_TYPES, sectionSchema } from '../../utils/fortune-registry'
 import { generateStructured, resolveProvider } from '../../utils/ai'
 import { resolvePartnerInput, resolvePartnerMbti } from '../../utils/partner'
 import { requirePaidPurchase } from '../../utils/paywall'
+import { toTraditional } from '../../utils/zh'
 
 const LANGS = new Set(['ko', 'en', 'ja', 'zh'])
 
@@ -63,8 +64,9 @@ export default defineEventHandler(async (event) => {
   }
   const partnerName = (body?.partner?.name as string) || ''
 
+  // zh는 결과를 번체로 보정(AI가 간체로 새는 경우 결정적 교정).
   const mapSections = (data: Record<string, any>) =>
-    type.sections.map((s) => ({ key: s.key, titleKey: s.titleKey, glyph: s.glyph, body: String(data?.[s.key] || '') }))
+    type.sections.map((s) => ({ key: s.key, titleKey: s.titleKey, glyph: s.glyph, body: toTraditional(String(data?.[s.key] || ''), lang) }))
 
   // 생성(캐시 미사용 — 매번 새로 생성).
   const result = await generateStructured<Record<string, any>>({

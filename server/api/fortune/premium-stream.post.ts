@@ -4,6 +4,7 @@ import { FORTUNE_TYPES } from '../../utils/fortune-registry'
 import { streamText, resolveProvider } from '../../utils/ai'
 import { resolvePartnerInput, resolvePartnerMbti } from '../../utils/partner'
 import { requirePaidPurchase } from '../../utils/paywall'
+import { toTraditional } from '../../utils/zh'
 
 const LANGS = new Set(['ko', 'en', 'ja', 'zh'])
 
@@ -77,7 +78,9 @@ export default defineEventHandler(async (event) => {
           myMbti: savedPayload.myMbti || '',
           partnerMbti: savedPayload.partnerMbti || '',
         })
-        for (const s of savedPayload.sections) send({ type: 'section', ...s })
+        // 저장본이 zh인데 간체로 저장된 과거 행은 리플레이 시 번체로 보정(자가치유).
+        const savedLang = String(savedPayload?.lang || '')
+        for (const s of savedPayload.sections) send({ type: 'section', ...s, body: toTraditional(String(s?.body || ''), savedLang) })
         send({ type: 'done', cached: true })
       } finally {
         await es.close()
@@ -148,7 +151,7 @@ export default defineEventHandler(async (event) => {
           const hasNext = i + 1 < ms.length
           if (!hasNext && !final) continue // 다음 마커 전까진 미완성
           const end = hasNext ? (ms[i + 1].index || buf.length) : buf.length
-          const text = buf.slice(start, end).trim()
+          const text = toTraditional(buf.slice(start, end).trim(), lang) // zh는 번체 보정
           if (!text) continue // 본문 없는 마커는 emit 안 함(빈 섹션 카드 방지)
           emitted.add(key); bodies[key] = text
           const s = secByKey[key]
@@ -178,7 +181,7 @@ export default defineEventHandler(async (event) => {
       // 마커 폴백 — AI가 [[key]] 마커 없이 본문만 반환한 경우(모델 교체/형식 이탈),
       // 빈 화면 대신 전체 본문을 첫 섹션으로 묶어 보여준다(마커 텍스트는 제거).
       if (!sectionsOut.length) {
-        const plain = buf.replace(/\[\[\s*[A-Za-z_]+\s*\]\]/g, '').trim()
+        const plain = toTraditional(buf.replace(/\[\[\s*[A-Za-z_]+\s*\]\]/g, '').trim(), lang)
         if (plain.length > 40) {
           const s0 = type.sections[0]
           const out = { key: s0?.key || 'overview', titleKey: s0?.titleKey || 'premium.section.overview', glyph: s0?.glyph || type.glyph, body: plain }
@@ -215,7 +218,7 @@ export default defineEventHandler(async (event) => {
             if (!keyset.has(key) || seen.has(key)) continue
             const start = (rms[i].index || 0) + rms[i][0].length
             const end = i + 1 < rms.length ? (rms[i + 1].index || rbuf.length) : rbuf.length
-            const t = rbuf.slice(start, end).trim()
+            const t = toTraditional(rbuf.slice(start, end).trim(), lang)
             if (!t) continue
             seen.add(key)
             const s = secByKey[key]
