@@ -279,6 +279,14 @@ async function confirmSave() {
 function gotoLogin(reason) {
   return navigateTo(localePath({ path: '/login', query: { redirect: '/saju', service: f.fortuneType, ...(reason ? { reason } : {}) } }))
 }
+// 무료 안내문(saju.hint.free)은 v-html 이라 내부 #hintLogin 앵커가 Vue 바인딩 밖이다.
+// 위임 클릭으로 로그인 동선을 연결한다(데드 링크 방지).
+function onHintClick(e) {
+  const a = e.target?.closest?.('#hintLogin')
+  if (!a) return
+  e.preventDefault()
+  gotoLogin('save')
+}
 // Persist the current subject (guest → localStorage; logged-in cache too) so
 // it survives navigation/refresh and the result page can read it.
 function persistCurrent() {
@@ -381,9 +389,10 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
           <span>{{ t('saju.load.new') }}</span>
         </button>
         <button v-for="p in filteredPeople" :key="p.id" class="person" :class="{ active: activePersonId === p.id }" @click="prefillFromPerson(p)">
-          <span class="av" :class="`tint-${p.tint || 'gold'}`">{{ (p.name || '?').trim().charAt(0) }}</span>
+          <span class="av" :class="`tint-${p.tint || 'gold'}`">{{ (stripCalSuffix(p.name) || '?').charAt(0) }}</span>
           <span class="pmeta">
-            <span class="pname">{{ p.name }}</span>
+            <span class="pname">{{ locale === 'ko' ? p.name : stripCalSuffix(p.name) }}</span>
+            <span v-if="locale !== 'ko' && p.calendar && p.calendar !== 'solar'" class="prel">{{ t(CAL_LABEL[p.calendar] || 'saju.cal.lunar') }}</span>
             <span v-if="p.rel_key" class="prel">{{ t('cel.rel.' + p.rel_key) }}</span>
           </span>
         </button>
@@ -560,7 +569,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
               </button>
             </div>
             <p v-if="needsLogin && !loggedIn" class="actions-hint">{{ t('saju.hint.premium') }}</p>
-            <p v-else-if="!needsLogin" class="actions-hint">{{ t('saju.hint.free') }}</p>
+            <p v-else-if="!needsLogin" class="actions-hint" @click="onHintClick" v-html="t('saju.hint.free')" />
           </div>
 
           <div class="trust-strip">

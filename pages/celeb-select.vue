@@ -255,7 +255,7 @@ if (import.meta.client) {
               <span class="pick">{{ t('cel.modal.confirm') }}<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12" /></svg></span>
             </div>
             <div class="card-body">
-              <span class="card-name">{{ f.name }}<span class="rel">{{ t('cel.rel.' + f.relKey) }}</span></span>
+              <span class="card-name">{{ locale === 'ko' ? f.name : stripCalSuffix(f.name) }}<span class="rel">{{ t('cel.rel.' + f.relKey) }}</span></span>
               <span class="card-meta">&nbsp;</span>
               <span class="card-detail">
                 <template v-if="isMbti">MBTI · {{ f.mbti }}</template>
