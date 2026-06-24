@@ -63,6 +63,8 @@ export default defineNuxtConfig({
   // 공개 색인 대상: 홈/무료운세 소개/띠별운세/FAQ/약관·개인정보 등.
   sitemap: {
     exclude: ['/mypage', '/library', '/checkout', '/saju', '/login', '/confirm', '/reset-password', '/pay/**', '/result/**'],
+    // 동적 라우트(/fortune/today/[zodiac])는 자동수집되지 않으므로 명시 소스로 12 URL 등록.
+    sources: ['/api/__sitemap__/urls'],
   },
   robots: {
     disallow: ['/mypage', '/library', '/checkout', '/saju', '/login', '/confirm', '/reset-password', '/pay/', '/result/'],

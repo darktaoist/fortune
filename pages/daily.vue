@@ -3,6 +3,7 @@
 // 복사(클립보드) + 공유(Web Share API → 모바일은 카톡 포함 네이티브 시트, PC는 URL 복사).
 // 레거시 DailyHoroscope.vue 구조를 2.0 디자인 언어로 포팅.
 const { t, locale } = useI18n()
+const localePath = useLocalePath()
 
 // 12지 정적 메타(이모지·언어별 이름). zodiac_ko가 키. 생년은 API값 우선, 폴백용 보유.
 const ZODIAC = [
@@ -144,6 +145,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
           <span class="lk">{{ t('zodiac.luckyNumber') }} · {{ luckyOf(z).num }}</span>
           <span class="lk">{{ t('zodiac.luckyDir') }} · {{ luckyOf(z).dir }}</span>
         </div>
+        <NuxtLink :to="localePath(`/fortune/today/${z.name.en.toLowerCase()}`)" class="z-detail">{{ t('daily.viewDetail') }}</NuxtLink>
       </article>
     </div>
 
@@ -207,6 +209,8 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 .z-lucky { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--gold-border); }
 .z-lucky .lk { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); }
 .z-lucky .swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.18); }
+.z-detail { display: inline-block; margin-top: var(--space-3); font-size: var(--text-sm); color: var(--gold-primary); transition: color 0.18s; }
+.z-detail:hover { color: var(--gold-light); }
 
 .toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 200; padding: 12px 22px; border-radius: var(--radius-full); background: var(--gold-primary); color: var(--text-on-gold); font-size: var(--text-sm); font-weight: 600; box-shadow: var(--shadow-deep); }
 .toast-enter-active, .toast-leave-active { transition: opacity 0.25s, transform 0.25s; }
