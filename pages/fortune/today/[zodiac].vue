@@ -3,6 +3,9 @@
 // URL은 영문 slug(/fortune/today/rabbit), 콘텐츠·메타·H1은 현지화 한글/각 언어.
 // 날짜는 URL에 넣지 않는다: 항상 "오늘(서버 KST)"의 daily_horoscope 행을 조회해 렌더.
 // 데이터는 기존 /api/horoscope(오늘 KST 12띠 + 폴백)를 그대로 재사용.
+// 부분글로벌 — 검색 노출은 ko·ja·zh. en 페이지는 noindex(사이트맵은 urls.ts가 ko·ja·zh만 발행).
+// (메뉴/내부 링크는 전 언어 그대로 유지 — SEO 레이어만 한정)
+definePageMeta({ seoLocales: ['ko', 'ja', 'zh'] })
 const { t, locale } = useI18n()
 const route = useRoute()
 const localePath = useLocalePath()

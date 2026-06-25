@@ -68,6 +68,9 @@ export default defineNuxtConfig({
       // exclude는 i18n 대체언어 생성보다 먼저 적용되므로, 살아남는 ko 엔트리의 alternates에서도 자동 제거됨.
       '/en/fortune/lotto', '/ja/fortune/lotto', '/zh/fortune/lotto',
       '/en/fortune/tojung', '/ja/fortune/tojung', '/zh/fortune/tojung',
+      // 부분글로벌(🟡): 평생·신년·이달의운세·오늘운세(daily) 인덱스는 ko·ja·zh만 색인 → en만 제외.
+      // (자동수집 페이지. today/[zodiac]는 사이트맵 소스 urls.ts가 ko·ja·zh만 발행하므로 제외 불필요.)
+      '/en/fortune/lifetime', '/en/fortune/newyear', '/en/fortune/month', '/en/daily',
     ],
     // 동적 라우트(/fortune/today/[zodiac])는 자동수집되지 않으므로 명시 소스로 12 URL 등록.
     sources: ['/api/__sitemap__/urls'],

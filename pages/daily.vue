@@ -2,6 +2,9 @@
 // 띠별 오늘의 운세 — daily_horoscope 실연동. 입력/로그인 없이 보는 공개 운세.
 // 복사(클립보드) + 공유(Web Share API → 모바일은 카톡 포함 네이티브 시트, PC는 URL 복사).
 // 레거시 DailyHoroscope.vue 구조를 2.0 디자인 언어로 포팅.
+// 부분글로벌 — 검색 노출은 ko·ja·zh(오늘운세 인덱스). en 페이지는 noindex+사이트맵 제외.
+// (메뉴/내부 링크는 전 언어 그대로 유지 — SEO 레이어만 한정)
+definePageMeta({ seoLocales: ['ko', 'ja', 'zh'] })
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
 
