@@ -62,7 +62,13 @@ export default defineNuxtConfig({
   // 개인화·결제·인증 경로는 색인 제외(개별 페이지의 robots:noindex와 함께 이중 방어).
   // 공개 색인 대상: 홈/무료운세 소개/띠별운세/FAQ/약관·개인정보 등.
   sitemap: {
-    exclude: ['/mypage', '/library', '/checkout', '/saju', '/login', '/confirm', '/reset-password', '/pay/**', '/result/**'],
+    exclude: [
+      '/mypage', '/library', '/checkout', '/saju', '/login', '/confirm', '/reset-password', '/pay/**', '/result/**',
+      // 한국특화(🔴): 로또·토정비결은 한국어만 색인. 외국어 버전은 사이트맵 제외 + 페이지 noindex.
+      // exclude는 i18n 대체언어 생성보다 먼저 적용되므로, 살아남는 ko 엔트리의 alternates에서도 자동 제거됨.
+      '/en/fortune/lotto', '/ja/fortune/lotto', '/zh/fortune/lotto',
+      '/en/fortune/tojung', '/ja/fortune/tojung', '/zh/fortune/tojung',
+    ],
     // 동적 라우트(/fortune/today/[zodiac])는 자동수집되지 않으므로 명시 소스로 12 URL 등록.
     sources: ['/api/__sitemap__/urls'],
   },
