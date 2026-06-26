@@ -72,8 +72,9 @@ export default defineNuxtConfig({
       // (자동수집 페이지. today/[zodiac]는 사이트맵 소스 urls.ts가 ko·ja·zh만 발행하므로 제외 불필요.)
       '/en/fortune/lifetime', '/en/fortune/newyear', '/en/fortune/month', '/en/daily',
     ],
-    // 동적 라우트(/fortune/today/[zodiac])는 자동수집되지 않으므로 명시 소스로 12 URL 등록.
-    sources: ['/api/__sitemap__/urls'],
+    // 동적 라우트는 자동수집되지 않으므로 명시 소스로 등록:
+    //  urls = 띠별 오늘의 운세 12 URL(ko·ja·zh), mbti = MBTI 궁합 544 URL(ko·en·ja·zh).
+    sources: ['/api/__sitemap__/urls', '/api/__sitemap__/mbti'],
   },
   robots: {
     disallow: ['/mypage', '/library', '/checkout', '/saju', '/login', '/confirm', '/reset-password', '/pay/', '/result/'],
