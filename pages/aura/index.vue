@@ -1,44 +1,48 @@
 <script setup>
 // AURA 앱 랜딩 — 1.0 AuraLanding.vue 포팅. standalone(별도 제품), 마케팅 페이지라 index 허용.
+// 4개국어(ko·en·ja·zh): 텍스트는 aura.lp.* 평면 키, 코너 스위처/hreflang/자동감지는 <AuraLangSwitch/>.
 definePageMeta({ layout: false })
+const { t } = useI18n()
+const localePath = useLocalePath()
 useSeoMeta({
-  title: 'AURA — AI 관상·손금 | 온디바이스 AI',
-  description: 'Google Gemma 온디바이스 AI로 얼굴과 손을 분석하는 AI 관상·손금 앱. 사진은 서버로 전송되지 않습니다. 관상·손금 100% 무료.',
-  ogTitle: 'AURA — AI 관상·손금',
-  ogDescription: 'Google Gemma 온디바이스 AI가 읽어주는 AI 관상·손금. 사진은 서버 미전송, 100% 무료.',
+  title: () => t('aura.lp.seoTitle'),
+  description: () => t('aura.lp.seoDesc'),
+  ogTitle: () => t('aura.lp.ogTitle'),
+  ogDescription: () => t('aura.lp.ogDesc'),
   robots: 'index, follow',
 })
 </script>
 
 <template>
   <div class="aura-landing">
+    <AuraLangSwitch />
 
     <!-- ─── HERO ─────────────────────────────── -->
     <section class="hero">
       <div class="hero-bg-glow"></div>
       <div class="hero-topbar">
         <span class="hero-logo">AURA</span>
+        <NuxtLink :to="localePath('/')" class="taounse-link">{{ t('aura.lp.taounse.nav') }}</NuxtLink>
       </div>
       <div class="hero-inner">
         <div class="hero-text">
-          <p class="hero-eyebrow">얼굴과 손으로 읽는</p>
-          <h1>AI 관상 · 손금</h1>
+          <p class="hero-eyebrow">{{ t('aura.lp.hero.eyebrow') }}</p>
+          <h1>{{ t('aura.lp.hero.title') }}</h1>
           <p class="hero-desc">
-            Google Gemma 온디바이스 AI가<br>
-            당신의 얼굴과 손에 담긴 이야기를 읽어드립니다.<br>
-            <span class="free-badge">✨ 관상 · 손금 100% 무료</span>
-            <span class="privacy-badge">🔒 사진은 절대 서버로 전송되지 않습니다</span>
+            <span v-html="t('aura.lp.hero.desc.html')"></span><br>
+            <span class="free-badge">{{ t('aura.lp.hero.freeBadge') }}</span>
+            <span class="privacy-badge">{{ t('aura.lp.hero.privacyBadge') }}</span>
           </p>
           <div class="cta-group">
             <a href="https://play.google.com/store/apps/details?id=kr.co.taoist.gwansang" class="cta-btn" target="_blank" rel="noopener noreferrer">
               <img src="/aura/googleplay.png" alt="" class="store-icon" />
-              설치하기
+              {{ t('aura.lp.install') }}
             </a>
           </div>
         </div>
         <div class="hero-phone">
           <div class="phone-frame">
-            <img src="/aura/1.jpg" alt="Aura 앱 홈 화면" />
+            <img src="/aura/1.jpg" :alt="t('aura.lp.hero.phoneAlt')" />
           </div>
           <div class="phone-glow"></div>
         </div>
@@ -51,27 +55,27 @@ useSeoMeta({
       <div class="stats-inner">
         <div class="stat-item">
           <span class="stat-num">468</span>
-          <span class="stat-label">얼굴 특징점</span>
+          <span class="stat-label">{{ t('aura.lp.stats.face') }}</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
           <span class="stat-num">21</span>
-          <span class="stat-label">손 키포인트</span>
+          <span class="stat-label">{{ t('aura.lp.stats.hand') }}</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <span class="stat-num">1,000<span class="stat-unit">자+</span></span>
-          <span class="stat-label">심층 분석 리포트</span>
+          <span class="stat-num">1,000<span class="stat-unit">{{ t('aura.lp.stats.reportUnit') }}</span></span>
+          <span class="stat-label">{{ t('aura.lp.stats.report') }}</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
           <span class="stat-num">4</span>
-          <span class="stat-label">지원 언어</span>
+          <span class="stat-label">{{ t('aura.lp.stats.lang') }}</span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
           <span class="stat-num">0<span class="stat-unit">byte</span></span>
-          <span class="stat-label">클라우드 업로드</span>
+          <span class="stat-label">{{ t('aura.lp.stats.cloud') }}</span>
         </div>
       </div>
     </section>
@@ -81,24 +85,20 @@ useSeoMeta({
       <div class="feature-inner">
         <div class="feature-phone">
           <div class="phone-frame phone-frame--sm">
-            <img src="/aura/2.jpg" alt="AI 관상 분석 화면" />
+            <img src="/aura/2.jpg" :alt="t('aura.lp.f1.alt')" />
           </div>
           <div class="feature-badge">相</div>
         </div>
         <div class="feature-text">
-          <p class="feature-eyebrow">AI 관상 · 100% 무료</p>
-          <h2>468개 얼굴 특징점으로<br>당신의 관상을 읽다</h2>
-          <p class="feature-desc">
-            MediaPipe 기반 정밀 랜드마크 인식으로 이마·눈·코·입·턱의
-            형태를 분석합니다. 20년 경력의 관상학 전문가 수준의
-            해석을 AI가 단 3분 만에 제공합니다.
-          </p>
+          <p class="feature-eyebrow">{{ t('aura.lp.f1.eyebrow') }}</p>
+          <h2 v-html="t('aura.lp.f1.title.html')"></h2>
+          <p class="feature-desc">{{ t('aura.lp.f1.desc') }}</p>
           <ul class="feature-points">
-            <li>이마 — 지혜와 초년운</li>
-            <li>눈 — 총명함과 감정</li>
-            <li>코 — 재물운과 의지력</li>
-            <li>입 — 언변과 인복</li>
-            <li>턱 — 말년운과 근기</li>
+            <li>{{ t('aura.lp.f1.p1') }}</li>
+            <li>{{ t('aura.lp.f1.p2') }}</li>
+            <li>{{ t('aura.lp.f1.p3') }}</li>
+            <li>{{ t('aura.lp.f1.p4') }}</li>
+            <li>{{ t('aura.lp.f1.p5') }}</li>
           </ul>
         </div>
       </div>
@@ -108,22 +108,19 @@ useSeoMeta({
     <section class="feature feature--left feature--dark">
       <div class="feature-inner">
         <div class="feature-text">
-          <p class="feature-eyebrow">AI 손금 · 100% 무료</p>
-          <h2>21개 손 특징점으로<br>운명선을 해석하다</h2>
-          <p class="feature-desc">
-            생명선 · 감정선 · 지혜선 · 운명선을 AI가 실시간으로 인식합니다.
-            카메라를 향해 손을 펼치기만 하면, 수상학의 비밀이 3분 안에 풀립니다.
-          </p>
+          <p class="feature-eyebrow">{{ t('aura.lp.f2.eyebrow') }}</p>
+          <h2 v-html="t('aura.lp.f2.title.html')"></h2>
+          <p class="feature-desc">{{ t('aura.lp.f2.desc') }}</p>
           <ul class="feature-points">
-            <li>생명선 — 건강과 활력</li>
-            <li>감정선 — 사랑과 인간관계</li>
-            <li>지혜선 — 사고력과 직관</li>
-            <li>운명선 — 삶의 방향성</li>
+            <li>{{ t('aura.lp.f2.p1') }}</li>
+            <li>{{ t('aura.lp.f2.p2') }}</li>
+            <li>{{ t('aura.lp.f2.p3') }}</li>
+            <li>{{ t('aura.lp.f2.p4') }}</li>
           </ul>
         </div>
         <div class="feature-phone">
           <div class="phone-frame phone-frame--sm">
-            <img src="/aura/3.jpg" alt="AI 손금 분석 화면" />
+            <img src="/aura/3.jpg" :alt="t('aura.lp.f2.alt')" />
           </div>
           <div class="feature-badge">掌</div>
         </div>
@@ -135,22 +132,18 @@ useSeoMeta({
       <div class="feature-inner">
         <div class="feature-phone">
           <div class="phone-frame phone-frame--sm">
-            <img src="/aura/4.jpg" alt="AI 상담 채팅 화면" />
+            <img src="/aura/4.jpg" :alt="t('aura.lp.f3.alt')" />
           </div>
           <div class="feature-badge">談</div>
         </div>
         <div class="feature-text">
-          <p class="feature-eyebrow">AI 상담 · Gemma 4 LLM</p>
-          <h2>분석 후, AI에게<br>직접 물어보세요</h2>
-          <p class="feature-desc">
-            관상·손금 분석이 끝나면 Google Gemma 4 기반 AI와
-            1:1 채팅이 시작됩니다. "내 재물운은 언제 좋아지나요?",
-            "이마가 넓으면 어떤 의미인가요?" — 궁금한 걸 바로 물어보세요.
-          </p>
+          <p class="feature-eyebrow">{{ t('aura.lp.f3.eyebrow') }}</p>
+          <h2 v-html="t('aura.lp.f3.title.html')"></h2>
+          <p class="feature-desc">{{ t('aura.lp.f3.desc') }}</p>
           <ul class="feature-points">
-            <li>분석 결과 기반 맥락 대화</li>
-            <li>추가 질문으로 심층 해석 요청</li>
-            <li>모든 대화도 기기 내에서만 처리</li>
+            <li>{{ t('aura.lp.f3.p1') }}</li>
+            <li>{{ t('aura.lp.f3.p2') }}</li>
+            <li>{{ t('aura.lp.f3.p3') }}</li>
           </ul>
         </div>
       </div>
@@ -160,22 +153,18 @@ useSeoMeta({
     <section class="report-section">
       <div class="report-inner">
         <div class="report-text">
-          <p class="feature-eyebrow">심층 리포트</p>
-          <h2>리포트가<br>준비되었어요</h2>
-          <p class="feature-desc">
-            단순한 키워드가 아닙니다. 부위별 상세 해석과
-            전체적인 조화까지, 마치 전문가가 직접 읽어주는
-            수준의 심층 분석 리포트를 제공합니다.
-          </p>
+          <p class="feature-eyebrow">{{ t('aura.lp.report.eyebrow') }}</p>
+          <h2 v-html="t('aura.lp.report.title.html')"></h2>
+          <p class="feature-desc">{{ t('aura.lp.report.desc') }}</p>
           <div class="trust-score">
-            <span class="trust-label">분석 신뢰도</span>
+            <span class="trust-label">{{ t('aura.lp.report.trustLabel') }}</span>
             <span class="trust-value">100</span>
           </div>
-          <p class="report-cta-note">분석 후 AI에게 직접 질문하고 대화할 수 있습니다 →</p>
+          <p class="report-cta-note">{{ t('aura.lp.report.ctaNote') }}</p>
         </div>
         <div class="report-phone">
           <div class="phone-frame phone-frame--sm">
-            <img src="/aura/4.jpg" alt="분석 결과 리포트 화면" />
+            <img src="/aura/4.jpg" :alt="t('aura.lp.report.alt')" />
           </div>
         </div>
       </div>
@@ -187,17 +176,13 @@ useSeoMeta({
         <div class="privacy-icon-wrap">
           <span class="privacy-big-icon">🔒</span>
         </div>
-        <h2>당신의 사진은<br>절대 서버로 전송되지 않습니다</h2>
-        <p>
-          관상·손금 분석은 Google Gemma 온디바이스 AI를 통해
-          오직 <strong>이용자의 기기 안</strong>에서만 이루어집니다.
-          원본 이미지는 어디에도 업로드되지 않습니다.
-        </p>
+        <h2 v-html="t('aura.lp.privacy.title.html')"></h2>
+        <p v-html="t('aura.lp.privacy.desc.html')"></p>
         <div class="privacy-chips">
-          <span class="chip">Google Gemma On-Device</span>
-          <span class="chip">MediaPipe 랜드마크</span>
-          <span class="chip">이미지 서버 미전송</span>
-          <span class="chip">최소 데이터 수집</span>
+          <span class="chip">{{ t('aura.lp.privacy.chip1') }}</span>
+          <span class="chip">{{ t('aura.lp.privacy.chip2') }}</span>
+          <span class="chip">{{ t('aura.lp.privacy.chip3') }}</span>
+          <span class="chip">{{ t('aura.lp.privacy.chip4') }}</span>
         </div>
       </div>
     </section>
@@ -205,28 +190,28 @@ useSeoMeta({
     <!-- ─── TECH STACK ──────────────────────────── -->
     <section class="tech-section">
       <div class="tech-inner">
-        <p class="feature-eyebrow" style="text-align:center">기술 스택</p>
-        <h2 class="tech-title">검증된 기술로<br>만든 앱</h2>
+        <p class="feature-eyebrow" style="text-align:center">{{ t('aura.lp.tech.eyebrow') }}</p>
+        <h2 class="tech-title" v-html="t('aura.lp.tech.title.html')"></h2>
         <div class="tech-grid">
           <div class="tech-card">
             <span class="tech-icon">🤖</span>
             <span class="tech-name">Google Gemma 4</span>
-            <span class="tech-desc">온디바이스 LLM<br>E2B · E4B 지원</span>
+            <span class="tech-desc" v-html="t('aura.lp.tech.t1.desc.html')"></span>
           </div>
           <div class="tech-card">
             <span class="tech-icon">👁️</span>
             <span class="tech-name">Google ML Kit</span>
-            <span class="tech-desc">Face Mesh<br>Hand Landmark</span>
+            <span class="tech-desc" v-html="t('aura.lp.tech.t2.desc.html')"></span>
           </div>
           <div class="tech-card">
             <span class="tech-icon">📱</span>
             <span class="tech-name">Flutter</span>
-            <span class="tech-desc">크로스플랫폼<br>네이티브 성능</span>
+            <span class="tech-desc" v-html="t('aura.lp.tech.t3.desc.html')"></span>
           </div>
           <div class="tech-card">
             <span class="tech-icon">🗄️</span>
             <span class="tech-name">Supabase</span>
-            <span class="tech-desc">인증 · 기록 동기화<br>RLS 보안 정책</span>
+            <span class="tech-desc" v-html="t('aura.lp.tech.t4.desc.html')"></span>
           </div>
         </div>
       </div>
@@ -238,24 +223,21 @@ useSeoMeta({
 
         <div class="duo-card">
           <div class="phone-frame phone-frame--sm">
-            <img src="/aura/7.jpg" alt="분석 기록 화면" />
+            <img src="/aura/7.jpg" :alt="t('aura.lp.duo1.alt')" />
           </div>
           <div class="duo-card-text">
-            <h3>나와 가족의 기록을<br>한 곳에서</h3>
-            <p>관상·손금 분석 기록을 날짜별로 저장하고,
-              언제든 다시 꺼내볼 수 있습니다.
-              로그인 시 다른 기기에서도 조회 가능합니다.</p>
+            <h3 v-html="t('aura.lp.duo1.title.html')"></h3>
+            <p>{{ t('aura.lp.duo1.desc') }}</p>
           </div>
         </div>
 
         <div class="duo-card">
           <div class="phone-frame phone-frame--sm">
-            <img src="/aura/5.jpg" alt="로그인 화면" />
+            <img src="/aura/5.jpg" :alt="t('aura.lp.duo2.alt')" />
           </div>
           <div class="duo-card-text">
-            <h3>Google · 카카오로<br>간편하게 시작</h3>
-            <p>별도 회원가입 없이 소셜 계정으로 바로 시작하세요.
-              비로그인 게스트로도 무료 분석을 이용할 수 있습니다.</p>
+            <h3 v-html="t('aura.lp.duo2.title.html')"></h3>
+            <p>{{ t('aura.lp.duo2.desc') }}</p>
           </div>
         </div>
 
@@ -265,38 +247,38 @@ useSeoMeta({
     <!-- ─── ROADMAP ─────────────────────────────── -->
     <section class="roadmap-section">
       <div class="roadmap-inner">
-        <p class="feature-eyebrow" style="text-align:center">로드맵</p>
-        <h2 class="roadmap-title">앞으로 더 나아갑니다</h2>
+        <p class="feature-eyebrow" style="text-align:center">{{ t('aura.lp.roadmap.eyebrow') }}</p>
+        <h2 class="roadmap-title">{{ t('aura.lp.roadmap.title') }}</h2>
         <div class="roadmap-grid">
           <div class="roadmap-card roadmap-card--done">
-            <span class="roadmap-status">✅ 완료</span>
-            <h4>AI 관상 · 손금 분석</h4>
-            <p>468개 얼굴 특징점, 21개 손 키포인트 분석</p>
+            <span class="roadmap-status">{{ t('aura.lp.roadmap.doneLabel') }}</span>
+            <h4>{{ t('aura.lp.roadmap.r1.title') }}</h4>
+            <p>{{ t('aura.lp.roadmap.r1.desc') }}</p>
           </div>
           <div class="roadmap-card roadmap-card--done">
-            <span class="roadmap-status">✅ 완료</span>
-            <h4>AI 상담 채팅</h4>
-            <p>Gemma 4 기반 분석 후 심층 질의응답</p>
+            <span class="roadmap-status">{{ t('aura.lp.roadmap.doneLabel') }}</span>
+            <h4>{{ t('aura.lp.roadmap.r2.title') }}</h4>
+            <p>{{ t('aura.lp.roadmap.r2.desc') }}</p>
           </div>
           <div class="roadmap-card roadmap-card--done">
-            <span class="roadmap-status">✅ 완료</span>
-            <h4>4개국어 지원</h4>
-            <p>한국어 · 영어 · 중국어 · 일본어</p>
+            <span class="roadmap-status">{{ t('aura.lp.roadmap.doneLabel') }}</span>
+            <h4>{{ t('aura.lp.roadmap.r3.title') }}</h4>
+            <p>{{ t('aura.lp.roadmap.r3.desc') }}</p>
           </div>
           <div class="roadmap-card roadmap-card--wip">
-            <span class="roadmap-status">🔄 진행 중</span>
-            <h4>RAG 심층 분석</h4>
-            <p>전문 지식 데이터베이스 기반 고급 해석</p>
+            <span class="roadmap-status">{{ t('aura.lp.roadmap.wipLabel') }}</span>
+            <h4>{{ t('aura.lp.roadmap.r4.title') }}</h4>
+            <p>{{ t('aura.lp.roadmap.r4.desc') }}</p>
           </div>
           <div class="roadmap-card roadmap-card--plan">
-            <span class="roadmap-status">📋 예정</span>
-            <h4>iOS 지원</h4>
-            <p>아이폰 사용자를 위한 앱 출시</p>
+            <span class="roadmap-status">{{ t('aura.lp.roadmap.planLabel') }}</span>
+            <h4>{{ t('aura.lp.roadmap.r5.title') }}</h4>
+            <p>{{ t('aura.lp.roadmap.r5.desc') }}</p>
           </div>
           <div class="roadmap-card roadmap-card--plan">
-            <span class="roadmap-status">📋 예정</span>
-            <h4>사주(四柱) 모듈</h4>
-            <p>생년월일 기반 동양 점성술 통합</p>
+            <span class="roadmap-status">{{ t('aura.lp.roadmap.planLabel') }}</span>
+            <h4>{{ t('aura.lp.roadmap.r6.title') }}</h4>
+            <p>{{ t('aura.lp.roadmap.r6.desc') }}</p>
           </div>
         </div>
       </div>
@@ -306,22 +288,19 @@ useSeoMeta({
     <section class="settings-section">
       <div class="settings-inner">
         <div class="settings-text">
-          <p class="feature-eyebrow">글로벌 지원</p>
-          <h2>4개 언어,<br>어디서나 자유롭게</h2>
+          <p class="feature-eyebrow">{{ t('aura.lp.settings.eyebrow') }}</p>
+          <h2 v-html="t('aura.lp.settings.title.html')"></h2>
           <div class="lang-list">
             <span class="lang-item">🇰🇷 한국어</span>
             <span class="lang-item">🇺🇸 English</span>
             <span class="lang-item">🇨🇳 中文</span>
             <span class="lang-item">🇯🇵 日本語</span>
           </div>
-          <p class="feature-desc" style="margin-top:24px">
-            GPU 가속 AI 모델(E2B·GPU)을 지원하여
-            기기 성능에 맞는 최적 분석 속도를 제공합니다.
-          </p>
+          <p class="feature-desc" style="margin-top:24px">{{ t('aura.lp.settings.desc') }}</p>
         </div>
         <div class="settings-phone">
           <div class="phone-frame phone-frame--sm">
-            <img src="/aura/6.jpg" alt="설정 화면" />
+            <img src="/aura/6.jpg" :alt="t('aura.lp.settings.alt')" />
           </div>
         </div>
       </div>
@@ -331,26 +310,27 @@ useSeoMeta({
     <section class="cta-footer">
       <div class="cta-footer-glow"></div>
       <div class="cta-footer-inner">
-        <p class="cta-eyebrow">지금 시작하세요</p>
-        <h2>얼굴과 손에 담긴<br>당신의 이야기</h2>
+        <p class="cta-eyebrow">{{ t('aura.lp.cta.eyebrow') }}</p>
+        <h2 v-html="t('aura.lp.cta.title.html')"></h2>
         <a href="https://play.google.com/store/apps/details?id=kr.co.taoist.gwansang" class="cta-btn cta-btn--lg" target="_blank" rel="noopener noreferrer">
           <img src="/aura/googleplay.png" alt="" class="store-icon" />
-          설치하기
+          {{ t('aura.lp.install') }}
         </a>
         <a href="https://github.com/darktaoist/aura" class="github-btn" target="_blank" rel="noopener noreferrer">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-          GitHub에서 보기
+          {{ t('aura.lp.cta.github') }}
         </a>
+        <NuxtLink :to="localePath('/')" class="taounse-footer-link">{{ t('aura.lp.taounse.footer') }}</NuxtLink>
         <div class="footer-legal-links">
-          <NuxtLink to="/aura/privacy">개인정보처리방침</NuxtLink>
+          <NuxtLink :to="localePath('/aura/privacy')">{{ t('aura.nav.privacy') }}</NuxtLink>
           <span class="divider">|</span>
-          <NuxtLink to="/aura/terms">이용약관</NuxtLink>
+          <NuxtLink :to="localePath('/aura/terms')">{{ t('aura.nav.terms') }}</NuxtLink>
           <span class="divider">|</span>
-          <NuxtLink to="/aura/support">지원/문의</NuxtLink>
+          <NuxtLink :to="localePath('/aura/support')">{{ t('aura.nav.support') }}</NuxtLink>
           <span class="divider">|</span>
-          <NuxtLink to="/aura/delete-account">계정 삭제</NuxtLink>
+          <NuxtLink :to="localePath('/aura/delete-account')">{{ t('aura.nav.delete') }}</NuxtLink>
         </div>
-        <p class="footer-copy">© 2026 돌마당소프트. All rights reserved.</p>
+        <p class="footer-copy">{{ t('aura.lp.cta.copy') }}</p>
       </div>
     </section>
 
@@ -427,9 +407,31 @@ $radius:    20px;
   position: absolute;
   top: 24px;
   left: 40px;
+  display: flex;
+  align-items: center;
+  gap: 18px;            // AURA 로고 + 타오운세 링크를 좌측에 나란히(우측 상단 언어 스위처와 겹치지 않게)
   z-index: 10;
 
-  @media (max-width: 860px) { left: 24px; }
+  @media (max-width: 860px) { left: 24px; gap: 12px; }
+}
+
+// 타오운세(웹 운세)로 보내는 골드 고스트 버튼 — Play CTA(꽉 찬 골드)와 구분.
+.taounse-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: $gold-lt;
+  border: 1px solid rgba($gold, 0.35);
+  border-radius: 999px;
+  background: rgba($gold, 0.06);
+  transition: background 0.18s, border-color 0.18s;
+
+  &:hover { background: rgba($gold, 0.16); border-color: rgba($gold, 0.6); }
+  @media (max-width: 860px) { font-size: 13px; padding: 7px 13px; }
 }
 
 .hero-logo {
@@ -896,6 +898,21 @@ $radius:    20px;
   margin: 0 0 40px;
   line-height: 1.25;
   @media (max-width: 768px) { font-size: 30px; }
+}
+
+// 타오운세 웹 운세로 보내는 푸터 링크 — 자체 줄에 가운데 정렬(기존 버튼 레이아웃 불간섭).
+.taounse-footer-link {
+  display: block;
+  width: fit-content;
+  margin: 32px auto 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: $gold-lt;
+  border-bottom: 1px solid rgba($gold, 0.4);
+  padding-bottom: 3px;
+  transition: color 0.18s, border-color 0.18s;
+
+  &:hover { color: $gold; border-color: $gold; }
 }
 
 .footer-legal-links {

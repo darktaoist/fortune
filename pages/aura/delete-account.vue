@@ -1,8 +1,10 @@
 <script setup>
-// AURA 앱 계정 삭제 요청 — 1.0 AuraDeleteAccount.vue 포팅(options API → script setup).
-// 플레이스토어 필수 URL(/aura/delete-account).
+// AURA 앱 계정 삭제 요청 — 1.0 AuraDeleteAccount.vue 포팅. 플레이스토어 필수 URL(/aura/delete-account).
+// 4개국어: 안내 prose는 granular 키, 폼 label/placeholder/에러/메일도 키. 메일 본문은 {email}{provider}{reason} 보간.
 definePageMeta({ layout: false })
-useSeoMeta({ title: '계정 삭제 요청 | AURA', robots: 'noindex, nofollow' })
+const { t } = useI18n()
+const localePath = useLocalePath()
+useSeoMeta({ title: () => t('aura.delete.seoTitle'), robots: 'noindex, nofollow' })
 const router = useRouter()
 
 const submitted = ref(false)
@@ -11,13 +13,17 @@ const form = reactive({ email: '', provider: '', reason: '' })
 
 function submitRequest() {
   if (!form.email || !form.provider) {
-    error.value = '이메일 주소와 소셜 계정 종류는 필수 입력 항목입니다.'
+    error.value = t('aura.delete.errRequired')
     return
   }
   error.value = ''
-  const subject = encodeURIComponent('[Aura] 계정 삭제 요청')
+  const subject = encodeURIComponent(t('aura.delete.mailSubject'))
   const body = encodeURIComponent(
-    `계정 삭제를 요청합니다.\n\n가입 이메일: ${form.email}\n소셜 계정: ${form.provider}\n삭제 사유: ${form.reason || '미입력'}\n\n---\nAura 앱 계정 삭제 요청`
+    t('aura.delete.mailBody', {
+      email: form.email,
+      provider: form.provider,
+      reason: form.reason || t('aura.delete.reasonEmpty'),
+    }),
   )
   window.location.href = `mailto:help@taoist.co.kr?subject=${subject}&body=${body}`
   submitted.value = true
@@ -26,72 +32,73 @@ function submitRequest() {
 
 <template>
   <div class="legal-page">
+    <AuraLangSwitch />
     <div class="legal-header">
-      <span class="back-btn" @click="router.back()">← 뒤로</span>
-      <h1>계정 삭제 요청</h1>
-      <span class="app-badge">Aura 앱</span>
+      <span class="back-btn" @click="router.back()">{{ t('aura.legal.back') }}</span>
+      <h1>{{ t('aura.delete.h1') }}</h1>
+      <span class="app-badge">{{ t('aura.legal.badge') }}</span>
     </div>
 
     <div class="legal-body">
       <div class="disclaimer-box" style="margin-bottom: 32px">
-        <strong>⚠️ 삭제 전 반드시 확인하세요</strong>
-        계정 삭제는 영구적이며 복구할 수 없습니다. 아래 데이터가 모두 삭제됩니다.
+        <strong>{{ t('aura.delete.warnTitle') }}</strong>
+        {{ t('aura.delete.warnDesc') }}
       </div>
 
       <section>
-        <h2>삭제되는 데이터</h2>
+        <h2>{{ t('aura.delete.dataTitle') }}</h2>
         <ul>
-          <li>Supabase에 저장된 모든 관상·손금 분석 결과 및 기록</li>
-          <li>프로필 정보 (이메일 주소, 표시 이름)</li>
-          <li>Google / Kakao OAuth 연동 정보</li>
-          <li>결제 이력 및 구매한 콘텐츠 이용 권한</li>
+          <li>{{ t('aura.delete.data1') }}</li>
+          <li>{{ t('aura.delete.data2') }}</li>
+          <li>{{ t('aura.delete.data3') }}</li>
+          <li>{{ t('aura.delete.data4') }}</li>
         </ul>
-        <p>처리 기간: 요청 접수 후 <strong>영업일 기준 7일 이내</strong> 완료됩니다.</p>
+        <p v-html="t('aura.delete.period.html')"></p>
       </section>
 
       <section>
-        <h2>방법 1 — 앱에서 직접 삭제</h2>
-        <p>앱 내 <strong>설정 → 계정 → 계정 삭제</strong> 메뉴를 이용하면 즉시 삭제 절차가 시작됩니다. (가장 빠른 방법)</p>
+        <h2>{{ t('aura.delete.m1Title') }}</h2>
+        <p v-html="t('aura.delete.m1Desc.html')"></p>
       </section>
 
       <section>
-        <h2>방법 2 — 이메일로 삭제 요청</h2>
-        <p>앱을 사용할 수 없는 경우 아래 양식을 작성하여 이메일로 요청하세요.</p>
+        <h2>{{ t('aura.delete.m2Title') }}</h2>
+        <p>{{ t('aura.delete.m2Desc') }}</p>
 
         <div v-if="!submitted" class="delete-form">
           <div class="form-group">
-            <label>가입 이메일 주소 <span class="required">*</span></label>
-            <input v-model="form.email" type="email" placeholder="example@email.com" />
+            <label>{{ t('aura.delete.fEmail') }} <span class="required">*</span></label>
+            <input v-model="form.email" type="email" :placeholder="t('aura.delete.fEmailPh')" />
           </div>
           <div class="form-group">
-            <label>가입 시 사용한 소셜 계정 <span class="required">*</span></label>
+            <label>{{ t('aura.delete.fProvider') }} <span class="required">*</span></label>
             <select v-model="form.provider">
-              <option value="">선택하세요</option>
+              <option value="">{{ t('aura.delete.fProviderPh') }}</option>
               <option value="google">Google</option>
               <option value="kakao">Kakao</option>
             </select>
           </div>
           <div class="form-group">
-            <label>삭제 사유 (선택)</label>
-            <textarea v-model="form.reason" rows="3" placeholder="삭제 사유를 입력하시면 서비스 개선에 도움이 됩니다."></textarea>
+            <label>{{ t('aura.delete.fReason') }}</label>
+            <textarea v-model="form.reason" rows="3" :placeholder="t('aura.delete.fReasonPh')"></textarea>
           </div>
 
           <p v-if="error" class="form-error">{{ error }}</p>
 
-          <button class="delete-btn" @click="submitRequest">삭제 요청 이메일 보내기</button>
+          <button class="delete-btn" @click="submitRequest">{{ t('aura.delete.submit') }}</button>
         </div>
 
         <div v-else class="submitted-msg">
-          <p>✅ 이메일 클라이언트가 열립니다. 작성된 내용을 확인 후 전송해 주세요.</p>
-          <p>전송 완료 후 영업일 기준 7일 이내에 처리 결과를 안내드립니다.</p>
-          <button class="reset-btn" @click="submitted = false">다시 작성</button>
+          <p>{{ t('aura.delete.okMsg1') }}</p>
+          <p>{{ t('aura.delete.okMsg2') }}</p>
+          <button class="reset-btn" @click="submitted = false">{{ t('aura.delete.reset') }}</button>
         </div>
       </section>
 
       <div class="footer-links">
-        <NuxtLink to="/aura">← Aura 홈</NuxtLink>
-        <NuxtLink to="/aura/privacy">개인정보처리방침</NuxtLink>
-        <NuxtLink to="/aura/support">지원/문의</NuxtLink>
+        <NuxtLink :to="localePath('/aura')">{{ t('aura.nav.home') }}</NuxtLink>
+        <NuxtLink :to="localePath('/aura/privacy')">{{ t('aura.nav.privacy') }}</NuxtLink>
+        <NuxtLink :to="localePath('/aura/support')">{{ t('aura.nav.support') }}</NuxtLink>
       </div>
     </div>
   </div>

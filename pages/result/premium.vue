@@ -347,6 +347,46 @@ async function onSave() {
   saving.value = false
   alert(error ? error.message : t('result.saved'))
 }
+
+/* ---- 결과 복사 / 공유 (카톡 등) ---- */
+// 공유 URL은 결과 페이지(게이트·noindex)가 아니라 공개 랜딩으로 — 수신자가 자기 운세를 시작할 수 있게.
+const SHARE_SITE = 'https://taoist.co.kr'
+const SHARE_LANDING = { lifetime: '/fortune/lifetime', newyear: '/fortune/newyear' }
+const shareUrl = computed(() => SHARE_SITE + localePath(SHARE_LANDING[service.value] || '/'))
+
+// 제목 + 본인 + 각 섹션(글자·제목·본문)을 카톡에 붙이기 좋은 평문으로 조립.
+function buildShareText() {
+  const subj = displaySubject.value?.name
+  const lines = [subj ? `${heroTitle.value} — ${subj}` : heroTitle.value, '']
+  for (const s of displaySections.value) {
+    lines.push(`【${s.glyph}】 ${t(s.titleKey)}`)
+    lines.push((s.body || '').trim())
+    lines.push('')
+  }
+  lines.push(t('result.shareFooter', { url: shareUrl.value }))
+  return lines.join('\n').trim()
+}
+
+const toast = ref('')
+let toastTimer
+function showToast(msg) {
+  toast.value = msg
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toast.value = '' }, 2000)
+}
+async function copyResult() {
+  try { await navigator.clipboard.writeText(buildShareText()); showToast(t('result.copied')) }
+  catch { showToast(t('result.copyFail')) }
+}
+async function shareResult() {
+  // 모바일: 네이티브 공유 시트(카톡·메시지 등). 미지원(데스크톱)이면 복사로 폴백.
+  if (import.meta.client && navigator.share) {
+    try { await navigator.share({ title: heroTitle.value, text: buildShareText(), url: shareUrl.value }) } catch { /* 사용자 취소 */ }
+  } else {
+    await copyResult()
+  }
+}
+onBeforeUnmount(() => clearTimeout(toastTimer))
 </script>
 
 <template>
@@ -417,6 +457,12 @@ async function onSave() {
           </div>
         </template>
 
+        <!-- 결과 복사 / 공유 (카톡 등) — 생성 완료 시 노출 -->
+        <div v-if="displaySections.length && !loading" class="share-row">
+          <button class="share-btn" @click="copyResult">📋 {{ t('result.copy') }}</button>
+          <button class="share-btn primary" @click="shareResult">💬 {{ t('result.share') }}</button>
+        </div>
+
         <!-- 숏폼 영상 공유 (궁합 한정, 로컬 검증용) -->
         <ClientOnly>
           <ShareVideoModal
@@ -475,6 +521,10 @@ async function onSave() {
         <ReviewForm v-if="!loading && sections.length && service && current && current.year && !sampleMode" :type-key="service" />
       </template>
     </div>
+
+    <transition name="toast">
+      <div v-if="toast" class="toast">{{ toast }}</div>
+    </transition>
   </main>
 </template>
 
@@ -538,6 +588,16 @@ async function onSave() {
 .result-actions .action-row { display: flex; gap: var(--space-3); flex-wrap: wrap; justify-content: center; }
 .result-actions .save-hint { display: inline-flex; align-items: center; gap: 7px; color: var(--text-muted); font-size: var(--text-sm); text-align: center; }
 .result-actions .save-hint::before { content: '🔖'; font-size: var(--text-base); opacity: 0.85; }
+
+.share-row { display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap; margin-top: var(--space-8); }
+.share-btn { display: inline-flex; align-items: center; gap: 7px; padding: 11px 22px; border-radius: var(--radius-full); border: 1px solid var(--gold-border); background: var(--bg-secondary); color: var(--text-secondary); font-size: var(--text-sm); font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.share-btn:hover { border-color: var(--gold-primary); color: var(--gold-light); background: var(--gold-soft); }
+.share-btn.primary { background: var(--gold-primary); color: var(--text-on-gold); border-color: var(--gold-primary); }
+.share-btn.primary:hover { background: var(--gold-light); border-color: var(--gold-light); }
+
+.toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 200; padding: 12px 22px; border-radius: var(--radius-full); background: var(--gold-primary); color: var(--text-on-gold); font-size: var(--text-sm); font-weight: 600; box-shadow: var(--shadow-deep); max-width: 90vw; text-align: center; }
+.toast-enter-active, .toast-leave-active { transition: opacity 0.25s, transform 0.25s; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
 
 @media (max-width: 560px) { .info-grid { grid-template-columns: 1fr; } .ov-card { grid-template-columns: 1fr; } .ov-glyph { width: 48px; height: 48px; font-size: 24px; } }
 </style>
