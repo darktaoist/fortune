@@ -23,6 +23,26 @@ const typeB = canonical.split('-')[1]
 const pairLabel = `${typeA} × ${typeB}`
 const samePair = typeA === typeB
 
+// 관련 궁합 — 현재 두 유형이 각각 포함된 다른 조합을 정적 계산(DB 조회 없음).
+// A/B 목록을 교차로 뽑아 균형있게 6개. 슬러그는 정규형([a,b].sort()) → 역순 404 회피.
+const relatedPairs = (() => {
+  if (!canonical) return []
+  const listFor = (base) => TYPES.map((x) => [base, x].sort().join('-')).filter((c) => c !== canonical)
+  const a = listFor(typeA)
+  const b = listFor(typeB)
+  const seen = new Set()
+  const out = []
+  for (let i = 0; i < Math.max(a.length, b.length) && out.length < 6; i++) {
+    for (const c of [a[i], b[i]]) {
+      if (c && !seen.has(c) && out.length < 6) {
+        seen.add(c)
+        out.push({ slug: c.toLowerCase(), label: c.replace('-', ' × ') })
+      }
+    }
+  }
+  return out
+})()
+
 const { data } = await useFetch('/api/mbti-compatibility', {
   query: { pair: canonical, lang: locale },
   key: () => `mbti-${canonical}-${locale.value}`,
@@ -76,6 +96,8 @@ useHead(() => ({
 
 <template>
   <main class="mc container">
+    <NuxtLink :to="localePath('/fortune/mbti')" class="mc-back">{{ t('mbtiHub.backToHub') }}</NuxtLink>
+
     <header class="mc-hero">
       <p class="mc-kicker">{{ t('mbtiCompat.title') }}</p>
       <h1>{{ t('mbtiCompat.h1', { pair: pairLabel }) }}</h1>
@@ -96,8 +118,16 @@ useHead(() => ({
 
     <p v-else class="mc-empty">{{ t('mbtiCompat.preparing') }}</p>
 
+    <section v-if="relatedPairs.length" class="mc-related">
+      <h2>{{ t('mbtiHub.relatedTitle') }}</h2>
+      <div class="mc-related-links">
+        <NuxtLink v-for="r in relatedPairs" :key="r.slug" :to="localePath(`/fortune/mbti/${r.slug}`)" class="mc-related-link">{{ r.label }}</NuxtLink>
+      </div>
+    </section>
+
     <div class="mc-cta">
       <NuxtLink :to="localePath('/saju')" class="btn btn-primary">{{ t('mbtiCompat.ctaSaju') }}</NuxtLink>
+      <NuxtLink :to="localePath('/fortune/mbti')" class="btn btn-ghost">{{ t('mbtiHub.backToHub') }}</NuxtLink>
     </div>
   </main>
 </template>
@@ -121,6 +151,15 @@ useHead(() => ({
 .mc-text { color: var(--text-secondary); font-size: var(--text-base); line-height: 1.85; white-space: pre-line; text-wrap: pretty; }
 
 .mc-empty { text-align: center; color: var(--text-muted); font-style: italic; padding: var(--space-12) 0; }
+
+.mc-back { display: inline-block; margin-bottom: var(--space-6); font-size: var(--text-sm); color: var(--text-muted); text-decoration: none; transition: color 0.15s; }
+.mc-back:hover { color: var(--gold-primary); }
+
+.mc-related { margin-top: var(--space-12); }
+.mc-related h2 { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; color: var(--gold-light); margin-bottom: var(--space-4); text-align: center; }
+.mc-related-links { display: flex; flex-wrap: wrap; gap: var(--space-2); justify-content: center; }
+.mc-related-link { padding: var(--space-2) var(--space-4); border: 1px solid var(--gold-border); border-radius: var(--radius-full); background: var(--bg-secondary); color: var(--text-secondary); font-size: var(--text-sm); text-decoration: none; transition: border-color 0.15s, color 0.15s; }
+.mc-related-link:hover { border-color: var(--gold-primary); color: var(--text-primary); }
 
 .mc-cta { display: flex; gap: var(--space-3); justify-content: center; flex-wrap: wrap; margin-top: var(--space-12); }
 

@@ -20,8 +20,20 @@ const LOCALES = [
   { prefix: '/zh', hreflang: 'zh-TW' },
 ]
 
+// 허브(목차) 페이지 /fortune/mbti — 136 조합 페이지를 묶는 내부링크 허브. 4언어 색인.
+const HUB_ALT = [
+  { hreflang: 'x-default', href: `/fortune/mbti` },
+  ...LOCALES.map((l) => ({ hreflang: l.hreflang, href: `${l.prefix}/fortune/mbti` })),
+]
+const HUB = LOCALES.map((l) => ({
+  loc: `${l.prefix}/fortune/mbti`,
+  alternatives: HUB_ALT,
+  changefreq: 'weekly',
+  priority: 0.7,
+}))
+
 export default defineSitemapEventHandler(() => {
-  return SLUGS.flatMap((s) => {
+  const pairs = SLUGS.flatMap((s) => {
     const alternatives = [
       { hreflang: 'x-default', href: `/fortune/mbti/${s}` },
       ...LOCALES.map((l) => ({ hreflang: l.hreflang, href: `${l.prefix}/fortune/mbti/${s}` })),
@@ -33,4 +45,5 @@ export default defineSitemapEventHandler(() => {
       priority: 0.6,
     }))
   })
+  return [...HUB, ...pairs]
 })
