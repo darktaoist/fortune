@@ -22,6 +22,19 @@ const REL_KEYS = ['partner', 'friend', 'family', 'crush', 'colleague']
 const service = computed(() => (route.query.service === 'mbti' ? 'mbti' : 'celeb'))
 const isMbti = computed(() => service.value === 'mbti')
 
+// 궁합의 "나"(사주 주체) — 마지막으로 선택/입력된 사람. 지인일 수도 있으므로 연예인 고르기
+// 전에 누구로 잡혀있는지 보여주고 바꿀 수 있게 한다(잘못된 주체로 생성·쿼터 낭비 방지).
+const { current, hasInput } = useSajuInput()
+const meDisplay = computed(() => {
+  const c = current.value
+  if (!c || !c.year) return ''
+  const nm = (c.name || '').trim()
+  const birth = fmtBirth({ y: c.year, m: c.month, d: c.day })
+  return nm ? `${nm} · ${birth}` : birth
+})
+// "나" 변경/입력 → /saju. 입력 후 다시 celeb-select로 복귀(saju.vue submit이 couple/mbti→celeb-select).
+const sajuEditLink = computed(() => localePath({ path: '/saju', query: { service: service.value } }))
+
 // SEO (title mirrors the head; brand suffix kept like other pages)
 const pageTitle = computed(() => (isMbti.value ? t('cel.title.mbti') : t('cel.title.celeb')))
 const pageSub = computed(() => (isMbti.value ? t('cel.sub.mbti') : t('cel.sub.celeb')))
@@ -210,6 +223,15 @@ if (import.meta.client) {
       <h1><span class="stamp">{{ isMbti ? '合' : '緣' }}</span><span>{{ pageTitle }}</span></h1>
       <p>{{ pageSub }}</p>
       <span class="free-pill">{{ t('premium.free.daily3') }}</span>
+      <!-- 궁합의 "나"(사주 주체) 표시 + 변경 — 연예인 고르기 전에 누구인지 확인 -->
+      <NuxtLink v-if="hasInput" class="me-chip" :to="sajuEditLink">
+        <span class="me-label">{{ t('cel.me.label') }}</span>
+        <span class="me-name">{{ meDisplay }}</span>
+        <span class="me-change">{{ t('cel.me.change') }} ›</span>
+      </NuxtLink>
+      <NuxtLink v-else class="me-chip me-chip-empty" :to="sajuEditLink">
+        {{ t('cel.me.set') }} ›
+      </NuxtLink>
     </div>
 
     <!-- CONTROLS -->
@@ -449,6 +471,13 @@ if (import.meta.client) {
 .page-head p { color: var(--text-secondary); font-size: var(--text-base); }
 /* 무료 강조 pill — 골드 테마 유지 */
 .page-head .free-pill { display: inline-block; margin-top: var(--space-3); padding: 4px 12px; border-radius: var(--radius-full); background: var(--gold-soft); color: var(--gold-light); border: 1px solid var(--gold-border-strong); font-size: var(--text-xs); font-weight: 600; }
+/* "나"(사주 주체) 칩 — 연예인 고르기 전 확인·변경 (골드 테마) */
+.page-head .me-chip { display: inline-flex; align-items: center; gap: var(--space-2); margin-top: var(--space-3); margin-left: var(--space-2); padding: 5px 12px; border-radius: var(--radius-full); background: var(--bg-tertiary); border: 1px solid var(--gold-border); font-size: var(--text-xs); text-decoration: none; transition: border-color 0.2s; }
+.page-head .me-chip:hover { border-color: var(--gold-primary); }
+.page-head .me-chip .me-label { color: var(--text-muted); }
+.page-head .me-chip .me-name { color: var(--text-primary); font-weight: 600; }
+.page-head .me-chip .me-change { color: var(--gold-light); font-weight: 600; }
+.page-head .me-chip-empty { color: var(--gold-light); font-weight: 600; }
 
 /* Controls bar */
 .controls { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap; }
