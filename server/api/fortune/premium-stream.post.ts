@@ -1,10 +1,13 @@
-import { serverSupabaseServiceRole } from '#supabase/server'
+import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { buildMyeongsik, type MyeongsikInput } from '../../utils/myeongsik'
 import { FORTUNE_TYPES } from '../../utils/fortune-registry'
 import { streamText, resolveProvider } from '../../utils/ai'
 import { resolvePartnerInput, resolvePartnerMbti } from '../../utils/partner'
 import { requirePaidPurchase } from '../../utils/paywall'
 import { toTraditional } from '../../utils/zh'
+import { toPurchaseKey } from '~/shared/premiumService'
+import { isFreeService, reserveCelebQuota, refundCelebQuota, kstDate } from '../../utils/celebFree'
+import { rateLimit } from '../../utils/ratelimit'
 
 const LANGS = new Set(['ko', 'en', 'ja', 'zh'])
 
@@ -48,15 +51,36 @@ export default defineEventHandler(async (event) => {
 
   const admin = serverSupabaseServiceRole(event)
 
-  // ── 결제 게이트: 로그인(401) + paid 구매(402) ──
-  const { purchase } = await requirePaidPurchase(event, admin, service, body?.order ? String(body.order) : null)
-
-  // 주문 스냅샷(saved_readings) 로드 — 결제 대상 고정 + 생성 결과 저장처.
+  // ── 게이트 ──
+  // 무료(연예인 궁합 gunghap·연예인 MBTI 궁합 mbti): 결제 대신 로그인 + 일일 쿼터.
+  //   body.free = free-order가 만든 saved_readings 스냅샷 id. 본인 소유 + 해당 무료 상품
+  //   스냅샷만 통과(타인/타상품 위조 차단). 실제 쿼터 소모는 아래 streamText 직전에 원자적으로
+  //   예약 → 비용이 나가는 지점에서만 차단(재조회는 그 앞 리플레이에서 걸려 소모 안 함).
+  // 유료(토정비결·평생운세 등): 기존 결제 게이트 그대로 — 절대 건드리지 않는다.
+  const freeMode = isFreeService(service) && !!body?.free
   let reading: any = null
-  if (purchase.reading_id) {
-    const { data } = await admin.from('saved_readings').select('*').eq('id', purchase.reading_id).maybeSingle()
-    reading = data || null
+  let freeUser: any = null
+  if (freeMode) {
+    try { freeUser = await serverSupabaseUser(event) } catch { freeUser = null }
+    if (!freeUser) throw createError({ statusCode: 401, statusMessage: 'login required' })
+    // 비용점(AI) 엔드포인트 rate limit: 생성 실패-재시도 남용(reserve/refund 반복 + 매회 DeepSeek 호출)의 상한.
+    rateLimit(event, { key: 'premium-free', limit: 8, windowMs: 60_000 })
+    const { data } = await admin.from('saved_readings').select('*').eq('id', String(body.free)).maybeSingle()
+    if (!data || data.owner_id !== freeUser.id || data.type_key !== toPurchaseKey(service)) {
+      throw createError({ statusCode: 403, statusMessage: 'invalid reading' })
+    }
+    reading = data
+  } else {
+    // ── 결제 게이트: 로그인(401) + paid 구매(402) ──
+    const { purchase } = await requirePaidPurchase(event, admin, service, body?.order ? String(body.order) : null)
+    // 주문 스냅샷(saved_readings) 로드 — 결제 대상 고정 + 생성 결과 저장처.
+    if (purchase.reading_id) {
+      const { data } = await admin.from('saved_readings').select('*').eq('id', purchase.reading_id).maybeSingle()
+      reading = data || null
+    }
   }
+  // 스냅샷 id — 생성 결과 저장처(유료·무료 공통).
+  const readingId: string | null = reading?.id ?? null
 
   const es = createEventStream(event)
   const send = (obj: any) => es.push(JSON.stringify(obj))
@@ -133,6 +157,10 @@ export default defineEventHandler(async (event) => {
 
   // ── SSE 스트림 ──
   ;(async () => {
+    // 무료 서비스 일일 쿼터: 예약/롤백 추적. 생성 저장 성공(savedOk)만 확정한다.
+    let quotaReserved = false
+    let savedOk = false
+    const quotaDay = kstDate()
     try {
       send({ type: 'meta', service, glyph: type.glyph, tint: type.tint, myeongsik, partnerName, partnerMyeongsik: partner, myMbti, partnerMbti })
 
@@ -162,6 +190,15 @@ export default defineEventHandler(async (event) => {
       }
 
       const userPrompt = type.buildPrompt({ myeongsik: myeongsik as any, partner: partner as any, lang, myMbti, partnerMbti, myName: input.name, partnerName })
+
+      // ── 비용점 게이트 ── 무료 서비스는 AI 호출 직전에 일일 쿼터를 원자적으로 예약한다.
+      //   한도 초과(-1)면 AI를 호출하지 않고 limit 이벤트로 차단(비용 0). 동시요청/중복클릭은
+      //   consume_celeb_quota의 행잠금으로 직렬화되어 우회 불가. 생성 실패 시 finally에서 환불.
+      if (freeMode) {
+        const n = await reserveCelebQuota(admin, freeUser.id, quotaDay)
+        if (n < 0) { send({ type: 'limit' }); return }
+        quotaReserved = true
+      }
 
       await streamText({
         system: (type.systemStream || type.system)(lang),
@@ -236,7 +273,7 @@ export default defineEventHandler(async (event) => {
       // ── 결과를 주문 스냅샷에 저장(구매 1건 = 생성 1회, 재방문은 리플레이) ──
       // 단, 비-ko인데 한글이 남아있으면 저장하지 않아 리플레이 영구 고착을 막는다(다음 진입 시 재생성).
       const stillLeaking = hangulLeak(finalSections.map((s) => s.body).join('\n'), lang)
-      if (purchase.reading_id && finalSections.length && !stillLeaking) {
+      if (readingId && finalSections.length && !stillLeaking) {
         await admin.from('saved_readings').update({
           subject: (reading?.subject && (reading.subject.year || reading.subject.mbti)) ? reading.subject : (body?.subject || null),
           payload: {
@@ -251,13 +288,16 @@ export default defineEventHandler(async (event) => {
           },
           glyph: type.glyph,
           tint: type.tint,
-        }).eq('id', purchase.reading_id)
+        }).eq('id', readingId)
+        savedOk = true
       }
 
       send({ type: 'done', cached: false })
     } catch (e: any) {
       send({ type: 'error', message: e?.statusMessage || e?.message || 'AI 생성 오류' })
     } finally {
+      // 생성 실패(미저장) 시 예약 롤백 — 억울한 쿼터 소모 방지. 성공분만 확정.
+      if (quotaReserved && !savedOk) await refundCelebQuota(admin, freeUser.id, quotaDay)
       await es.close()
     }
   })()

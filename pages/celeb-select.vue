@@ -1,4 +1,7 @@
 <script setup>
+// ⚠️ 연예인 궁합 페이지 무광고 원칙 — 퍼블리시티권 리스크 방어선.
+//    광고 추가 시 상업적 이용이 성립하여 방어선이 붕괴한다. 이 페이지 계열(celeb-select,
+//    result/premium의 celeb·mbti)에 애드센스/광고 컴포넌트(AdUnit 등) 추가 금지.
 // 연예인 궁합 — 상대 선택 — ported from 연예인 선택.html.
 // Header/tabbar come from the default layout. The prototype's demo switcher
 // (preview-only) is dropped: `service` comes from ?service=, login state from
@@ -206,6 +209,7 @@ if (import.meta.client) {
     <div class="page-head">
       <h1><span class="stamp">{{ isMbti ? '合' : '緣' }}</span><span>{{ pageTitle }}</span></h1>
       <p>{{ pageSub }}</p>
+      <span class="free-pill">{{ t('premium.free.daily3') }}</span>
     </div>
 
     <!-- CONTROLS -->
@@ -443,6 +447,8 @@ if (import.meta.client) {
   border: 2px solid var(--gold-border-strong);
 }
 .page-head p { color: var(--text-secondary); font-size: var(--text-base); }
+/* 무료 강조 pill — 골드 테마 유지 */
+.page-head .free-pill { display: inline-block; margin-top: var(--space-3); padding: 4px 12px; border-radius: var(--radius-full); background: var(--gold-soft); color: var(--gold-light); border: 1px solid var(--gold-border-strong); font-size: var(--text-xs); font-weight: 600; }
 
 /* Controls bar */
 .controls { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap; }

@@ -4,6 +4,7 @@
 // service(lifetime/celeb/mbti/newyear)는 ?service= 로 분기. 사용자 정보는 /api/saju/manse(양/음력 변환) 재사용.
 // 결제는 서버 주문 생성(/api/pay/order) → Toss 결제창. 금액은 서버가 결정, 화면은 표시만.
 import SERVICES from '~/data/checkout-services.js'
+import { toServiceKey } from '~/shared/premiumService'
 
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
@@ -16,6 +17,16 @@ const service = computed(() => {
   const s = route.query.service
   return typeof s === 'string' && SERVICES[s] ? s : 'lifetime'
 })
+
+// 연예인 궁합(celeb)·연예인 MBTI 궁합(mbti)은 무료화됨 — 결제 체크아웃을 거치지 않는다.
+// 직접 진입(구링크·북마크 등) 시 연예인 선택 화면으로 우회. 토정비결·평생운세는 그대로.
+if (import.meta.client) {
+  watchEffect(() => {
+    if (service.value === 'celeb' || service.value === 'mbti') {
+      navigateTo(localePath({ path: '/celeb-select', query: { service: toServiceKey(service.value) } }), { replace: true })
+    }
+  })
+}
 const svc = computed(() => SERVICES[service.value])
 const partnerName = computed(() => (typeof route.query.partnerName === 'string' ? route.query.partnerName : ''))
 const partnerId = computed(() => (typeof route.query.partnerId === 'string' ? route.query.partnerId : ''))

@@ -1,4 +1,7 @@
 <script setup>
+// ⚠️ 연예인 궁합(gunghap)·연예인 MBTI 궁합(mbti)은 무광고 원칙 — 퍼블리시티권 리스크 방어선.
+//    광고 추가 시 상업적 이용이 성립하여 방어선이 붕괴한다. 이 페이지에 애드센스/광고
+//    컴포넌트(AdUnit 등) 추가 금지(유료 상품 화면도 이 페이지를 공유하므로 특히 주의).
 // 프리미엄 운세 통합 결과 — 모든 프리미엄 타입을 하나의 페이지에서 렌더.
 // ?service= 로 타입 결정 → POST /api/fortune/premium 에서 명식 계산 + Claude 생성(섹션 JSON).
 // 섹션은 제네릭 카드로 렌더(무료 결과 카드 스타일 재사용). 결제/인증 게이트는 v1 미적용.
@@ -54,15 +57,37 @@ onMounted(resolvePartnerImage)
 watch(partnerName, () => resolvePartnerImage())
 // 보관함에서 진입(?saved=id) — 저장된 결과를 그대로 표시(재계산 X)
 const savedId = computed(() => String(route.query.saved || ''))
+// 로그인벽 미리보기용 강제 샘플 키(비로그인 무료 진입 시 고정 샘플을 띄우기 위해).
+const previewKey = ref('')
 // 공개 샘플(?sample=service) — 예시 인물 결과를 게이트 없이 표시(마케팅용 미리보기)
 const sampleKey = computed(() => {
   const raw = String(route.query.sample || '').toLowerCase()
-  return SERVICE[raw] ? raw : ''
+  if (SERVICE[raw]) return raw
+  if (previewKey.value && SERVICE[previewKey.value]) return previewKey.value
+  return ''
 })
 const sampleMode = computed(() => !!sampleKey.value)
 import { toPurchaseKey } from '~/shared/premiumService'
 // 게이트를 통과한 주문번호 — 생성 요청에 함께 보내 서버가 결제를 검증/리플레이.
 const orderRef = ref('')
+
+// ── 무료 흐름(연예인 궁합 gunghap·연예인 MBTI 궁합 mbti): 결제벽 대신 로그인벽 ──
+const FREE_SVCS = new Set(['gunghap', 'mbti'])
+const isFreeSvc = computed(() => FREE_SVCS.has(service.value))
+// free-order가 만든 스냅샷 id. 안정적 URL(?free=id)로 실려 새로고침 시 재생성 없이 리플레이.
+const freeId = computed(() => String(route.query.free || ''))
+const loginWall = ref(false)    // 비로그인 무료 진입: 고정 샘플 + "로그인하고 무료로 보기"
+const limitReached = ref(false) // 당일 무료 쿼터 소진 → 리텐션 화면
+// 무료 서비스의 샘플/로그인벽 CTA(유료 상품은 기존 결제 CTA 유지).
+const freeSampleCta = computed(() => {
+  const svc = service.value
+  if (!user.value) {
+    // 비로그인: 고른 상대를 유지한 채 로그인 후 복귀(로그인벽) / 순수 샘플이면 상대 고르기로.
+    const redirect = loginWall.value ? route.fullPath : localePath({ path: '/celeb-select', query: { service: svc } })
+    return { label: t('premium.free.loginCta'), to: localePath({ path: '/login', query: { reason: 'pro', redirect } }) }
+  }
+  return { label: t('premium.free.pickCta'), to: localePath({ path: '/celeb-select', query: { service: svc } }) }
+})
 // 화면에 쓸 본인 정보: 저장본이면 그 subject, 아니면 현재 입력
 const displaySubject = computed(() => result.value?.subject || current.value)
 // 본인 MBTI(사주 입력의 배열/문자열 → 4글자)
@@ -154,6 +179,10 @@ function handleEvent(evt) {
     const sec = { key: evt.key, titleKey: evt.titleKey, glyph: evt.glyph, body: evt.body }
     if (i >= 0) result.value.sections[i] = sec
     else result.value.sections.push(sec)
+  } else if (evt.type === 'limit') {
+    // 생성 직전 쿼터 예약 실패(동시요청 등) → 리텐션 화면으로 전환(AI 호출 없이 차단됨).
+    limitReached.value = true
+    loading.value = false
   } else if (evt.type === 'error') {
     errorMsg.value = evt.message || t('premium.error')
   }
@@ -170,7 +199,7 @@ async function load() {
     const res = await fetch('/api/fortune/premium-stream', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ service: service.value, subject: { ...c }, lang: locale.value, partner: partnerRef.value || undefined, order: orderRef.value || undefined }),
+      body: JSON.stringify({ service: service.value, subject: { ...c }, lang: locale.value, partner: partnerRef.value || undefined, order: orderRef.value || undefined, free: freeId.value || undefined }),
     })
     if (!res.ok || !res.body) {
       let msg = t('premium.error')
@@ -278,6 +307,46 @@ async function gateAndLoad() {
   if (sampleMode.value) { resolving.value = false; return loadSample() }
   // 보관함 진입: 저장본만 표시(게이트·생성·과금 없음 — RLS가 본인 소유만 허용)
   if (savedId.value) { resolving.value = false; return loadSaved() }
+
+  // ── 무료 서비스(연예인 궁합 gunghap·MBTI 궁합 mbti): 결제벽 대신 로그인벽 ──
+  if (isFreeSvc.value) {
+    // 이미 free-order로 만든 스냅샷이 있으면 그걸로 생성/리플레이(새로고침 안전).
+    if (freeId.value) { resolving.value = false; return load() }
+    // 비로그인: 고정 샘플 미리보기 + "로그인하고 무료로 보기" (AI 호출 0원)
+    if (!user.value) {
+      previewKey.value = service.value
+      loginWall.value = true
+      resolving.value = false
+      return loadSample()
+    }
+    // 로그인: 사주 입력 확인 후 무료 주문 생성(잔여 쿼터 사전확인 포함)
+    await ensureSubject()
+    if (!hasInput.value) {
+      return navigateTo(localePath({ path: '/saju', query: { service: service.value } }), { replace: true })
+    }
+    try {
+      const r = await $fetch('/api/fortune/free-order', {
+        method: 'POST',
+        body: { service: service.value, subject: { ...current.value }, partner: partnerRef.value || undefined },
+      })
+      if (r?.limit) { limitReached.value = true; resolving.value = false; return }
+      // 안정적 URL로 교체 → 새로고침 시 재생성 없이 리플레이(재열람 무료).
+      // partnerName/partnerImg를 실어 새로고침 시에도 상대 이름·사진 표시 유지(생성 대상은 스냅샷이 고정).
+      const q = { service: service.value, free: r.readingId }
+      if (partnerName.value) q.partnerName = partnerName.value
+      if (partnerImageUrl.value) q.partnerImg = partnerImageUrl.value
+      return navigateTo(localePath({ path: '/result/premium', query: q }), { replace: true })
+    } catch (e) {
+      if (e?.statusCode === 401) {
+        return navigateTo(localePath({ path: '/login', query: { reason: 'pro', redirect: route.fullPath } }), { replace: true })
+      }
+      errorMsg.value = t('premium.error')
+      resolving.value = false
+      return
+    }
+  }
+
+  // ── 유료 서비스(토정비결·평생운세 등): 기존 결제 흐름 그대로(절대 변경 금지) ──
   // 1) 로그인 게이트
   if (!user.value) {
     return navigateTo(localePath({ path: '/login', query: { reason: 'pro', redirect: route.fullPath } }), { replace: true })
@@ -302,9 +371,16 @@ async function gateAndLoad() {
   load()
 }
 onMounted(gateAndLoad)
+// 무료 흐름: free-order 후 같은 premium 페이지 안에서 URL이 ?free=id 로 바뀌면
+// onMounted(gateAndLoad)가 재실행되지 않으므로(리마운트 없음), freeId 변화를 감지해 생성을 시작한다.
+watch(freeId, (v, prev) => {
+  if (v && v !== prev) { resolving.value = false; load() }
+})
 // 저장본은 고정 언어. 생성 모드는 재생성, 샘플 모드는 해당 언어 샘플로 재로드.
 watch(locale, () => {
   if (sampleMode.value) { loadSample(); return }
+  // 무료 결과(freeId)는 생성 시점 언어로 고정 — 언어 전환 시 재생성 금지(쿼터 재소모 방지).
+  if (freeId.value) return
   if (hasInput.value && !savedId.value) load()
 })
 
@@ -312,6 +388,11 @@ function goEdit() { navigateTo(localePath({ path: '/saju', query: { service: ser
 
 // 뒤로가기 출발지: 보관함 진입(saved)→보관함, 결제건(order)→마이페이지, 그 외→사주 입력.
 const backTo = computed(() => {
+  // 무료 서비스: 결제 페이지 대신 연예인 선택으로(무료 흐름에는 /checkout이 없음).
+  if (isFreeSvc.value) {
+    if (freeId.value) return localePath('/library')
+    return localePath({ path: '/celeb-select', query: { service: service.value } })
+  }
   if (sampleMode.value) return localePath({ path: '/checkout', query: { service: service.value || 'lifetime' } })
   if (savedId.value) return localePath('/library')
   if (orderRef.value) return localePath('/mypage')
@@ -410,11 +491,26 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
       </div>
 
       <template v-else>
-        <!-- 공개 샘플 안내 + 구매 유도 -->
+        <!-- 당일 무료 쿼터 소진: 리텐션(주) + 은근한 업셀(종). 연예인 궁합 페이지 무광고 원칙 유지 -->
+        <div v-if="limitReached" class="need-input limit-reached">
+          <span class="lr-moon">🌙</span>
+          <h2 class="lr-title">{{ t('premium.free.limitTitle') }}</h2>
+          <p class="lr-desc">{{ t('premium.free.limitDesc') }}</p>
+          <NuxtLink class="btn btn-primary" :to="localePath('/library')">{{ t('premium.free.limitLibrary') }}</NuxtLink>
+          <p class="lr-upsell">{{ t('premium.free.upsellHint') }}</p>
+          <div class="lr-upsell-links">
+            <NuxtLink :to="localePath({ path: '/checkout', query: { service: 'lifetime' } })">{{ t('premium.free.upsellLifetime') }}</NuxtLink>
+            <NuxtLink :to="localePath({ path: '/checkout', query: { service: 'newyear' } })">{{ t('premium.free.upsellNewyear') }}</NuxtLink>
+          </div>
+        </div>
+
+        <template v-else>
+        <!-- 공개 샘플 안내: 유료 상품은 구매 CTA, 무료 상품(연예인 궁합·MBTI)은 로그인/무료 CTA -->
         <div v-if="sampleMode" class="sample-banner">
           <span class="sample-badge">{{ t('premium.sample.badge') }}</span>
-          <p class="sample-note">{{ t('premium.sample.note') }}</p>
-          <NuxtLink class="btn btn-primary" :to="localePath({ path: '/checkout', query: { service } })">{{ t('pay.buy') }}</NuxtLink>
+          <p class="sample-note">{{ isFreeSvc ? t('premium.free.sampleNote') : t('premium.sample.note') }}</p>
+          <NuxtLink v-if="isFreeSvc" class="btn btn-primary" :to="freeSampleCta.to">{{ freeSampleCta.label }}</NuxtLink>
+          <NuxtLink v-else class="btn btn-primary" :to="localePath({ path: '/checkout', query: { service } })">{{ t('pay.buy') }}</NuxtLink>
         </div>
 
         <!-- 사용자 정보 -->
@@ -443,7 +539,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
         <!-- 결과 섹션 (도착하는 대로 점진 렌더) -->
         <template v-if="sections.length">
           <div class="section-head">
-            <div class="eyebrow">{{ t('premium.eyebrow') }}</div>
+            <div class="eyebrow">{{ isFreeSvc ? t('premium.eyebrowFree') : t('premium.eyebrow') }}</div>
             <h2>{{ heroTitle }}</h2>
           </div>
           <div class="overall-list">
@@ -504,13 +600,14 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 
         <!-- 샘플: 하단 구매 유도 (저장/후기 대신) -->
         <div v-else-if="sampleMode && sections.length" class="result-actions sample-cta">
-          <p class="save-hint">{{ t('premium.sample.note') }}</p>
-          <NuxtLink class="btn btn-primary" :to="localePath({ path: '/checkout', query: { service } })">{{ t('pay.buy') }}</NuxtLink>
+          <p class="save-hint">{{ isFreeSvc ? t('premium.free.sampleNote') : t('premium.sample.note') }}</p>
+          <NuxtLink v-if="isFreeSvc" class="btn btn-primary" :to="freeSampleCta.to">{{ freeSampleCta.label }}</NuxtLink>
+          <NuxtLink v-else class="btn btn-primary" :to="localePath({ path: '/checkout', query: { service } })">{{ t('pay.buy') }}</NuxtLink>
         </div>
 
         <!-- 저장 (완료 후) — 결제 생성분은 서버가 보관함에 자동 저장 -->
         <div v-else-if="sections.length && !savedId" class="result-actions">
-          <p v-if="orderRef" class="save-hint">{{ t('premium.autoSaved') }}</p>
+          <p v-if="orderRef || freeId" class="save-hint">{{ t('premium.autoSaved') }}</p>
           <template v-else>
             <p class="save-hint">{{ t('premium.saveHint') }}</p>
             <button class="btn btn-secondary" :disabled="saving" @click="onSave">{{ t('result.save') }}</button>
@@ -519,6 +616,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 
         <!-- 후기 등록 (결과 완료 후) -->
         <ReviewForm v-if="!loading && sections.length && service && current && current.year && !sampleMode" :type-key="service" />
+        </template>
       </template>
     </div>
 
@@ -553,6 +651,15 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 .sample-badge { font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold-primary); padding: 5px 14px; border: 1px solid var(--gold-border); border-radius: var(--radius-full); }
 .sample-note { color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.7; max-width: 560px; }
 .sample-cta { text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-4); }
+
+/* 당일 무료 쿼터 소진: 리텐션(주)이 크게, 업셀(종)은 작게 곁들임 */
+.limit-reached .lr-moon { font-size: 2.4rem; line-height: 1; }
+.limit-reached .lr-title { font-family: var(--font-serif, inherit); font-size: var(--text-xl); color: var(--text-primary); }
+.limit-reached .lr-desc { color: var(--text-secondary); font-size: var(--text-base); line-height: 1.7; max-width: 460px; }
+.limit-reached .lr-upsell { margin-top: var(--space-6); color: var(--text-muted); font-size: var(--text-sm); }
+.limit-reached .lr-upsell-links { display: flex; gap: var(--space-4); flex-wrap: wrap; justify-content: center; }
+.limit-reached .lr-upsell-links a { color: var(--gold-primary); font-size: var(--text-sm); text-decoration: none; border-bottom: 1px solid var(--gold-border); padding-bottom: 2px; }
+.limit-reached .lr-upsell-links a:hover { border-bottom-color: var(--gold-primary); }
 
 .section-head { margin: var(--space-12) 0 var(--space-8); }
 .section-head .eyebrow { display: inline-flex; align-items: center; gap: var(--space-2); font-family: var(--font-mono); font-size: var(--text-xs); letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold-primary); margin-bottom: var(--space-3); }

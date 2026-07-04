@@ -88,8 +88,8 @@ function zodiacGridLabel(z) {
 const PREMIUM = [
   { to: { path: '/saju', query: { service: 'lifetime' } }, glyph: '命', titleKey: 'premium.life.title', descKey: 'premium.life.desc', krwOld: '19,800', usdOld: '19.99' },
   { to: { path: '/saju', query: { service: 'newyear' } }, glyph: '秘', titleKey: 'premium.newyear.title', descKey: 'premium.newyear.desc', krwOld: '9,900', usdOld: '9.99' },
-  { to: { path: '/celeb-select', query: { service: 'celeb' } }, glyph: '緣', titleKey: 'premium.celeb.title', descKey: 'premium.celeb.desc', krwOld: '5,000', usdOld: '4.99' },
-  { to: { path: '/celeb-select', query: { service: 'mbti' } }, glyph: '合', titleKey: 'premium.mbti.title', descKey: 'premium.mbti.desc', krwOld: '5,000', usdOld: '4.99' },
+  { to: { path: '/celeb-select', query: { service: 'celeb' } }, glyph: '緣', titleKey: 'premium.celeb.title', descKey: 'premium.celeb.desc', free: true },
+  { to: { path: '/celeb-select', query: { service: 'mbti' } }, glyph: '合', titleKey: 'premium.mbti.title', descKey: 'premium.mbti.desc', free: true },
 ]
 const isKo = computed(() => locale.value === 'ko')
 const priceOld = (p) => (isKo.value ? `${p.krwOld}원` : `$${p.usdOld}`)
@@ -355,13 +355,18 @@ onBeforeUnmount(() => {
         <NuxtLink v-for="p in PREMIUM" :key="p.glyph" class="premium-card" :to="localePath(p.to)">
           <div class="premium-visual">
             <div class="premium-hanja">{{ p.glyph }}</div>
-            <span class="badge badge-pro premium-badge">PRO</span>
+            <span v-if="p.free" class="badge badge-free premium-badge">FREE</span>
+            <span v-else class="badge badge-pro premium-badge">PRO</span>
           </div>
           <div class="premium-body">
             <h3 class="premium-title">{{ t(p.titleKey) }}</h3>
             <p class="premium-desc">{{ t(p.descKey) }}</p>
             <div class="premium-foot">
-              <div class="premium-price">
+              <!-- 연예인 궁합·MBTI 궁합: 무료(매일 3회). 토정비결·평생운세는 기존 가격 유지 -->
+              <div v-if="p.free" class="premium-price premium-price-free">
+                <span class="price-free">{{ t('premium.free.daily3') }}</span>
+              </div>
+              <div v-else class="premium-price">
                 <span class="price-old">{{ priceOld(p) }}</span>
                 <span v-if="isKo" class="price-new">2,000<span class="unit">원</span></span>
                 <span v-else class="price-new"><span class="unit">$</span>2</span>
@@ -1046,6 +1051,10 @@ onBeforeUnmount(() => {
   font-weight: 600;
 }
 .price-new .unit { font-size: 0.7em; color: var(--text-secondary); margin-left: 2px; }
+/* 무료화된 연예인 궁합·MBTI 궁합: FREE 배지 + "매일 3회 무료" 카피(골드 테마 유지) */
+.badge-free { background: var(--gold-primary); color: #0A0A0F; border: 1px solid var(--gold-primary); font-weight: 700; }
+.premium-price-free { justify-content: center; }
+.price-free { font-size: var(--text-base); font-weight: 700; color: var(--gold-primary); }
 .premium-arrow {
   width: 40px;
   height: 40px;
