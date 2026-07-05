@@ -99,7 +99,7 @@ async function loadFriends() {
 }
 onMounted(loadFriends)
 // Meta Pixel ViewContent — 무료 궁합(연예인/MBTI) 진입. 결제 없는 퍼널이라 InitiateCheckout은 발화 안 함.
-onMounted(() => useMetaPixel().trackViewContent(isMbti.value ? 'MBTI 궁합' : '연예인 궁합'))
+onMounted(() => useMetaPixel().trackViewContent(isMbti.value ? 'MBTI 궁합' : '연예인 궁합')) // i18n-ok: 분석 content_name(비-UI), PRICES orderName과 동일
 watch(user, loadFriends)
 const friendCount = computed(() => (user.value ? friends.value.length : 0))
 
