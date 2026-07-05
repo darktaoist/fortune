@@ -46,6 +46,7 @@ export default defineNuxtConfig({
       tossClientKey: payKey('TOSS_CLIENT_KEY') || process.env.NUXT_PUBLIC_TOSS_CLIENT_KEY || '',
       tossWidgetKey: payKey('TOSS_WIDGET_KEY'),
       adsenseClient: ADSENSE_CLIENT,
+      metaPixelId: process.env.NUXT_PUBLIC_META_PIXEL_ID || '2470955410072045',
     },
   },
 

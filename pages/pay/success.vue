@@ -22,6 +22,10 @@ onMounted(async () => {
     const res = await $fetch('/api/pay/confirm', { method: 'POST', body: { paymentKey, orderId } })
     // 승인 완료 → 결과 페이지로 바로 이동(이 화면은 보이지 않고 통과). replace로 뒤로가기 시 재진입 방지.
     if (res?.service) {
+      // Meta Pixel Purchase — 서버 검증 금액으로 1회만(orderId 가드). navigateTo 전에 발화.
+      if (res.amount != null) {
+        useMetaPixel().trackPurchase(String(orderId), Number(res.amount), String(res.currency || 'KRW'), res.orderName)
+      }
       const routeKey = toServiceKey(res.service)
       return navigateTo(localePath({ path: '/result/premium', query: { service: routeKey, order: orderId } }), { replace: true })
     }

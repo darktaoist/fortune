@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
   if (order.owner_id !== user.id) throw createError({ statusCode: 403, statusMessage: 'forbidden' })
 
   // 멱등: 이미 승인된 주문은 재호출하지 않고 그대로 성공 반환.
-  if (order.status === 'paid') return { ok: true, readingId: order.reading_id, service: order.type_key }
+  if (order.status === 'paid') return { ok: true, readingId: order.reading_id, service: order.type_key, amount: order.currency === 'USD' ? order.amount / 100 : order.amount, currency: order.currency, orderName: PRICES[order.type_key]?.orderName }
 
   // 시크릿 선택: 요청 때 쓴 클라이언트 키와 같은 연동의 시크릿이어야 승인 가능.
   // USD(PayPal)=위젯 연동(gsk), KRW(카드)=API 개별 연동(sk).
@@ -73,5 +73,5 @@ export default defineEventHandler(async (event) => {
     isTest: secret.startsWith('test_'),
   })
 
-  return { ok: true, readingId: order.reading_id, service: order.type_key }
+  return { ok: true, readingId: order.reading_id, service: order.type_key, amount: order.currency === 'USD' ? order.amount / 100 : order.amount, currency: order.currency, orderName: PRICES[order.type_key]?.orderName }
 })

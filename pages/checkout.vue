@@ -69,6 +69,12 @@ async function loadInfo() {
   }
 }
 onMounted(loadInfo)
+// Meta Pixel ViewContent — 유료 상품(평생운세/신년운세) 결제 진입 시.
+// celeb/mbti는 무료 퍼널이라 여기 오지 않음(celeb-select로 우회 + 거기서 ViewContent 처리).
+onMounted(() => {
+  const NAMES = { lifetime: 'AI 평생운세', newyear: '2026 신년운세' }
+  if (NAMES[service.value]) useMetaPixel().trackViewContent(NAMES[service.value])
+})
 watch(current, loadInfo, { deep: true })
 
 // ── 샘플 보기 ──
@@ -148,6 +154,9 @@ async function pay() {
           : null,
       },
     })
+    // Meta Pixel InitiateCheckout — 서버 주문의 실제 금액/통화로(결제창 열기 직전).
+    useMetaPixel().trackInitiateCheckout(Number(order.amount), String(order.currency))
+
     const successUrl = window.location.origin + localePath('/pay/success')
     const failUrl = window.location.origin + localePath('/pay/fail')
 

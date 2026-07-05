@@ -13,7 +13,13 @@ const next = computed(() => {
   return typeof n === 'string' && n.startsWith('/') ? n : '/'
 })
 
-function go() { if (user.value) navigateTo(localePath(next.value), { replace: true }) }
+function go() {
+  if (!user.value) return
+  // Meta Pixel CompleteRegistration — 카카오/구글 OAuth 성공 착지. 유저당 localStorage 1회 가드(가입 근사).
+  // (이메일 로그인은 /confirm을 거치지 않으므로 미포함 — 광고 유입은 소셜이라 무방.)
+  useMetaPixel().trackCompleteRegistration(user.value.id)
+  navigateTo(localePath(next.value), { replace: true })
+}
 onMounted(() => {
   go()
   // 세션이 비동기로 확립될 수 있어 잠시 대기 후 폴백(미로그인이면 로그인으로).
