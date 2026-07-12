@@ -125,10 +125,20 @@ useHead(() => ({
       </div>
     </article>
 
+    <!-- 유료 상품 CTA (무료 결과 직후) -->
+    <FortuneUpsellCta
+      :to="{ path: '/saju', query: { service: 'newyear' } }"
+      copy-key="newyear"
+      product="newyear"
+      source="zodiac_today"
+      variant="context"
+    />
+
     <!-- CTA -->
     <div class="tz-cta">
       <NuxtLink :to="localePath('/saju')" class="btn btn-primary">{{ t('todayZodiac.ctaSaju') }}</NuxtLink>
       <NuxtLink :to="localePath('/daily')" class="btn btn-secondary">{{ t('todayZodiac.ctaAll') }}</NuxtLink>
+      <NuxtLink :to="localePath('/fortune/lotto')" class="btn btn-secondary">{{ t('todayZodiac.ctaLotto') }}</NuxtLink>
     </div>
 
     <!-- 다른 띠(내부 링크 메시: 12 페이지 상호 연결) -->

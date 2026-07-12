@@ -25,3 +25,9 @@ scripts/db/_backup/
 
 # Supabase CLI 캐시(머신별, 추적 불필요)
 supabase/.temp/
+
+# 생성 산출물(대용량, 재생성 가능) — 히스토리 제외
+scripts/db/_gen/
+
+# 비밀키 — 절대 커밋 금지
+Oracle_Cloud/*.key

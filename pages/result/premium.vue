@@ -559,6 +559,16 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
           <button class="share-btn primary" @click="shareResult">💬 {{ t('result.share') }}</button>
         </div>
 
+        <!-- 유료 상품 CTA (범용 안내형 — 연예인 표현 0건, 퍼블리시티권 방어선 유지) -->
+        <FortuneUpsellCta
+          v-if="(service === 'gunghap' || service === 'mbti') && !loading && sections.length && !sampleMode"
+          :to="{ path: '/saju', query: { service: 'newyear' } }"
+          copy-key="generic"
+          product="newyear"
+          :source="`celeb_${service}`"
+          variant="generic"
+        />
+
         <!-- 숏폼 영상 공유 (궁합 한정, 로컬 검증용) -->
         <ClientOnly>
           <ShareVideoModal

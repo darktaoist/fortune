@@ -152,6 +152,20 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
       </article>
     </div>
 
+    <!-- 재물운 문맥 내부링크 → 로또운세 랜딩 -->
+    <p class="daily-cross">
+      <NuxtLink :to="localePath('/fortune/lotto')">{{ t('daily.ctaLotto') }}</NuxtLink>
+    </p>
+
+    <!-- 유료 상품 CTA (무료 결과 ↔ 애드센스 사이) -->
+    <FortuneUpsellCta
+      :to="{ path: '/saju', query: { service: 'newyear' } }"
+      copy-key="newyear"
+      product="newyear"
+      source="daily"
+      variant="context"
+    />
+
     <!-- 하단 광고 (공개 무료 콘텐츠) -->
     <div class="ad-bottom">
       <AdUnit ad-slot="5610413079" />
@@ -214,6 +228,9 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 .z-lucky .swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.18); }
 .z-detail { display: inline-block; margin-top: var(--space-3); font-size: var(--text-sm); color: var(--gold-primary); transition: color 0.18s; }
 .z-detail:hover { color: var(--gold-light); }
+.daily-cross { text-align: center; margin: var(--space-8) 0 var(--space-4); }
+.daily-cross a { display: inline-block; padding: var(--space-3) var(--space-6); border: 1px solid var(--gold-border-strong); border-radius: 999px; color: var(--gold-light); font-weight: 600; background: rgba(201, 168, 76, 0.08); transition: background 0.18s; }
+.daily-cross a:hover { background: var(--gold-soft); }
 
 .toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 200; padding: 12px 22px; border-radius: var(--radius-full); background: var(--gold-primary); color: var(--text-on-gold); font-size: var(--text-sm); font-weight: 600; box-shadow: var(--shadow-deep); }
 .toast-enter-active, .toast-leave-active { transition: opacity 0.25s, transform 0.25s; }

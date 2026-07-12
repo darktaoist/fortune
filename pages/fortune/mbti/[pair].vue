@@ -118,6 +118,16 @@ useHead(() => ({
 
     <p v-else class="mc-empty">{{ t('mbtiCompat.preparing') }}</p>
 
+    <!-- 유료 상품 CTA (범용 안내형 — 결과가 있을 때만, 기존 .mc-cta는 그대로 유지) -->
+    <FortuneUpsellCta
+      v-if="found"
+      :to="{ path: '/saju', query: { service: 'newyear' } }"
+      copy-key="generic"
+      product="newyear"
+      source="mbti_pair"
+      variant="generic"
+    />
+
     <section v-if="relatedPairs.length" class="mc-related">
       <h2>{{ t('mbtiHub.relatedTitle') }}</h2>
       <div class="mc-related-links">

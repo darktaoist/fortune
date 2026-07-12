@@ -294,6 +294,7 @@ export default defineEventHandler(async (event) => {
 
       send({ type: 'done', cached: false })
     } catch (e: any) {
+      console.error('[premium-stream] 생성 실패: status=', e?.statusCode, 'msg=', e?.statusMessage || e?.message, 'cause=', e?.cause?.code || e?.cause?.message, '\n', e?.stack)
       send({ type: 'error', message: e?.statusMessage || e?.message || 'AI 생성 오류' })
     } finally {
       // 생성 실패(미저장) 시 예약 롤백 — 억울한 쿼터 소모 방지. 성공분만 확정.

@@ -100,7 +100,8 @@ export default defineNuxtConfig({
       useCookie: true,
       cookieKey: 'taoist_lang',
       alwaysRedirect: false,
-      fallbackLocale: 'ko',
+      // 브라우저 언어가 ko/en/ja/zh 어디에도 안 맞는 방문자는 영어로(한국어 대신). 국제 방문자 UX.
+      fallbackLocale: 'en',
       redirectOn: 'root',
     },
   },

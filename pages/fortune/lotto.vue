@@ -6,5 +6,5 @@ definePageMeta({ seoLocales: ['ko'] })
 usePageSeo('landing.lotto', { suffix: false })
 </script>
 <template>
-  <FortuneLanding landing-key="lotto" glyph="財" :cta-to="{ path: '/result/free', query: { service: 'lotto' } }" />
+  <FortuneLanding landing-key="lotto" glyph="財" weekly-round-base="2002-12-07" :preview-draw="{ count: 6, min: 1, max: 45 }" :cta-to="{ path: '/result/free', query: { service: 'lotto' } }" />
 </template>

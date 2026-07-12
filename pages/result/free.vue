@@ -31,6 +31,17 @@ const ftKey = computed(() => {
   return FREE_TYPE[raw] ? raw : null
 })
 const cfg = computed(() => (ftKey.value ? FREE_TYPE[ftKey.value] : null))
+
+// 무료 결과 → 유료 상품 CTA(맥락 연결형). service별로 추천 상품이 다르다.
+const UPSELL_MAP = {
+  today: { to: { path: '/saju', query: { service: 'newyear' } }, copyKey: 'newyear', product: 'newyear' },
+  month: { to: { path: '/saju', query: { service: 'newyear' } }, copyKey: 'newyear', product: 'newyear' },
+  lotto: { to: { path: '/saju', query: { service: 'newyear' } }, copyKey: 'lotto', product: 'newyear' },
+  tojung: { to: { path: '/saju', query: { service: 'lifetime' } }, copyKey: 'lifetime', product: 'lifetime' },
+  hour: { to: { path: '/saju', query: { service: 'lifetime' } }, copyKey: 'lifetime', product: 'lifetime' },
+  date: { to: { path: '/celeb-select', query: { service: 'celeb' } }, copyKey: 'celeb', product: 'celeb' },
+}
+const upsell = computed(() => (ftKey.value ? UPSELL_MAP[ftKey.value] : null))
 const stamp = computed(() => cfg.value?.stamp || '午')
 const heroTitle = computed(() => (cfg.value ? t(cfg.value.titleKey) : t('result.title')))
 const showGanji = computed(() => (cfg.value ? cfg.value.ganji : true))
@@ -681,6 +692,16 @@ function onShare() {
             <NuxtLink class="btn btn-primary" :to="localePath({ path: '/', hash: '#free' })">{{ t('result.notFound.cta') }}</NuxtLink>
           </div>
         </template>
+
+        <!-- 유료 상품 CTA (무료 결과 본문 끝 ↔ 애드센스 사이, 결과가 표시될 때만) -->
+        <FortuneUpsellCta
+          v-if="upsell && ftKey && current && current.year"
+          :to="upsell.to"
+          :copy-key="upsell.copyKey"
+          :product="upsell.product"
+          :source="`free_${ftKey}`"
+          variant="context"
+        />
 
         <div class="disclaimer">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
