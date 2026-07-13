@@ -1364,5 +1364,8 @@
   "upsell.lotto.cta": "See 2026 New Year Fortune",
   "upsell.generic.title": "Curious about your own 2026?",
   "upsell.generic.desc": "AI reads your 2026 New Year fortune through Saju — wealth, love, and health at a glance.",
-  "upsell.generic.cta": "See 2026 New Year Fortune"
+  "upsell.generic.cta": "See 2026 New Year Fortune",
+  "upsell.mbtiPair.title": "Your personalized compatibility",
+  "upsell.mbtiPair.desc": "A deeper, AI-crafted compatibility reading from both people's details — just for fun.",
+  "upsell.mbtiPair.cta": "Analyze our match"
 }

@@ -1365,5 +1365,8 @@
   "upsell.lotto.cta": "2026 신년운세 보기",
   "upsell.generic.title": "내 2026년 흐름이 궁금하다면?",
   "upsell.generic.desc": "AI가 사주로 풀어주는 2026 신년운세 — 나의 재물·애정·건강운을 한눈에.",
-  "upsell.generic.cta": "2026 신년운세 보기"
+  "upsell.generic.cta": "2026 신년운세 보기",
+  "upsell.mbtiPair.title": "이름·생년월일로 보는 개인화 궁합",
+  "upsell.mbtiPair.desc": "두 사람의 정보로 AI가 더 깊이 풀어보는 맞춤 궁합 — 재미로 즐기는 분석이에요.",
+  "upsell.mbtiPair.cta": "개인화 궁합 분석하기"
 }

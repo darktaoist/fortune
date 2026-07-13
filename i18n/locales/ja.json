@@ -1364,5 +1364,8 @@
   "upsell.lotto.cta": "2026年新年運勢を見る",
   "upsell.generic.title": "自分の2026年の流れが気になりますか？",
   "upsell.generic.desc": "AIが四柱推命で読み解く2026年新年運勢——金運・恋愛運・健康運を一目で。",
-  "upsell.generic.cta": "2026年新年運勢を見る"
+  "upsell.generic.cta": "2026年新年運勢を見る",
+  "upsell.mbtiPair.title": "名前・生年月日で見る個人化相性",
+  "upsell.mbtiPair.desc": "二人の情報からAIがより深く読み解く、あなただけの相性ストーリー。娯楽としてお楽しみください。",
+  "upsell.mbtiPair.cta": "個人化相性を見る"
 }

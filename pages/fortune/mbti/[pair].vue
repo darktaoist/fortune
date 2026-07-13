@@ -135,14 +135,15 @@ useHead(() => ({
 
     <p v-else class="mc-empty">{{ t('mbtiCompat.preparing') }}</p>
 
-    <!-- 유료 상품 CTA (범용 안내형 — 결과가 있을 때만, 기존 .mc-cta는 그대로 유지) -->
+    <!-- 개인화 궁합 CTA (결과가 있을 때만) — 주제 일치: MBTI 정적 페이지 → 개인화 MBTI 궁합 -->
     <FortuneUpsellCta
       v-if="found"
-      :to="{ path: '/saju', query: { service: 'newyear' } }"
-      copy-key="generic"
-      product="newyear"
-      source="mbti_pair"
-      variant="generic"
+      :to="{ path: '/celeb-select', query: { service: 'mbti' } }"
+      copy-key="mbtiPair"
+      product="mbti"
+      source="mbti_pair_page"
+      :utm="{ utm_source: 'mbti_seo', utm_medium: 'cta', utm_campaign: 'pair_page' }"
+      :event-params="{ pair: canonical.toLowerCase(), lang: locale }"
     />
 
     <section v-if="relatedPairs.length" class="mc-related">

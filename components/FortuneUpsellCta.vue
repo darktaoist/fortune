@@ -9,20 +9,24 @@ const props = defineProps({
   product: { type: String, required: true }, // 애널리틱스 상품 식별자
   source: { type: String, required: true }, // 출발 페이지 (utm_content + 이벤트)
   variant: { type: String, default: 'context' }, // 'context' | 'generic'
+  utm: { type: Object, default: null }, // UTM 오버라이드(미지정 시 기본 free_to_paid)
+  eventParams: { type: Object, default: null }, // upsell_click에 병합할 추가 파라미터
 })
 const { t } = useI18n()
 const localePath = useLocalePath()
 
-const UTM = { utm_source: 'internal', utm_medium: 'cta', utm_campaign: 'free_to_paid' }
+const DEFAULT_UTM = { utm_source: 'internal', utm_medium: 'cta', utm_campaign: 'free_to_paid' }
 const resolvedTo = computed(() => {
   const base = typeof props.to === 'string' ? { path: props.to } : { ...props.to }
-  base.query = { ...(base.query || {}), ...UTM, utm_content: props.source }
+  base.query = { ...(base.query || {}), ...(props.utm || DEFAULT_UTM), utm_content: props.source }
   return localePath(base)
 })
 
 function onClick() {
   try {
-    useTrackEvent('upsell_click', { product: props.product, source: props.source, variant: props.variant })
+    useTrackEvent('upsell_click', {
+      product: props.product, source: props.source, variant: props.variant, ...(props.eventParams || {}),
+    })
   } catch (e) {
     /* gtag 미초기화(프리뷰/차단) 환경은 조용히 무시 */
   }
