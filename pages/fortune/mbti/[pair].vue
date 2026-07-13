@@ -23,25 +23,42 @@ const typeB = canonical.split('-')[1]
 const pairLabel = `${typeA} × ${typeB}`
 const samePair = typeA === typeB
 
-// 관련 궁합 — 현재 두 유형이 각각 포함된 다른 조합을 정적 계산(DB 조회 없음).
-// A/B 목록을 교차로 뽑아 균형있게 6개. 슬러그는 정규형([a,b].sort()) → 역순 404 회피.
-const relatedPairs = (() => {
-  if (!canonical) return []
-  const listFor = (base) => TYPES.map((x) => [base, x].sort().join('-')).filter((c) => c !== canonical)
-  const a = listFor(typeA)
-  const b = listFor(typeB)
+// 관련 궁합 — 두 유형이 각각 포함된 다른 조합 중 compat_score 상위(비자기쌍 3+3, 자기쌍 6).
+// 로케일별 136점수를 단일 쿼리로(허브와 동일 엔드포인트). SSR 렌더 → 링크가 HTML에 포함.
+const { data: allData } = await useFetch('/api/mbti-compatibility-all', {
+  query: { lang: locale },
+  key: () => `mbti-all-${locale.value}`,
+})
+// 결정적: 점수 내림차순, 동점은 정규 슬러그 오름차순(허브와 동일). 슬러그는 정규형 → 역순 404 회피.
+const relatedPairs = computed(() => {
+  const scores = allData.value?.scores || {}
+  const canonOf = (base, x) => [base, x].sort().join('-')
+  const staticFor = (base) => TYPES.map((x) => canonOf(base, x)).filter((c) => c !== canonical)
+  const rankFor = (base, n) =>
+    staticFor(base)
+      .map((c) => ({ canonical: c, score: scores[c] }))
+      .filter((p) => p.score != null)
+      .sort((a, b) => b.score - a.score || a.canonical.localeCompare(b.canonical))
+      .slice(0, n)
+
   const seen = new Set()
   const out = []
-  for (let i = 0; i < Math.max(a.length, b.length) && out.length < 6; i++) {
-    for (const c of [a[i], b[i]]) {
-      if (c && !seen.has(c) && out.length < 6) {
-        seen.add(c)
-        out.push({ slug: c.toLowerCase(), label: c.replace('-', ' × ') })
-      }
-    }
+  const push = (c) => { if (c && c !== canonical && !seen.has(c)) { seen.add(c); out.push(c) } }
+
+  if (samePair) rankFor(typeA, 6).forEach((p) => push(p.canonical))
+  else { rankFor(typeA, 3).forEach((p) => push(p.canonical)); rankFor(typeB, 3).forEach((p) => push(p.canonical)) }
+
+  // 점수 조회 실패 등으로 비면 정적 폴백 — 내부링크(SEO 목적)는 항상 유지.
+  if (out.length === 0) {
+    const a = staticFor(typeA), b = staticFor(typeB)
+    for (let i = 0; i < Math.max(a.length, b.length) && out.length < 6; i++) { push(a[i]); push(b[i]) }
   }
-  return out
-})()
+
+  return out.slice(0, 8).map((c) => {
+    const [a, b] = c.split('-')
+    return { slug: c.toLowerCase(), a, b }
+  })
+})
 
 const { data } = await useFetch('/api/mbti-compatibility', {
   query: { pair: canonical, lang: locale },
@@ -131,7 +148,7 @@ useHead(() => ({
     <section v-if="relatedPairs.length" class="mc-related">
       <h2>{{ t('mbtiHub.relatedTitle') }}</h2>
       <div class="mc-related-links">
-        <NuxtLink v-for="r in relatedPairs" :key="r.slug" :to="localePath(`/fortune/mbti/${r.slug}`)" class="mc-related-link">{{ r.label }}</NuxtLink>
+        <NuxtLink v-for="r in relatedPairs" :key="r.slug" :to="localePath(`/fortune/mbti/${r.slug}`)" class="mc-related-link">{{ t('mbtiCompat.relatedAnchor', { a: r.a, b: r.b }) }}</NuxtLink>
       </div>
     </section>
 
