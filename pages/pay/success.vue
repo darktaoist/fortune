@@ -25,6 +25,20 @@ onMounted(async () => {
       // Meta Pixel Purchase — 서버 검증 금액으로 1회만(orderId 가드). navigateTo 전에 발화.
       if (res.amount != null) {
         useMetaPixel().trackPurchase(String(orderId), Number(res.amount), String(res.currency || 'KRW'), res.orderName)
+        // GA4 purchase — 이 페이지(Toss 리다이렉트 착지)에서만 발화. result/premium 다시보기는
+        // 동일 ?order= 쿼리라 여기서만 쏘고 sessionStorage 가드로 새로고침 재발화까지 차단.
+        try {
+          const gaKey = `ga_purchase_${orderId}`
+          if (!sessionStorage.getItem(gaKey)) {
+            useTrackEvent('purchase', {
+              transaction_id: String(orderId),
+              currency: String(res.currency || 'KRW'),
+              value: Number(res.amount),
+              items: [{ item_id: res.service, item_name: res.orderName, price: Number(res.amount), quantity: 1 }],
+            })
+            sessionStorage.setItem(gaKey, '1')
+          }
+        } catch { /* analytics best-effort */ }
       }
       const routeKey = toServiceKey(res.service)
       return navigateTo(localePath({ path: '/result/premium', query: { service: routeKey, order: orderId } }), { replace: true })
