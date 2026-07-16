@@ -23,7 +23,8 @@ const typeB = canonical.split('-')[1]
 const pairLabel = `${typeA} × ${typeB}`
 const samePair = typeA === typeB
 
-// 관련 궁합 — 두 유형이 각각 포함된 다른 조합 중 compat_score 상위(비자기쌍 3+3, 자기쌍 6).
+// 관련 궁합 — 두 유형이 각각 포함된 다른 조합 중 compat_score 상위(비자기쌍 5+5, 자기쌍 10).
+// 링크 수를 10개로 늘려 미크롤(discovered-not-indexed) 쌍으로 크롤 흐름을 더 넓게 흘려보낸다.
 // 로케일별 136점수를 단일 쿼리로(허브와 동일 엔드포인트). SSR 렌더 → 링크가 HTML에 포함.
 const { data: allData } = await useFetch('/api/mbti-compatibility-all', {
   query: { lang: locale },
@@ -45,16 +46,16 @@ const relatedPairs = computed(() => {
   const out = []
   const push = (c) => { if (c && c !== canonical && !seen.has(c)) { seen.add(c); out.push(c) } }
 
-  if (samePair) rankFor(typeA, 6).forEach((p) => push(p.canonical))
-  else { rankFor(typeA, 3).forEach((p) => push(p.canonical)); rankFor(typeB, 3).forEach((p) => push(p.canonical)) }
+  if (samePair) rankFor(typeA, 10).forEach((p) => push(p.canonical))
+  else { rankFor(typeA, 5).forEach((p) => push(p.canonical)); rankFor(typeB, 5).forEach((p) => push(p.canonical)) }
 
   // 점수 조회 실패 등으로 비면 정적 폴백 — 내부링크(SEO 목적)는 항상 유지.
   if (out.length === 0) {
     const a = staticFor(typeA), b = staticFor(typeB)
-    for (let i = 0; i < Math.max(a.length, b.length) && out.length < 6; i++) { push(a[i]); push(b[i]) }
+    for (let i = 0; i < Math.max(a.length, b.length) && out.length < 10; i++) { push(a[i]); push(b[i]) }
   }
 
-  return out.slice(0, 8).map((c) => {
+  return out.slice(0, 10).map((c) => {
     const [a, b] = c.split('-')
     return { slug: c.toLowerCase(), a, b }
   })

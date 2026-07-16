@@ -24,6 +24,18 @@ const localePath = useLocalePath()
 
 const k = (suffix) => `landing.${props.landingKey}.${suffix}`
 
+// 확장 SEO 본문(인트로+‘~란’은 기존 키 교체, 아래 3섹션은 신규)은 유료 핵심 랜딩에만 렌더.
+// 섹션3 키는 랜딩별로 다르다: 토정비결=연도(seoYear), 평생사주=원리(seoPrinciple).
+const hasSeoBody = computed(() => props.landingKey === 'tojung' || props.landingKey === 'lifetime')
+const seoSec3TitleKey = computed(() => (props.landingKey === 'tojung' ? 'seoYearTitle' : 'seoPrincipleTitle'))
+const seoSec3BodyKey = computed(() => (props.landingKey === 'tojung' ? 'seoYear' : 'seoPrinciple'))
+
+// 구조화 데이터용 절대 URL. 캐노니컬(레이아웃 useLocaleHead)은 쿼리 없는 /fortune/<key>이므로
+// JSON-LD의 url도 동일하게 맞춘다(구조화 데이터 URL엔 쿼리 미포함).
+const site = useSiteConfig()
+const siteUrl = site.url.replace(/\/$/, '')
+const pageUrl = computed(() => siteUrl + localePath(`/fortune/${props.landingKey}`))
+
 // 미리보기 번호: previewDraw({count,min,max})가 있으면 오늘 날짜를 시드로 결정적 생성.
 // 날짜(UTC) 기반이라 매일 바뀌고, 서버·클라가 같은 날이면 동일 → 하이드레이션 안전.
 const previewNumbers = computed(() => {
@@ -44,7 +56,8 @@ const previewNumbers = computed(() => {
 const paras = (suffix) => t(k(suffix), { numbers: previewNumbers.value }).split('\n').map((s) => s.trim()).filter(Boolean)
 
 const faq = computed(() =>
-  [1, 2, 3, 4]
+  // 1..8: tojung/lifetime은 5번 이상 보강 FAQ 보유. 미정의 인덱스는 아래 필터가 제거.
+  [1, 2, 3, 4, 5, 6, 7, 8]
     .map((i) => ({ q: t(k(`faqQ${i}`)), a: t(k(`faqA${i}`)) }))
     // 비어있거나 키 미해석(키 문자열 그대로 반환) 항목 제외
     .filter((x) => x.q && x.a && !x.q.startsWith('landing.')),
@@ -83,6 +96,38 @@ useHead(() => ({
       }]
     : [],
 }))
+
+// Article + BreadcrumbList JSON-LD(홈 > 이 랜딩). today/[zodiac] 패턴 재사용.
+// headline/description은 페이지가 usePageSeo로 쓰는 seo.landing.<key>.* 와 동일 소스 →
+// 메타·구조화 데이터 일치. /fortune 인덱스 페이지는 없으므로 브레드크럼은 2단(홈 > 페이지).
+// FAQPage와 별도 useHead 호출: script 배열은 병합되고 FAQ 로직과 독립적으로 반응.
+useHead(() => ({
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'Article',
+          headline: t(`seo.landing.${props.landingKey}.title`),
+          description: t(`seo.landing.${props.landingKey}.desc`),
+          inLanguage: locale.value,
+          url: pageUrl.value,
+          mainEntityOfPage: pageUrl.value,
+          isPartOf: { '@type': 'WebSite', name: site.name, url: siteUrl },
+          publisher: { '@type': 'Organization', name: site.name, url: siteUrl },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: t('nav.home'), item: siteUrl + localePath('/') },
+            { '@type': 'ListItem', position: 2, name: t(k('h1')), item: pageUrl.value },
+          ],
+        },
+      ],
+    }),
+  }],
+}))
 </script>
 
 <template>
@@ -104,6 +149,22 @@ useHead(() => ({
       <h2 class="lp-h2">{{ t(k('whatTitle')) }}</h2>
       <p v-for="(p, i) in paras('whatBody')" :key="'wh' + i" class="lp-body">{{ p }}</p>
     </section>
+
+    <!-- 확장 SEO 본문(토정비결·평생사주 전용): 알 수 있는 것 → 연도/원리 → 특징 -->
+    <template v-if="hasSeoBody">
+      <section class="lp-section">
+        <h2 class="lp-h2">{{ t(k('seoWhyTitle')) }}</h2>
+        <p v-for="(p, i) in paras('seoWhy')" :key="'sw' + i" class="lp-body">{{ p }}</p>
+      </section>
+      <section class="lp-section">
+        <h2 class="lp-h2">{{ t(k(seoSec3TitleKey)) }}</h2>
+        <p v-for="(p, i) in paras(seoSec3BodyKey)" :key="'s3' + i" class="lp-body">{{ p }}</p>
+      </section>
+      <section class="lp-section">
+        <h2 class="lp-h2">{{ t(k('seoFeatureTitle')) }}</h2>
+        <p v-for="(p, i) in paras('seoFeature')" :key="'sf' + i" class="lp-body">{{ p }}</p>
+      </section>
+    </template>
 
     <!-- 보는 법 -->
     <section class="lp-section">

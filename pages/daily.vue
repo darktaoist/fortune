@@ -32,6 +32,36 @@ useSeoMeta({
   ogDescription: () => t('daily.subtitle'),
 })
 
+// WebPage + BreadcrumbList JSON-LD(홈 > 띠별 오늘의 운세). 캐노니컬은 쿼리 없는 /daily.
+const site = useSiteConfig()
+const siteUrl = site.url.replace(/\/$/, '')
+const dailyUrl = computed(() => siteUrl + localePath('/daily'))
+useHead(() => ({
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebPage',
+          name: t('daily.title'),
+          description: t('daily.subtitle'),
+          inLanguage: locale.value,
+          url: dailyUrl.value,
+          isPartOf: { '@type': 'WebSite', name: site.name, url: siteUrl },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: t('nav.home'), item: siteUrl + localePath('/') },
+            { '@type': 'ListItem', position: 2, name: t('daily.title'), item: dailyUrl.value },
+          ],
+        },
+      ],
+    }),
+  }],
+}))
+
 const { data } = await useFetch('/api/horoscope', { query: { lang: locale } })
 const byZodiac = computed(() => data.value?.byZodiac || {})
 const zname = (z) => z.name[locale.value] || z.name.ko
@@ -122,6 +152,13 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
       <button class="action-btn" @click="copyAll">📋 {{ t('daily.copy') }}</button>
       <button class="action-btn" @click="share">🔗 {{ t('daily.share') }}</button>
     </div>
+
+    <!-- 유료 랜딩 내부링크(색인 강화) — 토정비결·평생운세·로또운세 상세 랜딩으로 -->
+    <nav class="daily-landings" :aria-label="t('nav.premium')">
+      <NuxtLink :to="localePath('/fortune/tojung')" class="dl-pill">{{ t('footer.link.tojung') }}</NuxtLink>
+      <NuxtLink :to="localePath('/fortune/lifetime')" class="dl-pill">{{ t('footer.link.life') }}</NuxtLink>
+      <NuxtLink :to="localePath('/fortune/lotto')" class="dl-pill">{{ t('footer.link.lotto') }}</NuxtLink>
+    </nav>
     </div>
 
     <div class="daily-layout">
@@ -207,6 +244,11 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 .dh-actions { display: flex; gap: var(--space-3); justify-content: center; margin-bottom: var(--space-6); }
 .action-btn { padding: 10px 20px; border-radius: var(--radius-full); border: 1px solid var(--gold-border); background: var(--bg-secondary); color: var(--text-secondary); font-size: var(--text-sm); font-weight: 600; transition: all 0.2s; }
 .action-btn:hover { border-color: var(--gold-primary); color: var(--gold-light); background: var(--gold-soft); }
+
+/* 유료 랜딩 내부링크 스트립(색인 강화) */
+.daily-landings { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; margin-bottom: var(--space-8); }
+.dl-pill { display: inline-block; padding: var(--space-2) var(--space-5); border-radius: 999px; border: 1px solid var(--gold-border-strong); background: rgba(201, 168, 76, 0.08); color: var(--gold-light); font-size: var(--text-sm); font-weight: 600; transition: background 0.18s, border-color 0.18s; }
+.dl-pill:hover { background: var(--gold-soft); border-color: var(--gold-primary); }
 
 .z-nav { position: sticky; top: 84px; z-index: 10; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; padding: var(--space-3); margin-bottom: var(--space-6); background: rgba(10, 10, 15, 0.8); backdrop-filter: blur(10px); border: 1px solid var(--gold-border); border-radius: var(--radius-full); }
 .z-chip { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; border-radius: 50%; border: 1px solid transparent; transition: all 0.18s; }

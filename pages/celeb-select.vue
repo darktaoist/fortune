@@ -45,6 +45,38 @@ useSeoMeta({
   ogDescription: () => pageSub.value,
 })
 
+// WebPage + BreadcrumbList JSON-LD(홈 > 궁합 선택). 캐노니컬(레이아웃 useLocaleHead)은
+// 쿼리 없는 /celeb-select 이므로 url도 쿼리 없이. 무료화된 서비스라 Product/Offer(가격)는
+// 사실과 어긋나 쓰지 않는다. name/description은 현재 서비스(celeb·mbti) 뷰를 반영.
+const site = useSiteConfig()
+const siteUrl = site.url.replace(/\/$/, '')
+const pageUrl = computed(() => siteUrl + localePath('/celeb-select'))
+useHead(() => ({
+  script: [{
+    type: 'application/ld+json',
+    innerHTML: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebPage',
+          name: pageTitle.value,
+          description: pageSub.value,
+          inLanguage: locale.value,
+          url: pageUrl.value,
+          isPartOf: { '@type': 'WebSite', name: site.name, url: siteUrl },
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: t('nav.home'), item: siteUrl + localePath('/') },
+            { '@type': 'ListItem', position: 2, name: pageTitle.value, item: pageUrl.value },
+          ],
+        },
+      ],
+    }),
+  }],
+}))
+
 /* ---- celebrities (real data) ---- */
 const { data: celebData } = await useFetch('/api/celebs', {
   query: { lang: locale },

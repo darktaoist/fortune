@@ -380,6 +380,17 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
+    <!-- ============ 색인용 상세 랜딩 내부링크 ============ -->
+    <!-- 홈 제품 카드는 앱내 동선(결과 직행)이라 색인용 공개 랜딩(/fortune/*)은 그동안 푸터에만
+         링크됐다(내부 PageRank 얕음). 고트래픽 홈에서 유료 핵심 랜딩으로 내부링크를 보강한다. -->
+    <section class="landing-links container">
+      <nav class="ll-row" :aria-label="t('nav.premium')">
+        <NuxtLink :to="localePath('/fortune/tojung')" class="ll-pill">{{ t('footer.link.tojung') }}</NuxtLink>
+        <NuxtLink :to="localePath('/fortune/lifetime')" class="ll-pill">{{ t('footer.link.life') }}</NuxtLink>
+        <NuxtLink :to="localePath('/fortune/lotto')" class="ll-pill">{{ t('footer.link.lotto') }}</NuxtLink>
+      </nav>
+    </section>
+
     <!-- ============ FREE GRID ============ -->
     <section id="free" class="free-section">
       <div class="container">
@@ -912,6 +923,12 @@ onBeforeUnmount(() => {
   .zodiac-card { padding: var(--space-8) var(--space-4); }
   .zodiac-lucky { grid-template-columns: 1fr; }
 }
+
+/* ============ 색인용 상세 랜딩 내부링크 ============ */
+.landing-links { padding: 0 0 var(--space-12); }
+.ll-row { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; padding-top: var(--space-10); border-top: 1px solid var(--gold-border); }
+.ll-pill { display: inline-block; padding: var(--space-2) var(--space-6); border-radius: 999px; border: 1px solid var(--gold-border-strong); background: rgba(201, 168, 76, 0.08); color: var(--gold-light); font-size: var(--text-sm); font-weight: 600; transition: background 0.18s, border-color 0.18s; }
+.ll-pill:hover { background: var(--gold-soft); border-color: var(--gold-primary); }
 
 /* ============ PREMIUM CAROUSEL ============ */
 .premium-section { padding: var(--space-24) 0; }
