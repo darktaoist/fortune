@@ -51,6 +51,14 @@ useSeoMeta({
 const site = useSiteConfig()
 const siteUrl = site.url.replace(/\/$/, '')
 const pageUrl = computed(() => siteUrl + localePath('/celeb-select'))
+
+// SEO 본문 FAQ(가시 텍스트 = FAQPage JSON-LD). 키 미해석/빈 항목은 필터.
+const seoFaq = computed(() =>
+  [1, 2, 3]
+    .map((i) => ({ q: t(`cel.seoFaqQ${i}`), a: t(`cel.seoFaqA${i}`) }))
+    .filter((x) => x.q && x.a && !x.q.startsWith('cel.')),
+)
+
 useHead(() => ({
   script: [{
     type: 'application/ld+json',
@@ -72,6 +80,17 @@ useHead(() => ({
             { '@type': 'ListItem', position: 2, name: pageTitle.value, item: pageUrl.value },
           ],
         },
+        // 가시 SEO FAQ를 그대로 미러링(기존 그래프에 FAQPage 노드 합류).
+        ...(seoFaq.value.length
+          ? [{
+              '@type': 'FAQPage',
+              mainEntity: seoFaq.value.map((x) => ({
+                '@type': 'Question',
+                name: x.q,
+                acceptedAnswer: { '@type': 'Answer', text: x.a },
+              })),
+            }]
+          : []),
       ],
     }),
   }],
@@ -479,11 +498,54 @@ if (import.meta.client) {
         </template>
       </div>
     </div>
+
+    <!-- SEO 본문(색인용): 인트로 + 4섹션 + FAQ. 가드레일 — 특정 인물명·유료상품 링크 없음(일반형 서비스 설명). -->
+    <section class="cel-seo" :aria-label="t('cel.seoWhatTitle')">
+      <p class="cs-intro">{{ t('cel.seoIntro') }}</p>
+
+      <div class="cs-block">
+        <h2 class="cs-h2">{{ t('cel.seoWhatTitle') }}</h2>
+        <p class="cs-body">{{ t('cel.seoWhat') }}</p>
+      </div>
+      <div class="cs-block">
+        <h2 class="cs-h2">{{ t('cel.seoHowTitle') }}</h2>
+        <p class="cs-body">{{ t('cel.seoHow') }}</p>
+      </div>
+      <div class="cs-block">
+        <h2 class="cs-h2">{{ t('cel.seoUseTitle') }}</h2>
+        <p class="cs-body">{{ t('cel.seoUse') }}</p>
+      </div>
+      <div class="cs-block">
+        <h2 class="cs-h2">{{ t('cel.seoFeatureTitle') }}</h2>
+        <p class="cs-body">{{ t('cel.seoFeature') }}</p>
+      </div>
+
+      <div v-if="seoFaq.length" class="cs-block">
+        <h2 class="cs-h2">{{ t('landing.common.faqTitle') }}</h2>
+        <details v-for="(x, i) in seoFaq" :key="'csf' + i" class="cs-faq">
+          <summary>{{ x.q }}</summary>
+          <p>{{ x.a }}</p>
+        </details>
+      </div>
+    </section>
   </main>
 </template>
 
 <style scoped>
 .celeb-page { max-width: 1120px; margin: 0 auto; padding: 104px var(--space-6) var(--space-24); }
+
+/* SEO 본문(색인용): 상호작용 UI 아래 텍스트 콘텐츠. */
+.cel-seo { max-width: 760px; margin: var(--space-16) auto 0; padding-top: var(--space-10); border-top: 1px solid var(--gold-border); }
+.cs-intro { color: var(--text-secondary); font-size: var(--text-lg); line-height: 1.8; margin-bottom: var(--space-10); text-wrap: pretty; }
+.cs-block { margin-bottom: var(--space-8); }
+.cs-h2 { font-family: var(--font-display); font-size: clamp(1.25rem, 3vw, 1.55rem); font-weight: 700; letter-spacing: -0.01em; margin-bottom: var(--space-3); padding-bottom: var(--space-3); border-bottom: 1px solid var(--gold-border); }
+.cs-body { color: var(--text-secondary); font-size: var(--text-base); line-height: 1.85; text-wrap: pretty; }
+.cs-faq { padding: var(--space-4) 0; border-bottom: 1px solid var(--gold-border); }
+.cs-faq summary { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--text-primary); cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); }
+.cs-faq summary::after { content: '+'; color: var(--gold-primary); font-size: var(--text-xl); flex-shrink: 0; }
+.cs-faq[open] summary::after { content: '−'; }
+.cs-faq summary::-webkit-details-marker { display: none; }
+.cs-faq p { margin-top: var(--space-3); color: var(--text-secondary); font-size: var(--text-base); line-height: 1.8; }
 
 /* Page head */
 .page-head { text-align: center; margin-bottom: var(--space-8); }

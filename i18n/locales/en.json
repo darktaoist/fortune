@@ -1385,5 +1385,20 @@
   "landing.lifetime.seoFeatureTitle": "What sets Taoist's lifetime Saju apart",
   "landing.lifetime.seoFeature": "Enter your birth date and time, and AI builds your Saju chart and brings together the five elements, the Ten Gods, and the flow of Dae-un into a personalized reading. Organized by area — personality, career, wealth, love, and health — it makes a natural starting point for understanding yourself.",
   "landing.lifetime.faqQ5": "What if my Saju is bad?",
-  "landing.lifetime.faqA5": "There is no absolute good or bad in Saju. The purpose of a reading is to make the most of your strong energies and to find ways to supplement what is lacking."
+  "landing.lifetime.faqA5": "There is no absolute good or bad in Saju. The purpose of a reading is to make the most of your strong energies and to find ways to supplement what is lacking.",
+  "cel.seoIntro": "Celebrity compatibility is a just-for-fun way to explore how well you and a favorite star match — in Saju and in personality. Using Saju (Four Pillars) compatibility from your birth date and MBTI personality compatibility, you can lightheartedly see how well you'd get along with a star you admire.",
+  "cel.seoWhatTitle": "What is celebrity compatibility?",
+  "cel.seoWhat": "Celebrity compatibility is a fun feature that compares the innate temperament and relational chemistry between you and a particular star through the lenses of Saju (Korean four-pillars astrology) and personality type (MBTI). Rather than predicting a real connection, its point is to understand and enjoy how your dispositions fit together.",
+  "cel.seoHowTitle": "How it works",
+  "cel.seoHow": "Saju compatibility looks at the harmony of the five elements and energies held in two people's birth dates, revealing where you draw each other in or rub against each other. MBTI compatibility compares communication styles and values between personality types. Reading both together gives a fuller, more rounded picture of your compatibility.",
+  "cel.seoUseTitle": "How to enjoy it",
+  "cel.seoUse": "Pick a star you like, check your compatibility, and share the result with friends as a fun talking point. It starts as light entertainment, but it can also be a natural way to get a feel for how Saju and personality compatibility work.",
+  "cel.seoFeatureTitle": "What makes Taoist's celebrity compatibility special",
+  "cel.seoFeature": "Choose a star and enter your birth date or MBTI, and AI analyzes your Saju and personality compatibility to show the result. You can check your match with many stars for free, so it's easy to enjoy without any pressure.",
+  "cel.seoFaqQ1": "Does celebrity compatibility mean a real relationship?",
+  "cel.seoFaqA1": "No. It's a for-fun feature that looks at how dispositions fit together; it does not predict any real relationship or connection.",
+  "cel.seoFaqQ2": "What do I need to enter?",
+  "cel.seoFaqA2": "For Saju compatibility, enter your birth date; for MBTI compatibility, just select your personality type.",
+  "cel.seoFaqQ3": "Is it free?",
+  "cel.seoFaqA3": "Yes. You can check your compatibility with many stars for free."
 }
