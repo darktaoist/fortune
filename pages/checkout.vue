@@ -56,10 +56,19 @@ const priceApprox = computed(() => {
 })
 
 // ── 결제 수단(한국=국내 PG / 그 외=PayPal 중심). 시각 표시이며 실제 처리는 Toss. ──
-const PM_KR = [['naver', 'N'], ['kakao', 'k'], ['toss', 't'], ['payco', 'P'], ['samsung', 'S'], ['apple', ''], ['vbank', '₩'], ['card', '▭']]
+// 국내 배지는 이 상점에 "실제 계약된" 수단만 적는다 — 결제창에 없는 수단을 띄우면
+// 기대와 어긋나 이탈로 이어진다. (네이버페이·PAYCO·삼성페이·가상계좌 미계약)
+const PM_KR = [['kakao', 'k'], ['toss', 't'], ['card', '▭']]
 const PM_INTL = [['paypal', 'P'], ['card', '▭'], ['apple', ''], ['googlepay', 'G']]
 const methods = computed(() => (isKorea.value ? PM_KR : PM_INTL))
 const buyLabel = computed(() => (isKorea.value ? t('pay.buy') : t('pay.buyPaypal')))
+
+// ── 국내 간편결제 전용 버튼 ──
+// flowMode:'DIRECT' + card.easyPay 로 해당 간편결제사 자체창을 바로 연다.
+// 미계약 수단을 넣으면 런타임에서 실패하므로 계약된 둘(카카오페이·토스페이)만 둔다.
+// 실패하더라도 아래 "다른 방법으로 결제"(통합결제창)가 폴백으로 남는다.
+const EASYPAY_CODE = { kakao: '카카오페이', toss: '토스페이' } // i18n-ok: 토스 간편결제사 코드(프로토콜 상수, 비-UI)
+const EASYPAY_BUTTONS = [{ key: 'kakao', dot: 'k' }, { key: 'toss', dot: 't' }]
 
 // ── 사용자 정보(/api/saju/manse: 양/음력·시 변환) ──
 const info = ref(null)
@@ -141,9 +150,14 @@ async function initPaypal() {
 onMounted(initPaypal)
 watch([isKorea, user], initPaypal)
 
-async function pay() {
+// easyPayKey: 'kakao' | 'toss' | null(null이면 통합결제창 폴백)
+async function pay(easyPayKey = null) {
   if (busy.value) return
   errorMsg.value = ''
+  // 수단 선택 시점 계측 — 로그인/사주 게이트로 되돌아가는 이탈도 잡히도록 가장 앞에서 쏜다.
+  try {
+    useTrackEvent('pay_method_select', { method: easyPayKey || 'fallback', service: service.value })
+  } catch { /* analytics best-effort */ }
   if (!user.value) {
     navigateTo(localePath({ path: '/login', query: { reason: 'pro', redirect: route.fullPath } }))
     return
@@ -191,6 +205,8 @@ async function pay() {
       const payment = tossPayments.payment({ customerKey: user.value.id })
       await payment.requestPayment({
         method: 'CARD',
+        // DIRECT면 해당 간편결제사 자체창, 미지정이면 기본값 DEFAULT(카드/간편결제 통합결제창).
+        ...(easyPayKey ? { card: { flowMode: 'DIRECT', easyPay: EASYPAY_CODE[easyPayKey] } } : {}),
         amount: { currency: order.currency, value: order.amount },
         orderId: order.orderId,
         orderName: order.orderName,
@@ -368,7 +384,19 @@ async function pay() {
           <div v-show="!isKorea && widgetKey" id="paypal-widget" class="paypal-box" />
 
           <div class="cta-row">
-            <button class="btn btn-primary" :disabled="busy" @click="pay">
+            <!-- 국내: 간편결제(계약 수단) 우선 → 통합결제창은 폴백으로 아래에 -->
+            <template v-if="isKorea">
+              <button
+                v-for="(b, i) in EASYPAY_BUTTONS" :key="b.key"
+                class="btn" :class="[i === 0 ? 'btn-primary' : 'btn-outline', 'pay-ep', b.key]"
+                :disabled="busy" @click="pay(b.key)"
+              >
+                <span class="ep-dot">{{ b.dot }}</span>
+                <span>{{ busy ? t('auth.processing') : t('pay.buyWith.' + b.key) }}</span>
+              </button>
+              <button class="btn btn-plain" :disabled="busy" @click="pay()">{{ t('pay.buyOther') }}</button>
+            </template>
+            <button v-else class="btn btn-primary" :disabled="busy" @click="pay()">
               <span>{{ busy ? t('auth.processing') : buyLabel }}</span>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
             </button>
@@ -377,6 +405,12 @@ async function pay() {
               <span>{{ t('pay.sample') }}</span>
             </button>
           </div>
+
+          <!-- 환불 보장 — 결제 버튼 바로 옆(구매 직전 불안 해소) -->
+          <p class="refund-guarantee">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></svg>
+            <span>{{ t('pay.refundGuarantee') }}</span>
+          </p>
 
           <p v-if="!payConfigured" class="config-note">{{ t('checkout.err.config') }}</p>
           <p v-if="errorMsg" class="err">{{ errorMsg }}</p>
@@ -483,15 +517,11 @@ async function pay() {
 .pay-methods { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-6); }
 .pm { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: var(--radius-md); border: 1px solid var(--gold-border); background: var(--bg-tertiary); font-size: var(--text-sm); font-weight: 600; color: var(--text-secondary); }
 .pm .dot { width: 16px; height: 16px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #fff; }
-.pm.naver .dot { background: #03C75A; }
 .pm.kakao .dot { background: #FEE500; color: #391B1B; }
-.pm.payco .dot { background: #FF1717; }
 .pm.toss .dot { background: #0064FF; }
-.pm.samsung .dot { background: #1428A0; }
 .pm.apple .dot { background: #111; }
 .pm.paypal .dot { background: #fff; color: #003087; font-style: italic; }
 .pm.googlepay .dot { background: #fff; color: #4285F4; }
-.pm.vbank .dot { background: var(--gold-deep); }
 .pm.card .dot { background: var(--text-muted); }
 
 /* CTA */
@@ -506,6 +536,21 @@ async function pay() {
 .cta-row .btn-primary:disabled { opacity: 0.6; cursor: progress; transform: none; box-shadow: none; }
 .cta-row .btn-secondary { padding: var(--space-3) var(--space-6); font-size: var(--text-base); border: 1px solid var(--gold-border); background: var(--bg-tertiary); color: var(--text-secondary); }
 .cta-row .btn-secondary:hover { border-color: var(--gold-primary); color: var(--gold-light); }
+
+/* 간편결제 전용 버튼 — 기존 골드 시스템 유지, 결제사는 배지 점으로만 구분 */
+.cta-row .btn-outline { padding: var(--space-4) var(--space-6); font-size: var(--text-lg); border: 1px solid var(--gold-border-strong); background: transparent; color: var(--gold-light); }
+.cta-row .btn-outline:hover { border-color: var(--gold-primary); background: var(--gold-soft); transform: translateY(-2px); }
+.cta-row .btn-outline:disabled { opacity: 0.6; cursor: progress; transform: none; }
+.pay-ep .ep-dot { width: 18px; height: 18px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #fff; }
+.pay-ep.kakao .ep-dot { background: #FEE500; color: #391B1B; }
+.pay-ep.toss .ep-dot { background: #0064FF; }
+.cta-row .btn-plain { padding: var(--space-2) var(--space-4); font-size: var(--text-sm); border: none; background: none; color: var(--text-muted); text-decoration: underline; text-underline-offset: 3px; }
+.cta-row .btn-plain:hover { color: var(--gold-light); }
+.cta-row .btn-plain:disabled { opacity: 0.5; cursor: progress; }
+
+/* 환불 보장 */
+.refund-guarantee { display: flex; align-items: flex-start; gap: var(--space-2); margin-top: var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--gold-border); border-radius: var(--radius-md); background: var(--gold-soft); font-size: var(--text-xs); line-height: 1.65; color: var(--text-secondary); }
+.refund-guarantee svg { flex-shrink: 0; margin-top: 2px; color: var(--gold-primary); }
 
 .config-note { margin-top: var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--gold-border); border-radius: var(--radius-md); background: var(--gold-soft); color: var(--gold-light); font-size: var(--text-sm); line-height: 1.5; }
 .err { color: #F87171; font-size: var(--text-sm); text-align: center; margin-top: var(--space-4); }

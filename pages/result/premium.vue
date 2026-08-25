@@ -163,6 +163,15 @@ const shortsData = computed(() => {
 const manse = computed(() => result.value?.myeongsik || null)
 const partnerManse = computed(() => result.value?.partnerMyeongsik || null)
 
+/* ---- 유료 미리보기 잠금 ----
+ * 서버(sample.get.ts)가 유료 상품(lifetime/newyear)에 한해 첫 2섹션만 본문을 주고
+ * 나머지는 제목·글자만 locked로 내려준다. 여기서는 그 목록을 자물쇠 카드로 그린다.
+ * isFreeSvc(연예인 궁합·MBTI 궁합) 이중 가드 — 무료 확정 상품엔 잠금이 뜨면 안 된다.
+ * (비로그인 궁합 로그인벽도 sampleMode=true라 sampleMode만으로는 구분이 안 된다.)
+ */
+const lockedSections = computed(() => result.value?.locked || [])
+const previewLocked = computed(() => sampleMode.value && !isFreeSvc.value && lockedSections.value.length > 0)
+
 function handleEvent(evt) {
   if (!result.value) return
   if (evt.type === 'notready') {
@@ -290,6 +299,7 @@ async function loadSample() {
       myeongsik: data.myeongsik || null,
       partnerMyeongsik: data.partnerMyeongsik || null,
       sections: data.sections || [],
+      locked: data.locked || [],
       score: data.score ?? null,
       subject: data.subject || null,
     }
@@ -553,8 +563,27 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
           </div>
         </template>
 
+        <!-- 미리보기 잠금: 본문 없이 제목·글자만 + 구매 CTA -->
+        <div v-if="previewLocked" class="locked-wrap">
+          <div class="locked-list">
+            <article v-for="s in lockedSections" :key="s.key" class="ov-card locked-card">
+              <div class="ov-glyph">{{ s.glyph }}</div>
+              <div class="ov-body">
+                <h3 class="ov-title">{{ t(s.titleKey) }}</h3>
+                <div class="locked-lines" aria-hidden="true"><span /><span /><span /></div>
+              </div>
+              <svg class="locked-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+            </article>
+          </div>
+          <div class="locked-cta">
+            <p class="locked-title">{{ t('premium.locked.title') }}</p>
+            <p class="locked-desc">{{ t('premium.locked.desc') }}</p>
+            <NuxtLink class="btn btn-primary" :to="localePath({ path: '/checkout', query: { service } })">{{ t('pay.buy') }}</NuxtLink>
+          </div>
+        </div>
+
         <!-- 결과 복사 / 공유 (카톡 등) — 생성 완료 시 노출 -->
-        <div v-if="displaySections.length && !loading" class="share-row">
+        <div v-if="displaySections.length && !loading && !previewLocked" class="share-row">
           <button class="share-btn" @click="copyResult">📋 {{ t('result.copy') }}</button>
           <button class="share-btn primary" @click="shareResult">💬 {{ t('result.share') }}</button>
         </div>
@@ -609,14 +638,14 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
         </div>
 
         <!-- 샘플: 하단 구매 유도 (저장/후기 대신) -->
-        <div v-else-if="sampleMode && sections.length" class="result-actions sample-cta">
+        <div v-else-if="sampleMode && sections.length && !previewLocked" class="result-actions sample-cta">
           <p class="save-hint">{{ isFreeSvc ? t('premium.free.sampleNote') : t('premium.sample.note') }}</p>
           <NuxtLink v-if="isFreeSvc" class="btn btn-primary" :to="freeSampleCta.to">{{ freeSampleCta.label }}</NuxtLink>
           <NuxtLink v-else class="btn btn-primary" :to="localePath({ path: '/checkout', query: { service } })">{{ t('pay.buy') }}</NuxtLink>
         </div>
 
         <!-- 저장 (완료 후) — 결제 생성분은 서버가 보관함에 자동 저장 -->
-        <div v-else-if="sections.length && !savedId" class="result-actions">
+        <div v-else-if="sections.length && !savedId && !sampleMode" class="result-actions">
           <p v-if="orderRef || freeId" class="save-hint">{{ t('premium.autoSaved') }}</p>
           <template v-else>
             <p class="save-hint">{{ t('premium.saveHint') }}</p>
@@ -716,5 +745,23 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 .toast-enter-active, .toast-leave-active { transition: opacity 0.25s, transform 0.25s; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
 
-@media (max-width: 560px) { .info-grid { grid-template-columns: 1fr; } .ov-card { grid-template-columns: 1fr; } .ov-glyph { width: 48px; height: 48px; font-size: 24px; } }
+/* 미리보기 잠금 — 제목·글자는 보이고 본문 자리는 플레이스홀더 막대 */
+.locked-wrap { margin-top: var(--space-4); }
+.locked-list { display: flex; flex-direction: column; gap: var(--space-4); }
+.locked-card { position: relative; grid-template-columns: 56px 1fr auto; align-items: flex-start; opacity: 0.72; }
+.locked-card .ov-title { color: var(--text-secondary); margin-bottom: var(--space-4); }
+.locked-card .locked-ic { color: var(--gold-primary); flex-shrink: 0; margin-top: 4px; }
+.locked-lines { display: flex; flex-direction: column; gap: 9px; }
+.locked-lines span { display: block; height: 9px; border-radius: 999px; background: linear-gradient(90deg, rgba(201, 168, 76, 0.16), rgba(201, 168, 76, 0.05)); }
+.locked-lines span:nth-child(1) { width: 100%; }
+.locked-lines span:nth-child(2) { width: 92%; }
+.locked-lines span:nth-child(3) { width: 61%; }
+
+.locked-cta { margin-top: var(--space-8); padding: var(--space-8); text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-3); background: linear-gradient(135deg, rgba(201, 168, 76, 0.10), rgba(201, 168, 76, 0.02)); border: 1px solid var(--gold-border-strong); border-radius: var(--radius-lg); }
+.locked-cta .locked-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--gold-light); }
+.locked-cta .locked-desc { color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.7; max-width: 480px; }
+.locked-cta .btn-primary { margin-top: var(--space-2); padding: var(--space-4) var(--space-8); border: 1px solid var(--gold-primary); background: var(--gold-primary); color: var(--text-on-gold); border-radius: var(--radius-md); font-weight: 700; font-size: var(--text-base); box-shadow: 0 4px 16px rgba(201, 168, 76, 0.20); transition: transform 0.15s var(--ease-out), box-shadow 0.2s; }
+.locked-cta .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(201, 168, 76, 0.30); }
+
+@media (max-width: 560px) { .info-grid { grid-template-columns: 1fr; } .ov-card { grid-template-columns: 1fr; } .ov-glyph { width: 48px; height: 48px; font-size: 24px; } .locked-card { grid-template-columns: 1fr; } }
 </style>

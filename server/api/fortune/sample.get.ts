@@ -39,6 +39,17 @@ const SAMPLE_READINGS: Record<string, Record<string, string>> = {
 }
 const FALLBACK_LANG = 'ko'
 
+/**
+ * 유료 리포트 미리보기 절단 — 유료 상품만 첫 N섹션을 공개하고 나머지는 제목·글자만 내려준다.
+ * 잠금 본문은 응답에 아예 담지 않는다(뷰소스로도 유료 콘텐츠가 새지 않음).
+ *
+ * ⚠️ gunghap(연예인 궁합)·mbti(연예인 MBTI 궁합)는 무료 확정 상품이라 절대 넣지 말 것.
+ *    이 둘은 비로그인 로그인벽에서도 같은 샘플 API를 쓰므로, 여기 추가하면
+ *    무료 상품에 유료 게이트가 생긴다.
+ */
+const PREVIEW_GATED = new Set(['lifetime', 'newyear'])
+const PREVIEW_FREE_SECTIONS = 2
+
 export default defineEventHandler(async (event) => {
   const q = getQuery(event)
   const service = String(q.service || '').toLowerCase()
@@ -64,13 +75,29 @@ export default defineEventHandler(async (event) => {
 
   const p = (sr.payload || {}) as Record<string, any>
 
+  // 미리보기 절단: 유료 상품만 첫 N섹션 공개 + 나머지는 잠금 목록(제목·글자)으로.
+  const all: Array<Record<string, any>> = Array.isArray(p.sections) ? p.sections : []
+  let sections = all
+  let locked: Array<{ key: string; titleKey: string; glyph: string }> = []
+  if (PREVIEW_GATED.has(service)) {
+    // shorts는 화면에 안 그리는 숏폼용 JSON — 무료 공개분 2칸을 잡아먹지 않게 먼저 제외.
+    const visible = all.filter((x) => x?.key !== 'shorts')
+    sections = visible.slice(0, PREVIEW_FREE_SECTIONS)
+    locked = visible.slice(PREVIEW_FREE_SECTIONS).map((x) => ({
+      key: String(x?.key || ''),
+      titleKey: String(x?.titleKey || ''),
+      glyph: String(x?.glyph || '秘'),
+    }))
+  }
+
   // 결과 전용 필드만 공개로 반환.
   return {
     service,
     glyph: sr.glyph || '命',
     tint: sr.tint || 'gold',
     subject: sr.subject || null,
-    sections: p.sections,
+    sections,
+    locked,
     score: p.score ?? null,
     myeongsik: p.myeongsik || null,
     partnerMyeongsik: p.partnerMyeongsik || null,

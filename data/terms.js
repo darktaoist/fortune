@@ -376,6 +376,14 @@ export default {
               { v: { ko: '디지털 콘텐츠를 이미 열람하거나 이용한 경우: 「전자상거래 등에서의 소비자보호에 관한 법률」에 따라 청약철회가 제한됩니다.', en: 'Where digital content has already been viewed or used: withdrawal is restricted under the Act on Consumer Protection in Electronic Commerce.', ja: 'デジタルコンテンツをすでに閲覧または利用した場合：「電子商取引等における消費者保護に関する法律」により申込み撤回が制限されます。', zh: '已閱覽或使用數位內容者：依《電子商務等消費者保護法》限制撤回。' } },
               { v: { ko: '결제 후 서비스가 제공되지 않은 경우: 전액 환불이 가능합니다.', en: 'Where the Service was not provided after payment: a full refund is available.', ja: '決済後にサービスが提供されなかった場合：全額返金が可能です。', zh: '付款後未提供服務者：得全額退款。' } },
             ] },
+            // 법정 최소선(① 제2호)은 그대로 두고, 그보다 후한 자발적 보장을 별도로 명시한다.
+            // 결제 화면의 "7일 100% 환불 보장" 문구와 같은 약속 — 두 문서가 어긋나면 안 된다.
+            { t: 'p', v: {
+              ko: '①의2 위 ① 제2호에도 불구하고, 회사는 법정 기준을 넘어 자발적 보장을 제공합니다. 리포트의 품질이 미흡하거나 내용에 오류가 있다고 회원이 판단하는 경우, 열람 여부와 관계없이 결제일로부터 7일 이내 요청하시면 전액 환불합니다. 사유는 묻지 않으며, 남용 방지를 위해 회원 1인당 1회로 제한합니다.',
+              en: '\u2460-2 Notwithstanding item 2 of \u2460 above, the Company provides a voluntary guarantee that goes beyond the statutory standard. Where a Member considers the quality of a report inadequate or its content erroneous, the Company refunds the full amount upon request within 7 days of payment, whether or not the report has been viewed. No reason is required; to prevent abuse, the guarantee is limited to one refund per Member.',
+              ja: '\u2460の2 上記\u2460第2号にかかわらず、会社は法定基準を超える自発的な保証を提供します。レポートの品質が不十分である、または内容に誤りがあると会員が判断する場合、閲覧の有無にかかわらず決済日から7日以内にご請求いただければ全額返金します。理由は伺いませんが、濫用防止のため会員お一人につき1回に限ります。',
+              zh: '\u2460之2 縱有前\u2460第2款之規定，公司仍提供逾越法定標準之自發性保證。會員認為報告品質不足或內容有誤者，無論是否已閱覽，自付款日起7日內提出請求即全額退款。不詢問事由；為防止濫用，每位會員限用一次。',
+            } },
             { t: 'p', v: {
               ko: '② 다음 각 호의 경우에는 환불이 제한될 수 있습니다.',
               en: '② Refunds may be restricted in any of the following cases.',
