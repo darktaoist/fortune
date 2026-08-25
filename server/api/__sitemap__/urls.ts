@@ -14,7 +14,13 @@ const LOCALES = [
 ]
 
 export default defineSitemapEventHandler(() => {
-  return SLUGS.flatMap((s) => {
+  // 매일 갱신되는 페이지라 lastmod 가 오늘(KST)이어야 재수집이 붙는다.
+  // 하드코딩·빌드시점 고정이면 의미가 없으므로 요청 시점에 계산한다
+  // (사이트맵 응답 캐시는 모듈 기본 10분 — 하루 단위 값엔 영향 없음).
+  const lastmod = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10)
+
+  // (1) 띠별 상세 12 slug × ko·ja·zh
+  const zodiac = SLUGS.flatMap((s) => {
     const alternatives = [
       { hreflang: 'x-default', href: `/fortune/today/${s}` },
       ...LOCALES.map((l) => ({ hreflang: l.hreflang, href: `${l.prefix}/fortune/today/${s}` })),
@@ -24,6 +30,18 @@ export default defineSitemapEventHandler(() => {
       alternatives,
       changefreq: 'daily',
       priority: 0.7,
+      lastmod,
     }))
   })
+
+  // (2) /daily 인덱스는 자동수집 라우트라 여기서 lastmod 만 얹는다.
+  //     사이트맵은 loc 기준으로 엔트리를 병합하므로 alternatives(i18n 자동생성)는 그대로 남는다.
+  //     en(/en/daily)은 색인 대상이 아니므로 발행하지 않는다.
+  const dailyIndex = LOCALES.map((l) => ({
+    loc: `${l.prefix}/daily`,
+    changefreq: 'daily',
+    lastmod,
+  }))
+
+  return [...zodiac, ...dailyIndex]
 })

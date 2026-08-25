@@ -1,4 +1,5 @@
 <script setup>
+import { DATED_TITLES, shortDate } from '~/shared/dailySeo'
 // 띠별 오늘의 운세 — daily_horoscope 실연동. 입력/로그인 없이 보는 공개 운세.
 // 복사(클립보드) + 공유(Web Share API → 모바일은 카톡 포함 네이티브 시트, PC는 URL 복사).
 // 레거시 DailyHoroscope.vue 구조를 2.0 디자인 언어로 포팅.
@@ -25,11 +26,23 @@ const ZODIAC = [
 ]
 const ORDER = ['쥐', '소', '호랑이', '토끼', '용', '뱀', '말', '양', '원숭이', '닭', '개', '돼지']
 
+const { data } = await useFetch('/api/horoscope', { query: { lang: locale } })
+
+// 검색 메타 — 화면 카피(daily.title/subtitle)와 분리한 전용 문구.
+// · 설명문: 24자 → 80자대. 짧으면 네이버가 쓸모없다고 보고 본문(쥐띠 첫 문단)을 긁어간다.
+// · 제목: 날짜 접두는 DATED_TITLES 스위치 + 실제로 오늘자 데이터일 때만(isToday).
+//   DB 시드가 끊겨 과거 행으로 폴백된 날엔 지난 날짜가 SERP에 박히므로 자동으로 뺀다.
+// · 브랜드(`| 타오운세`)는 title에서 뺀다 — 네이버가 제목 위에 사이트명을 이미 따로 표시한다.
+//   og:title 에는 남겨 SNS/구글 공유 카드의 출처 표기를 유지.
+const dShort = computed(() => (data.value?.date ? shortDate(data.value.date, locale.value) : ''))
+const dated = computed(() => DATED_TITLES && !!data.value?.isToday && !!dShort.value)
+const seoTitle = computed(() => (dated.value ? t('daily.seoTitleDated', { d: dShort.value }) : t('daily.seoTitle')))
+const seoDesc = computed(() => (dated.value ? `${dShort.value} ${t('daily.seoDesc')}` : t('daily.seoDesc')))
 useSeoMeta({
-  title: () => `${t('daily.title')} · ${t('seo.titleSuffix')}`,
-  description: () => t('daily.subtitle'),
-  ogTitle: () => `${t('daily.title')} · ${t('seo.titleSuffix')}`,
-  ogDescription: () => t('daily.subtitle'),
+  title: () => seoTitle.value,
+  description: () => seoDesc.value,
+  ogTitle: () => `${seoTitle.value} | ${t('seo.titleSuffix')}`,
+  ogDescription: () => seoDesc.value,
 })
 
 // WebPage + BreadcrumbList JSON-LD(홈 > 띠별 오늘의 운세). 캐노니컬은 쿼리 없는 /daily.
@@ -45,8 +58,10 @@ useHead(() => ({
         {
           '@type': 'WebPage',
           name: t('daily.title'),
-          description: t('daily.subtitle'),
+          description: seoDesc.value,
           inLanguage: locale.value,
+          // 매일 갱신되는 페이지 — 크롤러에 최신성 신호(오늘 KST 기준 콘텐츠 날짜).
+          ...(data.value?.date ? { datePublished: data.value.date, dateModified: data.value.date } : {}),
           url: dailyUrl.value,
           isPartOf: { '@type': 'WebSite', name: site.name, url: siteUrl },
         },
@@ -62,7 +77,6 @@ useHead(() => ({
   }],
 }))
 
-const { data } = await useFetch('/api/horoscope', { query: { lang: locale } })
 const byZodiac = computed(() => data.value?.byZodiac || {})
 const zname = (z) => z.name[locale.value] || z.name.ko
 const contentOf = (z) => byZodiac.value[z.ko]?.content || ''
@@ -130,7 +144,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
     <div class="daily-top">
     <div class="dh-head">
       <div class="stamp">運</div>
-      <div class="dh-date">{{ dateLabel }}</div>
+      <time class="dh-date" :datetime="data?.date">{{ dateLabel }}</time>
       <h1>{{ t('daily.title') }}</h1>
       <p>{{ t('daily.subtitle') }}</p>
     </div>
@@ -175,7 +189,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
         <div class="z-card-head">
           <span class="z-emoji">{{ z.emoji }}</span>
           <div class="z-meta">
-            <h3>{{ zname(z) }}</h3>
+            <h2>{{ t('todayZodiac.h1', { z: zname(z) }) }}</h2>
             <p class="z-years">{{ yearsOf(z) }}</p>
           </div>
         </div>
@@ -229,7 +243,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 
 .dh-head { text-align: center; margin-bottom: var(--space-8); }
 .dh-head .stamp { width: 60px; height: 60px; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center; border-radius: 50%; font-family: var(--font-display); font-size: 28px; color: var(--gold-light); background: radial-gradient(circle at 35% 30%, rgba(201, 168, 76, 0.30), rgba(201, 168, 76, 0.05)); border: 2px solid var(--gold-border-strong); box-shadow: var(--shadow-glow); }
-.dh-date { font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.1em; color: var(--gold-primary); margin-bottom: var(--space-2); }
+.dh-date { display: block; font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.1em; color: var(--gold-primary); margin-bottom: var(--space-2); }
 .dh-head h1 { font-family: var(--font-display); font-size: clamp(1.7rem, 4vw, 2.3rem); font-weight: 700; letter-spacing: -0.02em; margin-bottom: var(--space-2); }
 .dh-head p { color: var(--text-secondary); font-size: var(--text-base); }
 
@@ -261,7 +275,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 .z-card.mine { border-color: var(--gold-primary); box-shadow: 0 0 0 1px var(--gold-border-strong), var(--shadow-glow); }
 .z-card-head { display: flex; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); }
 .z-emoji { font-size: 32px; flex-shrink: 0; }
-.z-meta h3 { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; }
+.z-meta h2 { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; }
 .z-years { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); margin-top: 2px; }
 .z-content { color: var(--text-secondary); font-size: var(--text-base); line-height: 1.85; text-wrap: pretty; }
 .z-content.muted { color: var(--text-muted); font-style: italic; }

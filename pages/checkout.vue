@@ -5,6 +5,7 @@
 // 결제는 서버 주문 생성(/api/pay/order) → Toss 결제창. 금액은 서버가 결정, 화면은 표시만.
 import SERVICES from '~/data/checkout-services.js'
 import { toServiceKey } from '~/shared/premiumService'
+import { SERVICE_PRICES, fmtKrw, fmtUsd } from '~/shared/prices'
 
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
@@ -39,7 +40,20 @@ const pick = (obj) => (obj && (obj[locale.value] ?? obj.ko)) ?? ''
 useSeoMeta({ title: () => `${pick(svc.value.title)} · ${t('seo.titleSuffix')}`, robots: 'noindex, nofollow' })
 
 // ── 가격(로케일 적응) ──
-const priceOld = computed(() => (isKorea.value ? `${svc.value.orig}${t('pay.won')}` : `$${svc.value.origUsd}`))
+// 정가 단일 표기 — 할인가·취소선 없음. 금액은 shared/prices.ts에서 오고, 서버 청구(PRICES)도 같은 원천을 쓴다.
+// celeb/mbti는 무료 퍼널로 우회되므로 여기 가격이 없다(리다이렉트 직전 한 틱 동안 price=null).
+const price = computed(() => SERVICE_PRICES[service.value] ?? null)
+const priceMain = computed(() => {
+  if (!price.value) return ''
+  return isKorea.value ? fmtKrw(price.value.krw) : `$${fmtUsd(price.value.usdCents)}`
+})
+// ja/zh만 참고 환산액을 병기(청구는 USD). en은 병기 없음.
+const priceApprox = computed(() => {
+  if (!price.value) return ''
+  if (locale.value === 'ja') return price.value.jpyApprox
+  if (locale.value === 'zh') return price.value.twdApprox
+  return ''
+})
 
 // ── 결제 수단(한국=국내 PG / 그 외=PayPal 중심). 시각 표시이며 실제 처리는 Toss. ──
 const PM_KR = [['naver', 'N'], ['kakao', 'k'], ['toss', 't'], ['payco', 'P'], ['samsung', 'S'], ['apple', ''], ['vbank', '₩'], ['card', '▭']]
@@ -113,8 +127,9 @@ async function initPaypal() {
     const { loadTossPayments, ANONYMOUS } = await import('@tosspayments/tosspayments-sdk')
     const tossPayments = await loadTossPayments(widgetKey.value)
     const widgets = tossPayments.widgets({ customerKey: user.value?.id || ANONYMOUS })
-    // 표시용 초기 금액($1) — 실제 청구액은 주문 생성 후 setAmount로 갱신.
-    await widgets.setAmount({ currency: 'USD', value: 1 })
+    // 표시용 초기 금액 — 화면 표시가와 어긋나지 않도록 상품 정가로 렌더한다.
+    // (실제 청구액은 주문 생성 후 서버가 내려준 금액으로 setAmount 재호출)
+    await widgets.setAmount({ currency: 'USD', value: price.value ? price.value.usdCents / 100 : 1 })
     const box = document.getElementById('paypal-widget')
     if (box) box.innerHTML = ''
     await widgets.renderPaymentMethods({ selector: '#paypal-widget', variantKey: 'PAYPAL' })
@@ -337,9 +352,8 @@ async function pay() {
               <span class="price-sub">{{ t('pay.oneTime') }}</span>
             </div>
             <div class="price-right">
-              <span class="price-old">{{ priceOld }}</span>
-              <span v-if="isKorea" class="price-new">2,000<span class="unit">{{ t('pay.won') }}</span></span>
-              <span v-else class="price-new"><span class="unit">$</span>2</span>
+              <span class="price-new">{{ priceMain }}<span v-if="isKorea" class="unit">{{ t('pay.won') }}</span></span>
+              <span v-if="priceApprox" class="price-approx">{{ priceApprox }}</span>
             </div>
           </div>
 
@@ -373,9 +387,10 @@ async function pay() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
               <span>{{ t('pay.note.redirect') }}</span>
             </div>
-            <div class="note">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></svg>
-              <span>{{ t('pay.note.discount') }}</span>
+            <!-- 해외(en/ja/zh)는 PayPal USD 청구 — 표시 환산액과 실제 청구 통화가 다를 수 있어 명시한다. -->
+            <div v-if="!isKorea" class="note">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v12M9 9.5a2.5 2.5 0 0 1 2.5-2.5h1a2.5 2.5 0 0 1 0 5h-1a2.5 2.5 0 0 0 0 5h1a2.5 2.5 0 0 0 2.5-2.5" /></svg>
+              <span>{{ t('pay.usdNote') }}</span>
             </div>
           </div>
         </section>
@@ -456,10 +471,10 @@ async function pay() {
 /* Price */
 .price-box { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-6); border-radius: var(--radius-lg); background: linear-gradient(135deg, rgba(201,168,76,0.10), rgba(201,168,76,0.02)); border: 1px solid var(--gold-border-strong); flex-wrap: wrap; margin-bottom: var(--space-6); }
 .price-left { display: flex; flex-direction: column; gap: 4px; }
-.price-badge { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.05em; color: var(--accent-red); background: rgba(220,38,38,0.12); border: 1px solid rgba(220,38,38,0.3); padding: 3px 10px; border-radius: var(--radius-full); }
+.price-badge { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.05em; color: var(--gold-light); background: var(--gold-soft); border: 1px solid var(--gold-border-strong); padding: 3px 10px; border-radius: var(--radius-full); }
 .price-sub { color: var(--text-muted); font-size: var(--text-xs); }
-.price-right { display: flex; align-items: baseline; gap: var(--space-3); }
-.price-old { color: var(--text-muted); text-decoration: line-through; font-size: var(--text-base); font-family: var(--font-mono); }
+.price-right { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; justify-content: flex-end; }
+.price-approx { color: var(--text-muted); font-size: var(--text-sm); font-family: var(--font-mono); }
 .price-new { font-family: var(--font-display); font-size: var(--text-4xl); font-weight: 700; color: var(--gold-light); line-height: 1; }
 .price-new .unit { font-size: 0.42em; color: var(--text-secondary); margin-left: 2px; font-weight: 500; }
 

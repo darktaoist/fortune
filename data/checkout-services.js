@@ -1,8 +1,9 @@
 // 결제(상품 상세) 페이지의 서비스별 콘텐츠 — 결제.html 디자인 SERVICES에서 그대로 포팅.
 // 각 텍스트는 ko/en/ja/zh 4개 언어를 모두 보유. 카테고리(features)는 글자(gl)+제목(t)+설명(d).
+// ⚠️ 가격은 여기 두지 않는다 — 표시/청구 금액의 단일 원천은 shared/prices.ts.
 export default {
   newyear: {
-    glyph: '秘', orig: '10,000', origUsd: '9.99',
+    glyph: '秘',
     title: { ko: '2026 AI 신년운세', en: '2026 AI New Year Reading', ja: '2026 AI新年運勢', zh: '2026 AI 新年運勢' },
     tagline: {
       ko: 'AI가 분석한 2026 병오년 한 해의 흐름. 새해를 준비하는 가장 지혜로운 길라잡이.',
@@ -32,7 +33,7 @@ export default {
     ],
   },
   lifetime: {
-    glyph: '命', orig: '19,800', origUsd: '19.99',
+    glyph: '命',
     title: { ko: 'AI 평생운세', en: 'AI Lifetime Reading', ja: 'AI生涯運勢', zh: 'AI 一生運勢' },
     tagline: {
       ko: '빅데이터가 설계하는 인생 마스터플랜. 출생부터 노후까지, 운의 흐름을 한 권의 책으로.',
@@ -62,7 +63,7 @@ export default {
     ],
   },
   celeb: {
-    glyph: '緣', orig: '5,000', origUsd: '4.99',
+    glyph: '緣',
     title: { ko: 'AI 연예인 궁합', en: 'AI Celebrity Compatibility', ja: 'AI芸能人相性', zh: 'AI 明星合盤' },
     tagline: {
       ko: '최애와 나의 운명적 케미스트리. 사주 오행으로 풀어보는 K-스타와의 인연.',
@@ -89,7 +90,7 @@ export default {
     ],
   },
   mbti: {
-    glyph: '合', orig: '5,000', origUsd: '4.99',
+    glyph: '合',
     title: { ko: 'AI MBTI 궁합', en: 'AI MBTI Compatibility', ja: 'AI MBTI相性', zh: 'AI MBTI 合盤' },
     tagline: {
       ko: '과학과 사주가 만나면. 16가지 성격유형과 천간지지로 보는 완벽한 소울메이트.',

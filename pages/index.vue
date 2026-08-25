@@ -3,6 +3,8 @@
 // (타오운세 메인.html). All copy comes through i18n ($t); the imperative
 // prototype scripts (zodiac, locale-aware pricing, trust counters, ohaeng,
 // starfield) are reimplemented as Vue reactivity.
+import { SERVICE_PRICES, fmtKrw, fmtUsd } from '~/shared/prices'
+
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
 
@@ -86,13 +88,24 @@ function zodiacGridLabel(z) {
 
 /* ===================== Premium carousel + locale pricing ===================== */
 const PREMIUM = [
-  { to: { path: '/saju', query: { service: 'lifetime' } }, glyph: '命', titleKey: 'premium.life.title', descKey: 'premium.life.desc', krwOld: '19,800', usdOld: '19.99' },
-  { to: { path: '/saju', query: { service: 'newyear' } }, glyph: '秘', titleKey: 'premium.newyear.title', descKey: 'premium.newyear.desc', krwOld: '9,900', usdOld: '9.99' },
+  { to: { path: '/saju', query: { service: 'lifetime' } }, glyph: '命', titleKey: 'premium.life.title', descKey: 'premium.life.desc', priceKey: 'lifetime' },
+  { to: { path: '/saju', query: { service: 'newyear' } }, glyph: '秘', titleKey: 'premium.newyear.title', descKey: 'premium.newyear.desc', priceKey: 'newyear' },
   { to: { path: '/celeb-select', query: { service: 'celeb' } }, glyph: '緣', titleKey: 'premium.celeb.title', descKey: 'premium.celeb.desc', free: true },
   { to: { path: '/celeb-select', query: { service: 'mbti' } }, glyph: '合', titleKey: 'premium.mbti.title', descKey: 'premium.mbti.desc', free: true },
 ]
 const isKo = computed(() => locale.value === 'ko')
-const priceOld = (p) => (isKo.value ? `${p.krwOld}원` : `$${p.usdOld}`)
+// 정가 단일 표기 — 할인가·취소선 없음. 금액은 shared/prices.ts(청구 금액과 동일 원천)에서 온다.
+// 해외는 PayPal 제약으로 USD 단일 통화이며, ja/zh만 참고 환산액을 작게 병기한다.
+const priceMain = (p) => {
+  const pr = SERVICE_PRICES[p.priceKey]
+  return isKo.value ? fmtKrw(pr.krw) : `$${fmtUsd(pr.usdCents)}`
+}
+const priceApprox = (p) => {
+  const pr = SERVICE_PRICES[p.priceKey]
+  if (locale.value === 'ja') return pr.jpyApprox
+  if (locale.value === 'zh') return pr.twdApprox
+  return ''
+}
 
 const carousel = ref(null)
 const scrollCarousel = (dx) => carousel.value?.scrollBy({ left: dx, behavior: 'smooth' })
@@ -362,14 +375,14 @@ onBeforeUnmount(() => {
             <h3 class="premium-title">{{ t(p.titleKey) }}</h3>
             <p class="premium-desc">{{ t(p.descKey) }}</p>
             <div class="premium-foot">
-              <!-- 연예인 궁합·MBTI 궁합: 무료(매일 3회). 토정비결·평생운세는 기존 가격 유지 -->
+              <!-- 연예인 궁합·MBTI 궁합: 무료(매일 3회). 평생운세·신년운세는 정가 단일 표기(할인 종료) -->
               <div v-if="p.free" class="premium-price premium-price-free">
                 <span class="price-free">{{ t('premium.free.daily3') }}</span>
               </div>
               <div v-else class="premium-price">
-                <span class="price-old">{{ priceOld(p) }}</span>
-                <span v-if="isKo" class="price-new">2,000<span class="unit">원</span></span>
-                <span v-else class="price-new"><span class="unit">$</span>2</span>
+                <span v-if="isKo" class="price-new">{{ priceMain(p) }}<span class="unit">원</span></span>
+                <span v-else class="price-new">{{ priceMain(p) }}</span>
+                <span v-if="priceApprox(p)" class="price-approx">{{ priceApprox(p) }}</span>
               </div>
               <span class="premium-arrow">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
@@ -1060,7 +1073,7 @@ onBeforeUnmount(() => {
   border-top: 1px solid var(--gold-border);
 }
 .premium-price { display: flex; flex-direction: column; gap: 2px; }
-.price-old { font-size: var(--text-xs); color: var(--text-muted); text-decoration: line-through; }
+.price-approx { font-size: var(--text-xs); color: var(--text-muted); }
 .price-new {
   font-family: var(--font-display);
   font-size: var(--text-xl);
