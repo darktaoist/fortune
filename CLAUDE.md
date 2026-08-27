@@ -98,24 +98,17 @@ echo GATE-PASS
 
 ---
 
-## 8. 진행 중 — PHASE 1 잔여 (완료되면 이 섹션 삭제)
+## 8. GSD (get-shit-done) 도입 현황
 
-GSD(get-shit-done) 도입 중. PHASE 1의 3/4가 끝났고 **`.planning/codebase/` 맵만 남았다.**
+**PHASE 1 완료** (2026-08-27). `.planning/codebase/` 에 7개 문서(980줄)가 있다 — STACK / INTEGRATIONS / ARCHITECTURE / STRUCTURE / CONVENTIONS / TESTING / CONCERNS. 계획·실행 전에 레포를 처음부터 다시 읽지 말고 **이걸 먼저 읽어라.**
 
-**막힌 이유**: `/gsd:map-codebase`는 `gsd-codebase-mapper` 서브에이전트 4개를 병렬로 띄우는데, 에이전트는 **세션 시작 시에만 스캔**된다. GSD를 설치한 그 세션에서는 `.claude/agents/`에 파일이 있어도 `Agent type 'gsd-codebase-mapper' not found`가 난다. (슬래시 커맨드는 세션 중에도 등록됐지만 에이전트는 아니었다.)
+**다음**: PHASE 2 `/gsd:new-project` (마일스톤 정의, 사람 참여 필수) → PHASE 3 파일럿(Product/Offer JSON-LD, §4의 게이트 사용). 전체 계획은 `docs/2026-08-26-GSD-Ralph-적용-지시서.md`.
 
-**재시작 후 순서대로 — 실제 작업 전에 프로브 2개 먼저:**
+**운영 메모 — 알아두면 시간 아끼는 것들:**
 
-1. `Agent(subagent_type="gsd-codebase-mapper", model="haiku", prompt="Reply: PROBE-OK")` → 응답 오면 통과
-2. `gsd-sdk query init.map-codebase` → `agents_installed: true` 확인 (명령줄에 env를 직접 주지 말 것 — settings.json의 `env.GSD_AGENTS_DIR`가 먹는지를 보는 게 목적)
-3. `/gsd:map-codebase`
-
-1번이 재시작 후에도 실패하면 에이전트가 시작 시에도 스캔되지 않는다는 뜻이다. 그 경우 턴을 낭비하지 말고 사람에게 보고하고 물어볼 것 — GSD 워크플로우에 순차 폴백(`sequential_mapping`)이 있지만, 그걸 쓸지는 사람이 정한다.
-
-**알려진 함정 2개 (서로 독립. 하나는 고쳤고 하나는 재시작이 답):**
-
-- `gsd-sdk`는 `~/.local/bin/gsd-sdk` → **npx 캐시**(`~/.npm/_npx/<hash>/`)로 링크돼 있다. 그래서 에이전트 디렉터리를 레포가 아닌 캐시 안에서 찾아 `agents_installed:false`로 오판했다. → `settings.json`의 `env.GSD_AGENTS_DIR`로 **해결됨**. 재시작과 무관.
-- 위 "에이전트 미등록"은 하네스 쪽 문제라 **재시작으로만** 풀린다. `GSD_AGENTS_DIR`와 무관.
-- ⚠️ npx 캐시가 지워지면(`npm cache clean` 등) `gsd-sdk`가 통째로 깨진다. 게다가 `get-shit-done-cc`는 npm에서 **deprecated** 상태라 재설치가 항상 가능하다는 보장이 없다.
-
-**다음**: 맵이 나오면 PHASE 2(마일스톤 정의, 사람 참여 필수) → PHASE 3(파일럿: Product/Offer JSON-LD, §4의 게이트 사용).
+- GSD 설치물(`.claude/agents`, `commands`, `hooks`, `get-shit-done`)은 **gitignore**돼 있다. 클론만으로는 복원되지 않는다.
+- 복원용 tarball: `~/.local/share/gsd-tarball/get-shit-done-cc-1.42.3.tgz` (2.8MB).
+  `npx ~/.local/share/gsd-tarball/get-shit-done-cc-1.42.3.tgz -l --claude`
+  npm에서 `get-shit-done-cc`는 **deprecated**라 재설치가 항상 가능하다는 보장이 없어 떠둔 것이다.
+- `settings.json`의 `env.GSD_AGENTS_DIR`를 **지우지 마라.** `gsd-sdk`가 npx 캐시(`~/.npm/_npx/<hash>/`)에서 실행돼 에이전트 디렉터리를 레포가 아닌 캐시 안에서 계산한다. 이 env가 없으면 `agents_installed:false`로 오판한다.
+- GSD를 갓 설치한 세션에서는 에이전트 타입이 잠시 미등록일 수 있다(`Agent type not found`). 잠시 뒤 다시 시도하거나 세션을 재시작하면 잡힌다.
