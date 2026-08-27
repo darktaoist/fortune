@@ -51,19 +51,23 @@ npm run build     # ← 이것 하나가 게이트
 - **가격의 단일 원천은 `shared/prices.ts`** (`SERVICE_PRICES`). 화면·서버 청구(`server/utils/pricing.ts`)가 모두 여기를 본다. 가격을 다른 곳에 하드코딩하지 않는다.
 - `shared/prices.ts`에 항목이 있는 건 **`lifetime`과 `newyear` 둘뿐**. 나머지 4개는 가격이 없다.
 - ⚠️ **Product/Offer JSON-LD를 공용 컴포넌트에 무조건 넣으면 안 된다.** 무료 랜딩 4개가 offer 없는 Product 스키마를 뱉어 Rich Results에서 깨진다. **반드시 `landingKey` 가드**를 걸어 유료 2종에만 출력한다.
-- `FortuneLanding.vue`는 **이미 JSON-LD를 2블록 내보낸다** — FAQPage, 그리고 Article + BreadcrumbList. 따라서 `grep -c 'application/ld+json' ≥ 1` 류의 검증은 **작업 전에도 통과**하므로 게이트로 쓰면 안 된다.
+- 랜딩 6개는 **이미 JSON-LD를 3블록 내보낸다** (2026-08-27 실측): `app.vue`의 Organization, `FortuneLanding.vue`의 FAQPage, 그리고 Article + BreadcrumbList. 따라서 `grep -c 'application/ld+json' ≥ 1` 류의 검증은 **작업 전에도 통과**하므로 게이트로 쓰면 안 된다.
+- 직렬화 형태 실측: `useHead`의 `innerHTML`은 **이스케이프 없이** 그대로 나온다(`&quot;` 아님, 키-값 사이 공백 없음). 즉 `grep '"@type":"Product"'` 리터럴이 맞다.
+- 작업 전 베이스라인(6개 랜딩 전부): `"@type":"Product"` 0건, `9900`/`19800` 0건.
 
 **Product/Offer 작업의 실제 게이트** (`npm run dev` 띄운 상태에서):
 
 ```bash
 curl -s localhost:3000/fortune/newyear  | grep -q '"@type":"Product"' && \
-curl -s localhost:3000/fortune/newyear  | grep -q '9900'  && \
+curl -s localhost:3000/fortune/newyear  | grep -qE '"price":"?9900"?'  && \
 curl -s localhost:3000/fortune/lifetime | grep -q '"@type":"Product"' && \
-curl -s localhost:3000/fortune/lifetime | grep -q '19800' && \
+curl -s localhost:3000/fortune/lifetime | grep -qE '"price":"?19800"?' && \
 ! curl -s localhost:3000/fortune/tojung | grep -q '"@type":"Product"' && \
 ! curl -s localhost:3000/fortune/lotto  | grep -q '"@type":"Product"' && \
 echo GATE-PASS
 ```
+
+가격은 맨숫자가 아니라 `"price"` 키에 고정해 검사한다 — 페이지 어딘가의 무관한 숫자에 걸려 **작업 없이 통과**하는 것을 막기 위함이다.
 
 스키마의 `name`/`description`은 기존 Article이 쓰는 `t('seo.landing.<key>.title')` 패턴을 그대로 따른다(§2의 한글 누수 규칙).
 
@@ -91,3 +95,27 @@ echo GATE-PASS
 
 **테스트 프레임워크 없음** (vitest/playwright 미설치, `test` 스크립트 없음).
 따라서 현재 자동 검증은 §2의 빌드 게이트가 전부다. 코드 인스펙션만으로 "동작한다"고 결론내지 말 것 — 화면에 영향이 있는 변경은 `npm run dev` + 브라우저로 실제 확인한다.
+
+---
+
+## 8. 진행 중 — PHASE 1 잔여 (완료되면 이 섹션 삭제)
+
+GSD(get-shit-done) 도입 중. PHASE 1의 3/4가 끝났고 **`.planning/codebase/` 맵만 남았다.**
+
+**막힌 이유**: `/gsd:map-codebase`는 `gsd-codebase-mapper` 서브에이전트 4개를 병렬로 띄우는데, 에이전트는 **세션 시작 시에만 스캔**된다. GSD를 설치한 그 세션에서는 `.claude/agents/`에 파일이 있어도 `Agent type 'gsd-codebase-mapper' not found`가 난다. (슬래시 커맨드는 세션 중에도 등록됐지만 에이전트는 아니었다.)
+
+**재시작 후 순서대로 — 실제 작업 전에 프로브 2개 먼저:**
+
+1. `Agent(subagent_type="gsd-codebase-mapper", model="haiku", prompt="Reply: PROBE-OK")` → 응답 오면 통과
+2. `gsd-sdk query init.map-codebase` → `agents_installed: true` 확인 (명령줄에 env를 직접 주지 말 것 — settings.json의 `env.GSD_AGENTS_DIR`가 먹는지를 보는 게 목적)
+3. `/gsd:map-codebase`
+
+1번이 재시작 후에도 실패하면 에이전트가 시작 시에도 스캔되지 않는다는 뜻이다. 그 경우 턴을 낭비하지 말고 사람에게 보고하고 물어볼 것 — GSD 워크플로우에 순차 폴백(`sequential_mapping`)이 있지만, 그걸 쓸지는 사람이 정한다.
+
+**알려진 함정 2개 (서로 독립. 하나는 고쳤고 하나는 재시작이 답):**
+
+- `gsd-sdk`는 `~/.local/bin/gsd-sdk` → **npx 캐시**(`~/.npm/_npx/<hash>/`)로 링크돼 있다. 그래서 에이전트 디렉터리를 레포가 아닌 캐시 안에서 찾아 `agents_installed:false`로 오판했다. → `settings.json`의 `env.GSD_AGENTS_DIR`로 **해결됨**. 재시작과 무관.
+- 위 "에이전트 미등록"은 하네스 쪽 문제라 **재시작으로만** 풀린다. `GSD_AGENTS_DIR`와 무관.
+- ⚠️ npx 캐시가 지워지면(`npm cache clean` 등) `gsd-sdk`가 통째로 깨진다. 게다가 `get-shit-done-cc`는 npm에서 **deprecated** 상태라 재설치가 항상 가능하다는 보장이 없다.
+
+**다음**: 맵이 나오면 PHASE 2(마일스톤 정의, 사람 참여 필수) → PHASE 3(파일럿: Product/Offer JSON-LD, §4의 게이트 사용).
