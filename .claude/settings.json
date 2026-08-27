@@ -117,5 +117,8 @@
         ]
       }
     ]
+  },
+  "env": {
+    "GSD_AGENTS_DIR": "/Users/taoist/works/fortune/.claude/agents"
   }
 }
