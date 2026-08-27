@@ -4,6 +4,7 @@ import { FORTUNE_TYPES, sectionSchema } from '../../utils/fortune-registry'
 import { generateStructured, resolveProvider } from '../../utils/ai'
 import { resolvePartnerInput, resolvePartnerMbti } from '../../utils/partner'
 import { requirePaidPurchase } from '../../utils/paywall'
+import { rateLimit } from '../../utils/ratelimit'
 import { toTraditional } from '../../utils/zh'
 
 const LANGS = new Set(['ko', 'en', 'ja', 'zh'])
@@ -22,6 +23,12 @@ export default defineEventHandler(async (event) => {
 
   // ── 결제 게이트: 로그인 + 해당 서비스 paid 구매 필수 ──
   await requirePaidPurchase(event, serverSupabaseServiceRole(event), service, body?.order ? String(body.order) : null)
+
+  // 비용점(AI) rate limit — premium-stream의 'premium-free'와 같은 상한(8회/분)을 쓴다.
+  // 이 라우트는 아래 주석대로 캐시·리플레이가 없어 매 호출이 곧 AI 생성 1회다. 즉 결제 1건만 있으면
+  // 게이트를 통과한 채로 무제한 생성이 가능했다(premium-stream은 saved_readings 리플레이로 막힘).
+  // 게이트 뒤에 두는 이유: 미결제 요청은 위에서 이미 402로 끊겨 버킷을 오염시키지 않는다.
+  rateLimit(event, { key: 'premium', limit: 8, windowMs: 60_000 })
 
   // AI 엔진 선택(요청별 provider 우선, 없으면 기본=runtimeConfig.aiProvider=deepseek).
   const provider = resolveProvider(body?.provider)

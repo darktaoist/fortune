@@ -138,7 +138,7 @@ server {
 }
 ```
 적용: `sudo nginx -t && sudo systemctl reload nginx`
-- 임시 진단용 `/api/fortune/_ssetest`는 nginx에서 404 차단해둠(추후 코드에서 완전 제거 예정).
+- 임시 진단용 `/api/fortune/_ssetest`는 nginx에서 404 차단해둠. **2026-08-27 코드에서도 삭제 완료** — nginx 차단 규칙은 이중 안전장치로 그대로 둔다.
 - SSL: `sudo certbot --nginx -d taoist.co.kr -d www.taoist.co.kr` (자동갱신 등록됨).
 
 ---
@@ -224,7 +224,8 @@ server {
 ---
 
 ## 10. 미결/후속 (TODO)
-- [ ] 임시 진단 엔드포인트 완전 제거: `server/api/fortune/_ssetest.get.ts` 삭제 + premium-stream의 디버그 `console.error` 정리 → 재빌드/재배포 (지금은 nginx 404차단만).
+- [x] 임시 진단 엔드포인트 제거: `server/api/fortune/_ssetest.get.ts` **삭제 완료(2026-08-27)** → 재빌드/재배포 필요.
+- [ ] premium-stream의 `console.error`(:297) 정리 여부 판단 — 생성 실패 경로의 정상적인 에러 로깅이라 남겨둠. 불필요하다고 판단되면 그때 제거.
 - [ ] 1차 결제 2000원(paymentKey `taois2026071122232747917`, 토스 DONE) 주문 복구 또는 환불.
 - [ ] 메모리 장기 안정 최종 확인(에이전트 제거 효과) → 안정 확정.
 - [ ] 2026-07-14 카페24 만료 → 오라클 단독 확인, 카페24 정리.
