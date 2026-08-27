@@ -31,3 +31,15 @@ scripts/db/_gen/
 
 # 비밀키 — 절대 커밋 금지
 Oracle_Cloud/*.key
+
+# GSD(get-shit-done) 설치물 — npx로 재설치 가능한 도구, 히스토리 제외
+# 주의: .planning/ 은 프로젝트 산출물이므로 추적한다(여기 넣지 말 것)
+.claude/get-shit-done/
+.claude/agents/
+.claude/commands/
+.claude/hooks/
+.claude/package.json
+.claude/gsd-file-manifest.json
+.claude/gsd-install-state.json
+.claude/gsd-migration-journal/
+.claude/.gsd-profile
