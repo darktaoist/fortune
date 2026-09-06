@@ -1,6 +1,6 @@
 <script setup>
 // AURA 앱 랜딩 — 1.0 AuraLanding.vue 포팅. standalone(별도 제품), 마케팅 페이지라 index 허용.
-// 4개국어(ko·en·ja·zh): 텍스트는 aura.lp.* 평면 키, 코너 스위처/hreflang/자동감지는 <AuraLangSwitch/>.
+// 4개국어(ko·en·ja·zh): 텍스트는 aura.lp.* 평면 키, 코너 스위처/hreflang는 <AuraLangSwitch/>.
 definePageMeta({ layout: false })
 const { t } = useI18n()
 const localePath = useLocalePath()

@@ -1,9 +1,8 @@
 <script setup>
 // AURA 페이지 전용 언어 컨트롤. 5개 aura 페이지는 layout:false(사이트 헤더·LangSwitcher 없음)라
-// 이 컴포넌트 하나가 세 가지를 책임진다:
-//   1) 우상단 고정 코너 스위처(KO/EN/JP/ZH)
+// 이 컴포넌트 하나가 두 가지를 책임진다:
+//   1) 우상단 고정 코너 스위처(KO/EN/JP/ZH) — 수동 선택만
 //   2) hreflang/canonical 주입(useLocaleHead) — 랜딩 색인용
-//   3) aura 한정 브라우저 언어 자동감지(전역 detectBrowserLanguage는 redirectOn:'root'라 /aura엔 안 먹음)
 const { locale, locales, setLocale } = useI18n()
 const switchLocalePath = useSwitchLocalePath()
 
@@ -29,19 +28,11 @@ async function choose(code) {
   if (path) await navigateTo(path)
 }
 
-// aura 한정 자동감지: 쿠키(=명시적 선택 이력)가 없을 때만, navigator.language로 1회 리다이렉트.
-onMounted(() => {
-  if (langCookie.value) return
-  const codes = locales.value.map((l) => l.code)
-  const raw = (navigator.language || '').toLowerCase()
-  const base = raw.split('-')[0]
-  // zh-* 는 모두 번체(zh-TW) 사용, 그 외는 base 코드 매칭.
-  const detected = base === 'zh' ? 'zh' : codes.includes(base) ? base : null
-  if (detected && detected !== locale.value) {
-    const path = switchLocalePath(detected)
-    if (path) navigateTo(path, { replace: true })
-  }
-})
+// 브라우저 언어 자동 리디렉션은 두지 않는다(2026-09-07 제거).
+// 전역 detectBrowserLanguage 를 끈 것과 같은 이유 — 구글봇/Yeti 는 en-US 로 렌더링하므로
+// 자동감지가 있으면 크롤러가 /aura 대신 /en/aura 를 받고, ko 사이트맵에 든 aura 5개
+// 페이지가 한국어로 색인되지 않는다. 언어 선택은 위 스위처(수동)로만 한다.
+// 앱 웹뷰에서 기기 언어로 열어야 하면 앱이 prefix URL(/en/aura/privacy)을 직접 연다.
 </script>
 
 <template>

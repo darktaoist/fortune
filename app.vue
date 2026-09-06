@@ -42,7 +42,11 @@ useHead({
             '@type': 'Organization',
             '@id': `${siteUrl}/#organization`,
             name: '타오운세',
-            alternateName: 'Tao Fortune',
+            // 구글이 "타오운세"를 "타로운세"의 오타로 자동정정하고 있다(2026-09-07 SERP 실측).
+            // 고유 엔티티 신호를 늘리기 위해 표기 변형을 함께 선언한다.
+            // TODO: sameAs(틱톡·유튜브·인스타·스레드·blog.taoist.co.kr 프로필 URL) 추가 —
+            //       해시태그 페이지가 이미 상위에 뜨는데 사이트와 엔티티로 안 묶여 있다.
+            alternateName: ['타오 운세', '타오사주', 'Tao Fortune', 'K-Fortune'],
             url: `${siteUrl}/`,
           },
           {
