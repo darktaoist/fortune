@@ -180,27 +180,31 @@ function selectCeleb(c) { goResult(c.name, c.id, 'celeb', c.mbti, c.image) }
 function selectFriend(f) { goResult(f.name, f.id, 'friend', f.mbti) }
 /* ---- 연예인 등록 요청 모달 ---- */
 const regOpen = ref(false)
-const reg = reactive({ name: '', note: '' })
+// website 는 허니팟 — 화면 밖에 숨겨 둔 필드라 사람은 절대 채우지 않는다.
+const reg = reactive({ name: '', note: '', website: '' })
 const regBusy = ref(false)
 const regDone = ref(false)
 const regErr = ref('')
 function onRegister() {
   reg.name = ''
   reg.note = ''
+  reg.website = ''
   regDone.value = false
   regErr.value = ''
   regOpen.value = true
 }
 function closeRegister() { regOpen.value = false }
 async function submitRegister() {
+  // 동기 가드 — :disabled 는 다음 tick 에야 DOM 에 반영돼서 더블클릭이 두 번 다 통과한다.
+  if (regBusy.value) return
   const name = reg.name.trim()
-  if (!name) { regErr.value = t('cel.reg.needName'); return }
+  if (name.length < 2) { regErr.value = t('cel.reg.needName'); return }
   regBusy.value = true
   regErr.value = ''
   try {
     await $fetch('/api/celeb-request', {
       method: 'POST',
-      body: { name, note: reg.note.trim(), lang: locale.value },
+      body: { name, note: reg.note.trim(), lang: locale.value, website: reg.website },
     })
     regDone.value = true
   } catch {
@@ -478,6 +482,9 @@ if (import.meta.client) {
               <label><span>{{ t('cel.reg.note') }}</span><span class="opt">{{ t('common.optional') }}</span></label>
               <textarea v-model="reg.note" class="inp reg-ta" rows="3" :placeholder="t('cel.reg.notePh')" maxlength="500"></textarea>
             </div>
+            <!-- 허니팟: 사람 눈엔 안 보이고 자동 입력 봇만 채운다. 채워지면 서버가 조용히 버린다. -->
+            <input v-model="reg.website" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true"
+                   style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
             <p v-if="regErr" class="reg-err">{{ regErr }}</p>
           </div>
           <div class="modal-foot">

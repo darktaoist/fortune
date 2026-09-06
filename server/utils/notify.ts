@@ -57,6 +57,7 @@ interface CelebRequestNotice {
   name: string
   note?: string | null
   lang?: string | null
+  ip?: string | null
 }
 
 // 연예인 등록 요청 알림(텔레그램). 실패해도 요청 흐름을 깨지 않는다.
@@ -73,6 +74,7 @@ export async function notifyCelebRequest(n: CelebRequestNotice): Promise<void> {
       `🎤 이름\\: *${esc(n.name)}*`,
       n.note ? `📝 한마디\\: ${esc(n.note)}` : null,
       n.lang ? `🌐 언어\\: ${esc(n.lang)}` : null,
+      `🌐 IP\\: ${esc(n.ip || '-')}`,
     ].filter(Boolean)
 
     await $fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
