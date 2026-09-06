@@ -96,14 +96,19 @@ export default defineNuxtConfig({
       { code: 'ja', language: 'ja-JP', name: '日本語', flag: '🇯🇵', short: 'JP' },
       { code: 'zh', language: 'zh-TW', name: '繁體中文', flag: '🇹🇼', short: 'ZH' },
     ],
-    detectBrowserLanguage: {
-      useCookie: true,
-      cookieKey: 'taoist_lang',
-      alwaysRedirect: false,
-      // 브라우저 언어가 ko/en/ja/zh 어디에도 안 맞는 방문자는 영어로(한국어 대신). 국제 방문자 UX.
-      fallbackLocale: 'en',
-      redirectOn: 'root',
-    },
+    // 루트(/) 브라우저 언어 자동 리디렉션 끔. 구글봇은 en-US 헤더로(또는 헤더 없이) 오기
+    // 때문에 이게 켜져 있으면 홈이 항상 /en 으로 302 되고, 구글은 taoist.co.kr 을 영어
+    // 사이트로 색인한다 — 2026-09-07 GSC 실측: 크롤된 홈 HTML 이 lang="en-US",
+    // canonical=/en. ko 홈의 h1·title 은 이미 "타오운세"인데 구글이 그걸 못 봐서
+    // 브랜드 검색("타오운세")이 "타로운세"로 자동정정되던 원인.
+    //
+    // redirectOn 을 좁히는 걸로는 해결 안 된다. 'root' 가 이미 최소값이고,
+    // 'no prefix' 는 @nuxtjs/i18n/dist/runtime/internal.js:79 에서 *prefix 가 있는*
+    // 경로만 리디렉션을 건너뛰므로, prefix_except_default 에서는 한국어 전체
+    // (/, /daily, /fortune/*)가 리디렉션 대상이 되어 오히려 악화된다.
+    // false 는 internal.js:61 게이트에서 서버·클라이언트 감지를 한꺼번에 막는다.
+    // 구글 공식 가이드도 언어 기반 자동 리디렉션을 권장하지 않는다.
+    detectBrowserLanguage: false,
   },
 
   app: {
