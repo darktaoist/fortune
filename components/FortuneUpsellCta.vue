@@ -17,9 +17,20 @@ const props = defineProps({
   eventParams: { type: Object, default: null }, // upsell_click에 병합할 추가 파라미터
   dismissible: { type: Boolean, default: false }, // 닫기 버튼 + 세션 가드 활성화
   sessionKey: { type: String, default: '' }, // sessionStorage 키(공유하면 세션 전체 1회)
+  // >0이면 "닫기"에 기간 쿨다운이 붙는다(localStorage). 기본 0 = 기존 동작(세션 가드만).
+  // 옵트인으로 둔 이유: 기본값을 바꾸면 today·tojung의 가드가 세션 1회에서 조용히 N일로 늘어난다.
+  cooldownDays: { type: Number, default: 0 },
+  // SERVICE_PRICES의 키. 주면 cta 라벨의 {price} 자리에 채운다(금액 원천은 shared/prices.ts 하나).
+  priceKey: { type: String, default: '' },
 })
-const { t } = useI18n()
+const { t, te } = useI18n()
 const localePath = useLocalePath()
+
+const price = useServicePrice(() => props.priceKey)
+const ctaLabel = computed(() => t(`upsell.${props.copyKey}.cta`, { price: price.value }))
+// 근거 한 줄(선택). 해당 copyKey에 note 키가 있을 때만 렌더한다.
+const noteKey = computed(() => `upsell.${props.copyKey}.note`)
+const noteText = computed(() => (te(noteKey.value) ? t(noteKey.value) : ''))
 
 const DEFAULT_UTM = { utm_source: 'internal', utm_medium: 'cta', utm_campaign: 'free_to_paid' }
 const resolvedTo = computed(() => {
@@ -29,10 +40,16 @@ const resolvedTo = computed(() => {
 })
 
 // SSR은 항상 노출(내부링크 유지). 클라이언트 부팅 후 세션 기록이 있으면 감춘다.
+// 쿨다운(localStorage)도 여기서만 읽는다 — SSR에서 읽으면 내부링크를 잃고 하이드레이션이 어긋난다.
 const hidden = ref(false)
+const cooldownKey = computed(() => `${props.sessionKey}_until`)
 onMounted(() => {
   if (!props.dismissible || !props.sessionKey) return
   try {
+    if (props.cooldownDays > 0) {
+      const until = Number(localStorage.getItem(cooldownKey.value) || 0)
+      if (until > Date.now()) { hidden.value = true; return }
+    }
     if (sessionStorage.getItem(props.sessionKey)) { hidden.value = true; return }
     sessionStorage.setItem(props.sessionKey, '1')
   } catch (e) {
@@ -53,6 +70,14 @@ function track(event, extra) {
 function onClick() { track('upsell_click') }
 function onDismiss() {
   hidden.value = true
+  // 쿨다운은 "닫을 때" 기록한다(첫 노출 마킹과 별개) — 직접 닫은 사람만 N일 쉬게 한다.
+  if (props.cooldownDays > 0 && props.sessionKey) {
+    try {
+      localStorage.setItem(cooldownKey.value, String(Date.now() + props.cooldownDays * 86400000))
+    } catch (e) {
+      /* 시크릿 모드/쿼터 차단 — 쿨다운 없이 세션 가드만 */
+    }
+  }
   track('upsell_dismiss')
 }
 </script>
@@ -64,10 +89,11 @@ function onDismiss() {
     <div class="upsell-body">
       <h3 class="upsell-title">{{ t(`upsell.${copyKey}.title`) }}</h3>
       <p class="upsell-desc">{{ t(`upsell.${copyKey}.desc`) }}</p>
+      <p v-if="noteText" class="upsell-note">{{ noteText }}</p>
     </div>
     <div class="upsell-actions">
       <NuxtLink class="upsell-cta" :to="resolvedTo" @click="onClick">
-        {{ t(`upsell.${copyKey}.cta`) }}
+        {{ ctaLabel }}
         <span class="upsell-arrow">→</span>
       </NuxtLink>
       <button type="button" class="upsell-dismiss" @click="onDismiss">{{ t('upsell.dismiss') }}</button>
@@ -80,9 +106,10 @@ function onDismiss() {
     <div class="upsell-body">
       <h3 class="upsell-title">{{ t(`upsell.${copyKey}.title`) }}</h3>
       <p class="upsell-desc">{{ t(`upsell.${copyKey}.desc`) }}</p>
+      <p v-if="noteText" class="upsell-note">{{ noteText }}</p>
     </div>
     <span class="upsell-cta">
-      {{ t(`upsell.${copyKey}.cta`) }}
+      {{ ctaLabel }}
       <span class="upsell-arrow">→</span>
     </span>
   </NuxtLink>
@@ -125,6 +152,17 @@ a.upsell:hover {
   color: var(--text-secondary);
   font-size: var(--text-sm);
   line-height: 1.65;
+}
+
+.upsell-note {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}
+.upsell-note::before {
+  content: '·';
+  margin-right: 6px;
 }
 
 .upsell-cta {

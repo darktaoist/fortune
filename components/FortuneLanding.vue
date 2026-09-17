@@ -17,6 +17,12 @@ const props = defineProps({
   // { count, min, max }를 주면 미리보기 sampleBody의 {numbers} 자리에 날짜 시드 번호를 채운다.
   // 매일 결정적으로 바뀌며(신선도 신호), 서버·클라 같은 날짜 → 동일 결과(하이드레이션 안전).
   previewDraw: { type: Object, default: null },
+  // 보조 CTA(선택). 주기 전엔 기존 동작 그대로 — 히어로는 '사주 정보 입력하기', 하단은 버튼 1개.
+  // 무료 요약이 유료 상품의 맛보기인 랜딩(lifetime)에서만 주 CTA=유료 / 보조=무료로 갈라 쓴다.
+  secondaryTo: { type: [String, Object], default: null },
+  secondaryLabelKey: { type: String, default: '' }, // 전체 i18n 키(landing.<key>.* 규칙 밖도 허용)
+  // SERVICE_PRICES의 키를 주면 ctaLabel의 {price} 자리에 채운다. 금액 원천은 shared/prices.ts 하나뿐.
+  priceKey: { type: String, default: '' },
 })
 
 const { t, locale } = useI18n()
@@ -65,6 +71,11 @@ const faq = computed(() =>
 
 const ctaLink = computed(() => localePath(props.ctaTo))
 const sajuLink = computed(() => localePath('/saju'))
+const secondaryLink = computed(() => (props.secondaryTo ? localePath(props.secondaryTo) : null))
+
+// 가격 병기(유료 랜딩). priceKey 미지정 시 ''이고, {price} 없는 라벨은 파라미터를 무시한다.
+const price = useServicePrice(() => props.priceKey)
+const ctaLabel = computed(() => t(k('ctaLabel'), { price: price.value }))
 
 // 주간 회차(제N회) — weeklyRoundBase(추첨 1회일)로부터 '이번 주(다가오는) 토요일 추첨' 회차를
 // 결정적으로 계산한다. 날짜 파생이라 매주 자동 갱신되며 외부 데이터/인프라가 필요 없다.
@@ -139,8 +150,9 @@ useHead(() => ({
       <p v-for="(p, i) in paras('intro')" :key="'in' + i" class="lp-intro">{{ p }}</p>
       <p v-if="weeklyRound" class="lp-weekly">{{ t(k('weekly'), { round: weeklyRound }) }}</p>
       <div class="lp-cta">
-        <NuxtLink :to="ctaLink" class="btn btn-primary btn-lg">{{ t(k('ctaLabel')) }}</NuxtLink>
-        <NuxtLink :to="sajuLink" class="btn btn-secondary btn-lg">{{ t('landing.common.sajuCta') }}</NuxtLink>
+        <NuxtLink :to="ctaLink" class="btn btn-primary btn-lg">{{ ctaLabel }}</NuxtLink>
+        <NuxtLink v-if="secondaryLink" :to="secondaryLink" class="btn btn-secondary btn-lg">{{ t(secondaryLabelKey) }}</NuxtLink>
+        <NuxtLink v-else :to="sajuLink" class="btn btn-secondary btn-lg">{{ t('landing.common.sajuCta') }}</NuxtLink>
       </div>
     </header>
 
@@ -194,7 +206,8 @@ useHead(() => ({
       <h2 class="lp-h2">{{ t(k('h1')) }}</h2>
       <p class="lp-body">{{ t('landing.common.bottomCta') }}</p>
       <div class="lp-cta">
-        <NuxtLink :to="ctaLink" class="btn btn-primary btn-lg">{{ t(k('ctaLabel')) }}</NuxtLink>
+        <NuxtLink :to="ctaLink" class="btn btn-primary btn-lg">{{ ctaLabel }}</NuxtLink>
+        <NuxtLink v-if="secondaryLink" :to="secondaryLink" class="btn btn-secondary btn-lg">{{ t(secondaryLabelKey) }}</NuxtLink>
       </div>
     </section>
   </main>

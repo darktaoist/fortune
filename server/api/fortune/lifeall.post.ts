@@ -1,7 +1,7 @@
 import { serverSupabaseClient } from '#supabase/server'
 
 /**
- * 정통 평생운세(lifeall) — ported from 1.0 (lifeall.vue). service=hour on the UI.
+ * 평생사주 요약(무료, lifeall) — ported from 1.0 (lifeall.vue). service=hour on the UI.
  * num = (yearDigitSum + month + day + timeValue + genderValue + calendarValue) % 60
  *   → "000".."059". Reads `lifeall` by (num, nation): sajuwoon + earlyyear +
  *   middleyear + lastyear + lovewealth + jobhealth (6 life-stage sections).

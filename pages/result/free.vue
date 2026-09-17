@@ -33,15 +33,17 @@ const ftKey = computed(() => {
 const cfg = computed(() => (ftKey.value ? FREE_TYPE[ftKey.value] : null))
 
 // 무료 결과 → 유료 상품 CTA(맥락 연결형). service별로 추천 상품이 다르다.
-// gate: true → 닫기 가능 + 세션 1회(오늘의운세·토정비결). 세션 키에 service를 붙여
+// gate: true → 닫기 가능 + 세션 1회(오늘의운세·토정비결·평생사주 요약). 세션 키에 service를 붙여
 // "화면당 1회"로 센다 — today는 신년운세, tojung은 평생운세로 상품이 달라서
 // 키를 공유하면 먼저 본 쪽이 세션을 소진해 다른 쪽 안내가 영영 안 뜬다.
+// hour(평생사주 요약)만 cooldownDays를 준다 — 이 화면은 유료 리포트의 맛보기라
+// 안내가 본문의 마감 역할을 하고, 직접 닫은 사람은 7일간 다시 보지 않는다.
 const UPSELL_MAP = {
   today: { to: { path: '/saju', query: { service: 'newyear' } }, copyKey: 'newyearGate', product: 'newyear', gate: true },
   month: { to: { path: '/saju', query: { service: 'newyear' } }, copyKey: 'newyear', product: 'newyear' },
   lotto: { to: { path: '/saju', query: { service: 'newyear' } }, copyKey: 'lotto', product: 'newyear' },
   tojung: { to: { path: '/saju', query: { service: 'lifetime' } }, copyKey: 'lifetimeGate', product: 'lifetime', gate: true },
-  hour: { to: { path: '/saju', query: { service: 'lifetime' } }, copyKey: 'lifetime', product: 'lifetime' },
+  hour: { to: { path: '/saju', query: { service: 'lifetime' } }, copyKey: 'lifetime', product: 'lifetime', gate: true, cooldownDays: 7, priceKey: 'lifetime' },
   date: { to: { path: '/celeb-select', query: { service: 'celeb' } }, copyKey: 'celeb', product: 'celeb' },
 }
 const upsell = computed(() => (ftKey.value ? UPSELL_MAP[ftKey.value] : null))
@@ -255,7 +257,7 @@ async function loadLotto() {
   }
 }
 
-/* ===== 정통 평생운세 — real data from /api/fortune/lifeall (service=hour) ===== */
+/* ===== 평생사주 요약(무료) — real data from /api/fortune/lifeall (service=hour) ===== */
 const LIFE_CATS = [
   { key: 'saju', glyph: '命', col: 'sajuwoon' },
   { key: 'early', glyph: '初', col: 'earlyyear' },
@@ -667,7 +669,7 @@ function onShare() {
           </template>
         </template>
 
-        <!-- ===== 정통 평생운세 (실데이터: 사주/초년/중년/말년/애정재물/직업건강) ===== -->
+        <!-- ===== 평생사주 요약(무료) (실데이터: 사주/초년/중년/말년/애정재물/직업건강) ===== -->
         <template v-else-if="isHour">
           <div v-if="!current || !current.year" class="need-input">
             <p>{{ t('result.needInput') }}</p>
@@ -707,6 +709,8 @@ function onShare() {
           variant="context"
           :dismissible="upsell.gate === true"
           :session-key="upsell.gate === true ? `${UPSELL_SESSION_KEY}_${ftKey}` : ''"
+          :cooldown-days="upsell.cooldownDays || 0"
+          :price-key="upsell.priceKey || ''"
         />
 
         <div class="disclaimer">

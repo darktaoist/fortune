@@ -121,7 +121,7 @@ const FREE = [
   { to: { path: '/result/free', query: { service: 'date' } }, glyph: '情', titleKey: 'free.date.title', descKey: 'free.date.desc', badge: 'free' },
   { to: { path: '/result/free', query: { service: 'lotto' } }, glyph: '財', titleKey: 'free.lotto.title', descKey: 'free.lotto.desc', badge: 'free' },
   { to: { path: '/result/free', query: { service: 'month' } }, glyph: '月', titleKey: 'free.month.title', descKey: 'free.month.desc', badge: 'free' },
-  { to: { path: '/result/free', query: { service: 'hour' } }, glyph: '平', titleKey: 'free.hour.title', descKey: 'free.hour.desc', badge: 'new' },
+  { to: { path: '/result/free', query: { service: 'hour' } }, glyph: '平', titleKey: 'free.hour.title', descKey: 'free.hour.desc', badge: 'free' },
 ]
 
 /* ===================== Trust counters ===================== */
