@@ -332,7 +332,9 @@ async function submit() {
 
 /* ============ GA4 view_item (유료 상품 입력 진입) ============ */
 // 깔때기 1단계. 유료 2종(lifetime/newyear)에만 쏘고 무료 운세에서는 발화하지 않는다.
-// 진입 시점 1회 — 이 화면의 종류 스위처로 상품을 바꿔도 다시 쏘지 않는다(세션당 조회 1건).
+// 진입 시점 + 이 화면의 종류 스위처로 유료 상품이 바뀔 때도 쏜다 — 실제로 결제로 이어지는
+// 상품과 조회가 어긋나지 않도록. 대신 sessionStorage로 "서비스당 세션 1회"를 지켜
+// 스위처를 오가며 같은 상품 조회가 부풀지 않게 한다.
 const gaAmount = useServiceAmount(() => f.fortuneType)
 const gaItemName = useServiceItemName()
 function trackViewItem() {
@@ -340,6 +342,13 @@ function trackViewItem() {
   if (!SERVICE_NAME_KEY[service]) return // 유료 상품이 아니면 조용히 종료
   const amount = gaAmount.value
   if (!amount) return
+  try {
+    const gaKey = `ga_view_${service}`
+    if (sessionStorage.getItem(gaKey)) return
+    sessionStorage.setItem(gaKey, '1')
+  } catch (e) {
+    /* 시크릿 모드/쿼터 차단 — 가드 없이 그대로 발화 */
+  }
   try {
     useTrackEvent('view_item', {
       currency: amount.currency,
@@ -356,12 +365,16 @@ function trackViewItem() {
     /* gtag 미초기화(프리뷰/차단) 환경은 조용히 무시 */
   }
 }
+// 마운트 후에만 감시한다 — 초기 발화는 onMounted가 맡고, 여기서 중복으로 쏘지 않는다.
+const gaViewReady = ref(false)
+watch(() => f.fortuneType, () => { if (gaViewReady.value) trackViewItem() })
 
 onMounted(() => {
   document.addEventListener('click', onDocClick)
   // Restore previously-entered subject for guests (logged-in users use the person rail).
   if (!loggedIn.value && savedSaju.value) prefillFromCurrent()
   trackViewItem()
+  gaViewReady.value = true
 })
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 </script>
