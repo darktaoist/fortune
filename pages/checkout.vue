@@ -35,6 +35,7 @@ const partnerKind = computed(() => (route.query.partnerKind === 'friend' ? 'frie
 const partnerMbti = computed(() => (typeof route.query.partnerMbti === 'string' ? route.query.partnerMbti : ''))
 
 const isKorea = computed(() => locale.value === 'ko')
+const gaItemName = useServiceItemName() // GA4 items[].item_name — 현재 로케일 상품명
 const pick = (obj) => (obj && (obj[locale.value] ?? obj.ko)) ?? ''
 
 useSeoMeta({ title: () => `${pick(svc.value.title)} · ${t('seo.titleSuffix')}`, robots: 'noindex, nofollow' })
@@ -186,12 +187,21 @@ async function pay(easyPayKey = null) {
     // Meta Pixel InitiateCheckout — 서버 주문의 실제 금액/통화로(결제창 열기 직전).
     useMetaPixel().trackInitiateCheckout(Number(order.amount), String(order.currency))
     // GA4 begin_checkout — 동일 소스(서버 주문). items는 주문 데이터로 동적 구성(상품 스위치 없음).
+    // item_name만 로케일 상품명으로 덮어쓴다(order.orderName은 결제창 표기용 한글 고정값이라
+    // en/ja/zh 리포트가 전부 한글로 뭉친다). 해석 실패 시 서버값으로 폴백.
     // gtag 미초기화 환경에서도 결제 플로우가 깨지지 않도록 방어적으로 감쌈.
     try {
       useTrackEvent('begin_checkout', {
         currency: String(order.currency),
         value: Number(order.amount),
-        items: [{ item_id: service.value, item_name: order.orderName, price: Number(order.amount), quantity: 1 }],
+        payment_type: method === 'card' ? 'toss' : 'paypal',
+        items: [{
+          item_id: service.value,
+          item_name: gaItemName(service.value, order.orderName),
+          price: Number(order.amount),
+          currency: String(order.currency),
+          quantity: 1,
+        }],
       })
     } catch { /* analytics best-effort */ }
 

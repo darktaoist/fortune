@@ -330,10 +330,38 @@ async function submit() {
   return navigateTo(localePath({ path: '/result/free', query: { service: f.fortuneType } }))
 }
 
+/* ============ GA4 view_item (유료 상품 입력 진입) ============ */
+// 깔때기 1단계. 유료 2종(lifetime/newyear)에만 쏘고 무료 운세에서는 발화하지 않는다.
+// 진입 시점 1회 — 이 화면의 종류 스위처로 상품을 바꿔도 다시 쏘지 않는다(세션당 조회 1건).
+const gaAmount = useServiceAmount(() => f.fortuneType)
+const gaItemName = useServiceItemName()
+function trackViewItem() {
+  const service = f.fortuneType
+  if (!SERVICE_NAME_KEY[service]) return // 유료 상품이 아니면 조용히 종료
+  const amount = gaAmount.value
+  if (!amount) return
+  try {
+    useTrackEvent('view_item', {
+      currency: amount.currency,
+      value: amount.value,
+      items: [{
+        item_id: service,
+        item_name: gaItemName(service),
+        price: amount.value,
+        currency: amount.currency,
+        quantity: 1,
+      }],
+    })
+  } catch (e) {
+    /* gtag 미초기화(프리뷰/차단) 환경은 조용히 무시 */
+  }
+}
+
 onMounted(() => {
   document.addEventListener('click', onDocClick)
   // Restore previously-entered subject for guests (logged-in users use the person rail).
   if (!loggedIn.value && savedSaju.value) prefillFromCurrent()
+  trackViewItem()
 })
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 </script>

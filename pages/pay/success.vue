@@ -11,6 +11,9 @@ useSeoMeta({ title: () => `${t('pay.success.title')} · ${t('seo.titleSuffix')}`
 const state = ref('loading') // loading | done | error
 const errorMsg = ref('')
 const resultLink = ref(null)
+// GA4 items[].item_name — 서버 orderName(결제창용 한글 고정값) 대신 현재 로케일 상품명.
+// 깔때기 3단계의 item_name이 앞 두 단계와 갈라지면 GA4 상품 리포트에서 따로 집계된다.
+const gaItemName = useServiceItemName()
 
 import { toServiceKey } from '~/shared/premiumService'
 
@@ -34,7 +37,13 @@ onMounted(async () => {
               transaction_id: String(orderId),
               currency: String(res.currency || 'KRW'),
               value: Number(res.amount),
-              items: [{ item_id: res.service, item_name: res.orderName, price: Number(res.amount), quantity: 1 }],
+              items: [{
+                item_id: res.service,
+                item_name: gaItemName(res.service, res.orderName),
+                price: Number(res.amount),
+                currency: String(res.currency || 'KRW'),
+                quantity: 1,
+              }],
             })
             sessionStorage.setItem(gaKey, '1')
           }
