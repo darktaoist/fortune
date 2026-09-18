@@ -113,7 +113,7 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      title: '타오운세 — Where Ancient Wisdom Meets AI',
+      title: '타오운세 — 만세력으로 계산하는 사주·운세',
       meta: [
         { charset: 'UTF-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1.0' },

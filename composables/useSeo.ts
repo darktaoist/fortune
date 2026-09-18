@@ -3,6 +3,7 @@
  *
  *   usePageSeo('today')                  // title = "<seo.today.title> · <suffix>"
  *   usePageSeo('home', { suffix: false }) // title = "<seo.home.title>" verbatim
+ *   usePageSeo(() => paidKey.value)       // 화면 안에서 키가 바뀌는 페이지(/saju)
  *
  * Requires i18n keys `seo.<key>.title` and `seo.<key>.desc` in all 4 locales.
  * The brand suffix (`seo.titleSuffix`) features "K-Fortune" for en/ja/zh, so
@@ -13,17 +14,17 @@
  * default in app.vue. This composable only sets the page's title + description.
  */
 export function usePageSeo(
-  key: string,
+  key: MaybeRefOrGetter<string>,
   options: { suffix?: boolean } = {},
 ) {
   const { t } = useI18n()
   const withSuffix = options.suffix ?? true
 
   const title = computed(() => {
-    const base = t(`seo.${key}.title`)
+    const base = t(`seo.${toValue(key)}.title`)
     return withSuffix ? `${base} · ${t('seo.titleSuffix')}` : base
   })
-  const description = computed(() => t(`seo.${key}.desc`))
+  const description = computed(() => t(`seo.${toValue(key)}.desc`))
 
   useSeoMeta({
     title: () => title.value,

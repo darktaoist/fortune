@@ -20,7 +20,7 @@ useSeoMeta({
   ogImage,
   ogImageWidth: 1200,
   ogImageHeight: 630,
-  ogImageAlt: '타오운세 — AI 사주·운세',
+  ogImageAlt: '타오운세 — 만세력으로 계산하는 사주·운세',
   twitterCard: 'summary_large_image',
   twitterImage: ogImage,
 })

@@ -10,7 +10,6 @@ const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const { current: savedSaju, save: saveSaju } = useSajuInput()
 
-usePageSeo('saju')
 
 /* ============ Saju constants ============ */
 const STEMS = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸']
@@ -61,6 +60,12 @@ function mapService(s) {
   const MAP = { today: 'today', toJung: 'toJung', tojung: 'toJung', month: 'month', date: 'date', lotto: 'lotto', hour: 'hour', lifetime: 'lifetime', life: 'lifetime', newyear: 'newyear', mbti: 'mbti', celeb: 'couple', couple: 'couple' }
   return MAP[s] || 'today'
 }
+
+// 유료 2종(lifetime/newyear)은 전용 SEO·카피를 쓰고, 무료 운세는 기존 공용 문자열을 그대로 쓴다.
+// 이 화면의 종류 스위처로 상품이 바뀌면 title/description/h1/CTA가 함께 따라간다.
+const PAID_SEO_KEY = { lifetime: 'sajuLifetime', newyear: 'sajuNewyear' }
+const paidService = computed(() => (PAID_SEO_KEY[f.fortuneType] ? f.fortuneType : null))
+usePageSeo(() => PAID_SEO_KEY[f.fortuneType] || 'saju')
 
 /* ============ Selects ============ */
 const thisYear = new Date().getFullYear()
@@ -330,6 +335,39 @@ async function submit() {
   return navigateTo(localePath({ path: '/result/free', query: { service: f.fortuneType } }))
 }
 
+/* ============ 유료 상품 전용 카피 · 구조화 데이터 ============ */
+// h1·CTA는 유료일 때만 전용 키로 바꾸고, 무료는 기존 문자열 유지.
+const pageH1 = computed(() => (paidService.value ? t(`saju.h1.${paidService.value}`) : t('saju.title')))
+const paidPrice = useServicePrice(() => paidService.value || '')
+const paidCtaLabel = computed(() => (paidService.value ? t(`saju.cta.${paidService.value}`, { price: paidPrice.value }) : ''))
+
+// Product/Offer JSON-LD — 유료 2종에만 출력한다(무료 운세에서 offer 없는 Product가 나가지 않도록).
+// 금액·통화는 shared/prices.ts 단일 원천(useServiceAmount)에서 오고, 상품명은 로케일 상품명 키를 쓴다.
+const paidAmount = useServiceAmount(() => paidService.value || '')
+const paidItemName = useServiceItemName()
+useHead(() => {
+  const service = paidService.value
+  const amount = paidAmount.value
+  if (!service || !amount) return {}
+  return {
+    script: [{
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: paidItemName(service),
+        description: t(`seo.${PAID_SEO_KEY[service]}.desc`),
+        offers: {
+          '@type': 'Offer',
+          price: String(amount.value),
+          priceCurrency: amount.currency,
+          availability: 'https://schema.org/InStock',
+        },
+      }),
+    }],
+  }
+})
+
 /* ============ GA4 view_item (유료 상품 입력 진입) ============ */
 // 깔때기 1단계. 유료 2종(lifetime/newyear)에만 쏘고 무료 운세에서는 발화하지 않는다.
 // 진입 시점 + 이 화면의 종류 스위처로 유료 상품이 바뀔 때도 쏜다 — 실제로 결제로 이어지는
@@ -395,7 +433,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
     </div>
 
     <div class="page-head">
-      <h1 class="page-title">{{ t('saju.title') }}</h1>
+      <h1 class="page-title">{{ pageH1 }}</h1>
       <p class="page-sub" v-html="t('saju.sub')" />
     </div>
 
@@ -599,7 +637,7 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
           <div class="actions">
             <div class="row-1">
               <button class="btn btn-primary" @click="submit">
-                <span v-if="needsLogin">{{ loggedIn ? t('saju.cta.premiumIn') : t('saju.cta.premium') }}</span>
+                <span v-if="needsLogin">{{ loggedIn ? (paidCtaLabel || t('saju.cta.premiumIn')) : t('saju.cta.premium') }}</span>
                 <span v-else>{{ t('saju.cta.free') }}</span>
                 <svg v-if="needsLogin && !loggedIn" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                 <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>

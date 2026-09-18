@@ -11,8 +11,8 @@ export interface PriceInfo {
 }
 
 export const PRICES: Record<string, PriceInfo> = {
-  newyear: { krw: SERVICE_PRICES.newyear.krw, usdCents: SERVICE_PRICES.newyear.usdCents, orderName: '2026 AI 신년운세' },
-  lifetime: { krw: SERVICE_PRICES.lifetime.krw, usdCents: SERVICE_PRICES.lifetime.usdCents, orderName: 'AI 평생운세' },
+  newyear: { krw: SERVICE_PRICES.newyear.krw, usdCents: SERVICE_PRICES.newyear.usdCents, orderName: '2026 신년운세' },
+  lifetime: { krw: SERVICE_PRICES.lifetime.krw, usdCents: SERVICE_PRICES.lifetime.usdCents, orderName: '평생사주 리포트' },
   // celeb/mbti는 무료화(로그인+1일 3회 쿼터)되어 결제 퍼널을 타지 않는다(checkout에서 celeb-select로 우회).
   // 아래 항목은 과거 주문 orderName 조회용으로만 남아 있는 사실상 사문 규정이므로 그대로 둔다.
   celeb: { krw: 2000, usdCents: 200, orderName: '연예인 궁합' },
