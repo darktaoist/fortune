@@ -23,15 +23,20 @@ const TESTI_TYPE = {
   lotto: 'free.lotto.title', month: 'free.month.title', hour: 'free.hour.title',
   lifetime: 'premium.life.title', celeb: 'premium.celeb.title', mbti: 'premium.mbti.title',
 }
+// ⚠️ locale 필터 필수 — 안 걸면 ko 후기가 en/ja/zh 홈에 한국어 그대로 노출된다.
+// (i18n 게이트 check-leaks.mjs는 소스만 검사하므로 DB 콘텐츠 누수는 못 잡는다.)
+// watch: [locale] — 키가 고정이라 클라이언트 언어 전환 시 재조회가 필요하다.
 const { data: featuredReviews } = await useAsyncData('featured-reviews', async () => {
   const { data } = await supabase
     .from('reviews')
     .select('id,rating,text,author_name,locale,type_key')
     .eq('featured', true)
+    .eq('locale', locale.value)
+    .not('text', 'is', null)
     .order('created_at', { ascending: false })
     .limit(3)
   return (data || []).filter((r) => r.text)
-}, { default: () => [] })
+}, { default: () => [], watch: [locale] })
 function flagOf(code) { return FLAGS[code] || '🌐' }
 function tagOf(k) { return TESTI_TYPE[k] ? t(TESTI_TYPE[k]) : k }
 
@@ -572,11 +577,6 @@ onBeforeUnmount(() => {
               <span class="logo-text">타오운세<span class="hanja">悟運勢</span></span>
             </NuxtLink>
             <p class="footer-slogan">{{ t('footer.slogan') }}</p>
-            <div class="footer-socials">
-              <a href="#" class="social-btn" aria-label="Instagram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg></a>
-              <a href="#" class="social-btn" aria-label="X"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg></a>
-              <a href="#" class="social-btn" aria-label="YouTube"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" /><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" /></svg></a>
-            </div>
           </div>
 
           <div class="footer-col">
@@ -1466,19 +1466,6 @@ onBeforeUnmount(() => {
 .footer-brand .logo-text { color: var(--text-primary); }
 .footer-brand .logo-text .hanja { font-size: 0.7em; color: var(--gold-primary); margin-left: 4px; font-family: var(--font-mono); }
 .footer-slogan { color: var(--text-secondary); max-width: 360px; line-height: 1.7; margin-bottom: var(--space-6); }
-.footer-socials { display: flex; gap: var(--space-3); }
-.social-btn {
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--gold-border);
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  transition: all 0.2s;
-}
-.social-btn:hover { background: var(--gold-soft); color: var(--gold-primary); border-color: var(--gold-primary); }
 .footer-col h4 {
   font-family: var(--font-display);
   font-size: var(--text-base);
