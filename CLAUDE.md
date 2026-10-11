@@ -91,6 +91,22 @@ echo GATE-PASS
 라이브: 오라클 클라우드, `taoist.co.kr`, pm2 앱 이름 `taounse`.
 `nuxt.config.ts`가 `PAYMENT_MODE`(test|live)로 결제 키 세트를 고른다 — 기본값은 `test`.
 
+### 서버 인프라 현황 (2026-10-11 실측)
+
+- **TLS**: Let's Encrypt, cert 이름 `taoist.co.kr` (SAN: apex + www), certbot 3.1.0(EPEL, nginx 플러그인).
+  - `certbot-renew.timer` **enabled** (7월 이전 때 꺼져 있어 2026-10-09 만료 장애가 났다).
+  - deploy hook `/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh` → 갱신 후 `systemctl reload nginx`.
+  - 재발급이 필요하면 `certbot certonly --nginx -d taoist.co.kr -d www.taoist.co.kr`. **`certbot --nginx`(install 포함) 금지** — 80 블록에 `if ($host …)` 리디렉트를 다시 끼워 넣는다.
+- **nginx** (`/etc/nginx/conf.d/taounse.conf`, 블록 3개):
+  1. 443 `taoist.co.kr` → `127.0.0.1:3000` 프록시 (본 서비스)
+  2. 443 `www.taoist.co.kr` 전용 → `return 301 https://taoist.co.kr$request_uri`
+  3. 80 (default_server, apex+www) → `location / { return 301 https://taoist.co.kr$request_uri; }` — server 레벨 return이 아니라 location이라 ACME challenge를 막지 않는다. 리디렉트 규칙은 여기 한 곳뿐.
+  - 스캐너 차단(블록 1에만): `location ~* (\.php$|^/wp-|^/wordpress|/\.(env|git|aws|ssh)|\.tfstate$) { return 444; }` — 앱까지 안 보내고 연결을 끊는다. 이 패턴에 걸리는 라우트를 앱에 만들지 말 것.
+  - nginx 백업: `/etc/nginx.bak-20261011`(www 301 전), `/etc/nginx.bak-20261011b`(스캐너 차단 전).
+- **pm2**: `pm2-logrotate` 3.0.0 — `max_size 10M`, `retain 14`, `compress true`, rotateInterval `0 0 * * *`.
+  - 부팅 시 복구: `pm2-opc.service`(enabled, `pm2 resurrect`) + `~/.pm2/dump.pm2`.
+  - 앱 에러 로그는 대부분 봇 스캔이 남기는 `[Vue Router warn]: No match found` 라인이다(2026-10-11 기준 99.99%).
+
 ## 7. 테스트
 
 **테스트 프레임워크 없음** (vitest/playwright 미설치, `test` 스크립트 없음).
