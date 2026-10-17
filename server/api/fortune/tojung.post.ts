@@ -1,4 +1,4 @@
-import { serverSupabaseClient, serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
+import { serverSupabaseClient, serverSupabaseServiceRole } from '#supabase/server'
 import { toTraditional } from '../../utils/zh'
 
 /**
@@ -27,31 +27,12 @@ const COLS = 'total, jan, feb, mar, apr, may, jun, jul, aug, sep, oct, nov, dec'
 const MONTH_KEYS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 
 /**
- * 2027 토정비결 유료 풀이를 여는 구매 type_key. 새 상품을 만들지 않고 기존 상품 구매자에게 연다.
- * 결과 화면의 잠금 CTA는 기존 토정비결 업셀과 같은 lifetime으로 보낸다.
- */
-const TOJUNG_PAID_KEYS = ['lifetime', 'newyear']
-
-/** 로그인 + TOJUNG_PAID_KEYS 중 paid 구매가 있는지. 무료 흐름을 막지 않도록 절대 throw하지 않는다. */
-async function hasPaidPurchase(event: any): Promise<boolean> {
-  let user: any = null
-  try { user = await serverSupabaseUser(event) } catch { user = null }
-  if (!user) return false
-  const { data } = await serverSupabaseServiceRole(event)
-    .from('purchases').select('id')
-    .eq('owner_id', user.id).in('type_key', TOJUNG_PAID_KEYS).eq('status', 'paid')
-    .limit(1).maybeSingle()
-  return !!data
-}
-
-/**
  * TOJUNG_YEAR=2027(runtimeConfig.public.tojungYear) — 새 테이블(tojung_yearly/monthly)에서
  * 계산값 그대로(001~072, 1칸 어긋남 미적용) 읽는다. 해당 코드·언어가 없으면 null → 2026 경로로 폴백.
- * 무료: 총운 + 월별 본문(2026과 같은 범위) + 헤드라인. 유료(결제 확인 시에만): 요약·항목별·
- * 좋은 달/조심할 달·행운·월별 등급/요약/항목/조언.
- * 공개 RLS 정책이 없으므로 service role로만 읽힌다(0016). 개발 서버는 draft도 읽고 paidPreview를 허용한다.
+ * 전체 무료: 헤드라인·총운·월별 본문 + 요약·항목별·좋은 달/조심할 달·행운·월별 등급/요약/항목/조언.
+ * 공개 RLS 정책이 없으므로 service role로만 읽힌다(0016). 개발 서버는 draft도 읽는다.
  */
-async function load2027(event: any, code: string, lang: string, paidPreview: boolean) {
+async function load2027(event: any, code: string, lang: string) {
   const admin = serverSupabaseServiceRole(event)
   const statuses = import.meta.dev ? ['draft', 'published'] : ['published']
   const key = { year: 2027, scheme: 'legacy72', gwae_code: code, lang }
@@ -64,17 +45,14 @@ async function load2027(event: any, code: string, lang: string, paidPreview: boo
   const fortune: Record<string, string> = { total: z(y.total) }
   for (const m of ms) fortune[MONTH_KEYS[m.month - 1]] = z(m.body)
 
-  const paid = (import.meta.dev && paidPreview) || (await hasPaidPurchase(event))
-  const detail = paid
-    ? {
-        grade: y.grade, summary: z(y.summary),
-        wealth: z(y.wealth), career: z(y.career), love: z(y.love), health: z(y.health), family: z(y.family), caution: z(y.caution),
-        good_months: y.good_months, bad_months: y.bad_months,
-        lucky: y.lucky && { ...y.lucky, colors: (y.lucky.colors || []).map(z), direction: z(y.lucky.direction), item: z(y.lucky.item) },
-        months: ms.map((m) => ({ month: m.month, grade: m.grade, summary: z(m.summary), wealth: z(m.wealth), career: z(m.career), love: z(m.love), health: z(m.health), advice: z(m.advice) })),
-      }
-    : null
-  return { num: code, lang, nation: lang, year: 2027, headline: z(y.headline), paid, detail, fortune }
+  const detail = {
+    grade: y.grade, summary: z(y.summary),
+    wealth: z(y.wealth), career: z(y.career), love: z(y.love), health: z(y.health), family: z(y.family), caution: z(y.caution),
+    good_months: y.good_months, bad_months: y.bad_months,
+    lucky: y.lucky && { ...y.lucky, colors: (y.lucky.colors || []).map(z), direction: z(y.lucky.direction), item: z(y.lucky.item) },
+    months: ms.map((m) => ({ month: m.month, grade: m.grade, summary: z(m.summary), wealth: z(m.wealth), career: z(m.career), love: z(m.love), health: z(m.health), advice: z(m.advice) })),
+  }
+  return { num: code, lang, nation: lang, year: 2027, headline: z(y.headline), detail, fortune }
 }
 
 export default defineEventHandler(async (event) => {
@@ -91,7 +69,7 @@ export default defineEventHandler(async (event) => {
   const num = tojungNumber(year, month, day, gender)
 
   if (String(useRuntimeConfig().public.tojungYear) === '2027') {
-    const r = await load2027(event, num, lang, body?.paidPreview === true)
+    const r = await load2027(event, num, lang)
     if (r) return r
   }
 

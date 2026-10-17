@@ -176,6 +176,11 @@ useHead(() => ({
         <h2 class="lp-h2">{{ t(k('seoFeatureTitle')) }}</h2>
         <p v-for="(p, i) in paras('seoFeature')" :key="'sf' + i" class="lp-body">{{ p }}</p>
       </section>
+      <!-- 토정비결 전용: 그해 삼재 띠 안내 -->
+      <section v-if="landingKey === 'tojung'" class="lp-section">
+        <h2 class="lp-h2">{{ t(k('samjaeTitle')) }}</h2>
+        <p v-for="(p, i) in paras('samjaeBody')" :key="'sj' + i" class="lp-body">{{ p }}</p>
+      </section>
     </template>
 
     <!-- 보는 법 -->

@@ -79,7 +79,7 @@ const ZODIAC = [
     text: { ko: '풍요로움이 작은 일상에서 시작됩니다. 감사가 더 큰 복을 부릅니다.', en: 'Abundance starts in small moments. Gratitude calls bigger blessings.', ja: '豊かさは小さな日常から始まります。感謝がより大きな福を呼びます。', zh: '豐盛從日常小事開始。感恩招來更大福氣。' },
     color: { ko: '쪽빛', en: 'Indigo', ja: '藍', zh: '靛藍' }, colorHex: '#1E3A8A', num: '4', dir: { ko: '북', en: 'N', ja: '北', zh: '北' } },
 ]
-const zodiacIdx = ref(6) // 午 — Horse (2026 丙午)
+const zodiacIdx = ref(7) // 未 — Sheep (2027 丁未)
 const tr = (obj) => obj[locale.value] || obj.ko
 const selZodiac = computed(() => ZODIAC[zodiacIdx.value])
 // 띠별 오늘운세 실데이터(daily_horoscope). 운세 문구·행운 색/숫자/방위는 DB값을 쓰고,

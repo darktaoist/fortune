@@ -130,7 +130,7 @@ const userGrid = computed(() => {
     return rows
   }
   if (!c.year) return []
-  const hour = c.hour != null ? fmtHour(`${pad2(c.hour)}:${pad2(c.minute ?? 0)}`) : t('saju.save.none')
+  const hour = c.hour != null ? fmtHour(`${pad2(c.hour)}:${pad2(c.minute ?? 0)}`) : t('result.hourDefault') // 시간 모름 → 11:30 기준
   const rows = [
     [t('result.name'), c.name || t('saju.preview.guest')],
     [t('result.birth'), fmtBirth({ calendar: c.calendar, y: c.year, mo: c.month, d: c.day })],

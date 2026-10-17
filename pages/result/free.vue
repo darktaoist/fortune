@@ -49,8 +49,8 @@ const UPSELL_MAP = {
 const upsell = computed(() => (ftKey.value ? UPSELL_MAP[ftKey.value] : null))
 const UPSELL_SESSION_KEY = 'taoist_upsell_free' // 실제 키는 `${...}_${ftKey}` (화면별 1회)
 const stamp = computed(() => cfg.value?.stamp || '午')
-const heroTitle = computed(() => (tojung2027.value ? t('free.tojung.title2027') : cfg.value ? t(cfg.value.titleKey) : t('result.title')))
-const showGanji = computed(() => (cfg.value ? cfg.value.ganji : true))
+const heroTitle = computed(() => (tojungFallback.value ? t('free.tojung.titlePlain') : cfg.value ? t(cfg.value.titleKey) : t('result.title')))
+const showGanji = computed(() => (cfg.value ? cfg.value.ganji && !tojungFallback.value : true))
 
 /* ---- 입력값(사주) 표시용 헬퍼 ---- */
 const EN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -82,7 +82,7 @@ const hourDisplay = computed(() => {
   const v = viewUser.value
   if (!v) return t('saju.save.none')
   if (v.hh != null) return fmtHour(`${pad2(v.hh)}:${pad2(v.mm ?? 0)}`)
-  return t('saju.save.none')
+  return t('result.hourDefault') // 시간 모름 → 정시법 11:30 기준으로 계산(server/utils/manse.ts UNKNOWN_HOUR)
 })
 const userGrid = computed(() => {
   const v = viewUser.value
@@ -133,13 +133,14 @@ async function loadToday() {
 const TOJUNG_MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 const tojungFortune = ref(null)
 const tojungLoading = ref(false)
-// 2027판(runtimeConfig.public.tojungYear='2027'): 응답 year로 판정(코드·언어가 없으면 서버가 2026으로 폴백).
-// 무료=헤드라인·총운·월별 본문, 유료(detail, 서버가 결제 확인 시에만 내려줌)=요약·항목별·좋은/조심할 달·월별 조언.
+// 2027판(runtimeConfig.public.tojungYear='2027', 전체 무료): 응답 year로 판정.
+// 코드·언어가 없어 서버가 2026 데이터로 폴백하면 연도 없는 제목을 쓰고 간지 배지를 숨긴다.
 const TOJUNG_YEAR_CFG = String(useRuntimeConfig().public.tojungYear)
 const tojungMeta = ref(null)
 const tojung2027 = computed(() => isTojung.value && (tojungMeta.value ? tojungMeta.value.year === 2027 : TOJUNG_YEAR_CFG === '2027'))
+const tojungFallback = computed(() => isTojung.value && !!tojungMeta.value && tojungMeta.value.year !== 2027)
 const tojungDetail = computed(() => (tojung2027.value ? tojungMeta.value?.detail || null : null))
-const ganjiLabel = computed(() => (tojung2027.value ? t('result.ganji2027') : t('result.ganji')))
+const ganjiLabel = computed(() => t('result.ganji'))
 const monthLabelOf = (n) => (locale.value === 'en' ? EN_MONTHS[n - 1] : (locale.value === 'ko' ? `${n}월` : `${n}月`))
 const stars = (g) => '★'.repeat(g || 0) + '☆'.repeat(5 - (g || 0))
 const tojungSections = computed(() => {
@@ -172,11 +173,7 @@ async function loadTojung() {
   try {
     const res = await $fetch('/api/fortune/tojung', {
       method: 'POST',
-      body: {
-        year: c.year, month: c.month, day: c.day, gender: c.gender, calendar: c.calendar, lang: locale.value,
-        // 개발 서버 전용 유료 미리보기(?paid=1) — 서버도 import.meta.dev일 때만 받아준다.
-        ...(import.meta.dev && route.query.paid === '1' ? { paidPreview: true } : {}),
-      },
+      body: { year: c.year, month: c.month, day: c.day, gender: c.gender, calendar: c.calendar, lang: locale.value },
     })
     tojungFortune.value = res?.fortune || null
     tojungMeta.value = res ? { year: res.year === 2027 ? 2027 : 2026, headline: res.headline || '', detail: res.detail || null } : null
@@ -513,7 +510,7 @@ function onShare() {
                   </article>
                 </div>
               </section>
-              <!-- 2027 유료 풀이: 결제 확인 시 서버가 detail을 내려준다. 없으면 잠금 안내 -->
+              <!-- 2027 정밀 풀이(전체 무료) -->
               <section v-if="tojung2027 && tojungDetail">
                 <div class="section-head">
                   <div class="eyebrow">{{ t('tojung27.paidTitle') }}</div>
@@ -541,12 +538,6 @@ function onShare() {
                   </article>
                 </div>
               </section>
-              <div v-else-if="tojung2027" class="info-card t27-lock">
-                <div class="t27-lock-glyph">秘</div>
-                <h3>{{ t('tojung27.lockTitle') }}</h3>
-                <p>{{ t('tojung27.lockDesc') }}</p>
-                <NuxtLink class="btn btn-primary" :to="localePath({ path: '/saju', query: { service: 'lifetime' } })">{{ t('tojung27.lockCta') }}</NuxtLink>
-              </div>
               <section v-if="tojungMonths.length">
                 <div class="section-head">
                   <div class="eyebrow">{{ t('result.monthly') }}</div>
@@ -950,10 +941,6 @@ function onShare() {
 .mo-sub dd { color: var(--text-secondary); margin: 0; }
 .mo-advice { display: flex; flex-wrap: wrap; gap: 4px var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--bg-tertiary); color: var(--text-primary); font-size: var(--text-sm); }
 .mo-advice span { font-family: var(--font-display); font-weight: 700; color: var(--gold-light); }
-.t27-lock { text-align: center; margin-bottom: var(--space-16); }
-.t27-lock-glyph { width: 56px; height: 56px; margin: 0 auto var(--space-4); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--gold-light); border: 1px solid var(--gold-border-strong); }
-.t27-lock h3 { font-family: var(--font-display); font-size: var(--text-xl); margin-bottom: var(--space-3); }
-.t27-lock p { color: var(--text-secondary); margin-bottom: var(--space-6); line-height: 1.7; }
 @media (max-width: 1100px) { .result-layout { grid-template-columns: minmax(0, 1fr); } .ad-rail { display: none; } .main-col { grid-column: 1; } }
 @media (max-width: 640px) {
   .result-hero { padding-top: var(--space-16); }

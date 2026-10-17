@@ -163,6 +163,9 @@ export function formatMyeongsikForPrompt(m: Myeongsik, label?: string): string {
     label ? `[${label} 명식]` : `[사주 명식]`,
     `- 양력 ${m.user.solar} / 음력 ${m.user.lunar} / 생시 ${m.user.hour}`,
     `- 사주 4기둥(四柱): 년주 ${pill(p.year)} · 월주 ${pill(p.month)} · 일주 ${pill(p.day)} · 시주 ${pill(p.hour)}`,
+    ...(m.user.hourDefault
+      ? ['  ※ 출생 시각 미상: 시주는 정시법 기준 11:30(午時)으로 둔 추정값이다. 시주에 크게 기대는 해석(자녀운·말년운 등)은 단정하지 말고, 태어난 시를 알면 더 정확해진다는 식으로 완곡하게 다룰 것.']
+      : []),
     `- 일간(日干, 본인): ${m.dayStem} (${m.dayElement})`,
     `- 신강/신약: ${m.strongWeak.type === 'strong' ? '신강(身强)' : '신약(身弱)'} (부조:설기 = ${m.strongWeak.score})`,
     `- 오행 분포: ${ohaengLine}`,

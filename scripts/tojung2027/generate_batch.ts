@@ -132,19 +132,35 @@ const params = (prompt: string) => ({
 })
 
 // ---------- validation ----------
+/**
+ * 서비스명 표기 통일(재요청 없이 결정적 치환).
+ *  - 한글 "토정비결"이 섞여 온 경우 → 土亭秘訣
+ *  - ja: トジョン秘訣 → 土亭秘訣, 단독 가타카나 이름(トジョン・ビギョル/ピギョル 등) → 土亭秘訣.
+ *    괄호 안 읽기 표기 「土亭秘訣(トジョンビギョル)」는 남기고 표기만 トジョンビギョル로 맞춘다.
+ */
+function normTerm(s: string, lang: string): string {
+  s = s.replace(/土정비결|토정비결/g, '土亭秘訣')
+  if (lang === 'ja') {
+    s = s.replace(/トジョン秘訣/g, '土亭秘訣')
+      .replace(/トジョン・?[ビピ]ギョル/g, 'トジョンビギョル')
+      .replace(/(?<![(（])トジョンビギョル/g, '土亭秘訣')
+  }
+  return s
+}
+// 치환으로 생긴 중복 괄호 정리: 「土亭秘訣」(土亭秘訣) → 「土亭秘訣」, 土亭秘訣(土亭秘訣, X) → 土亭秘訣(X)
+function tidyTerm(s: string): string {
+  return s
+    .replace(/(土亭[秘祕]訣[」》』]?)\s*[(（]土亭秘訣[)）]/g, '$1')
+    .replace(/(土亭[秘祕]訣[」》』]?\s*[(（])土亭秘訣[,，、]\s*/g, '$1')
+}
+
 function validateTr(lang: string, code: string, raw: Result): { r: Result; errs: string[] } {
   const ko = koResult(code)!
   // 프롬프트 첫 줄의 "Tojeong Bigyeol (토정비결)"을 그대로 옮겨 적는 경우가 있다(ja·zh 「토정비결(…)」).
   // 재요청 대신 결정적으로 한자 표기로 바꾼다 — 그 외 한글은 아래 검증에서 그대로 실패시킨다.
-  let r = mapStrings(raw, (s) => s
-    .replace(/土정비결|토정비결/g, '土亭秘訣')
-    // 치환으로 생긴 중복 괄호 정리: 「土亭秘訣」(土亭秘訣) → 「土亭秘訣」, 土亭秘訣(土亭秘訣, X) → 土亭秘訣(X)
-    .replace(/(土亭[秘祕]訣[」》』]?)\s*[(（]土亭秘訣[)）]/g, '$1')
-    .replace(/(土亭[秘祕]訣[」》』]?\s*[(（])土亭秘訣[,，、]\s*/g, '$1'))
-  // 간체(秘诀 등)로 온 경우 s2t 뒤에야 위 정리 패턴에 걸리므로 한 번 더 정리한다.
-  if (lang === 'zh') r = mapStrings(r, (s) => s2t(s)
-    .replace(/(土亭[秘祕]訣[」》』]?)\s*[(（]土亭秘訣[)）]/g, '$1')
-    .replace(/(土亭[秘祕]訣[」》』]?\s*[(（])土亭秘訣[,，、]\s*/g, '$1'))
+  let r = mapStrings(raw, (s) => tidyTerm(normTerm(s, lang)))
+  // 간체(秘诀 등)로 온 경우 s2t 뒤에야 정리 패턴에 걸리므로 한 번 더 정리한다. 띠 이름은 화면 라벨(紅羊之年)에 맞춘다.
+  if (lang === 'zh') r = mapStrings(r, (s) => tidyTerm(s2t(s)).replace(/赤羊/g, '紅羊'))
   const errs = validateStructure(r)
   const text = allText(r)
   if (/[가-힣]/.test(text)) errs.push('한글 포함')
