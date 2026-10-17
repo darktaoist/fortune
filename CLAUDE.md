@@ -10,6 +10,7 @@ Nuxt 3 사주·운세 사이트. 라이브: https://taoist.co.kr · 4개 언어 
 - **`.env`를 읽거나 수정하지 않는다.** 코드가 참조하는 env 변수 *이름*은 언급해도 되지만 값은 보지 않는다.
 - **Supabase 라이브 테이블 쓰기 금지.** `scripts/db/validate-*` · `verify-*` 같은 읽기·검증 스크립트만 허용.
 - **유료 LLM API 호출 스크립트 금지.** (Claude/Anthropic·DeepSeek 등. 과거 `gen-today.mjs`로 $22 과금 사고 발생.) 대량 생성이 필요하면 세션이 직접 처리한다.
+  - 예외: `scripts/tojung2027/` 한정, 사용자가 건별로 승인한 호출만 허용(1회 승인 = 1회 호출, 자동 재시도·반복 금지, max_tokens는 건별 승인 시 지정한 값(기본 16000)). 키는 `scripts/tojung2027/.env`에만 둔다.
 - **디자인 토큰 변경 금지** — `assets/css/design-system.css`:
   - `--bg-primary: #0A0A0F`
   - `--gold-primary: #C9A84C`

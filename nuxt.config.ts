@@ -13,6 +13,11 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
 
+  // 개발 전용 미리보기(/dev/*, /api/dev/*)는 production 빌드에서 파일째 제외 → 404.
+  $production: {
+    ignore: ['pages/dev/**', 'server/api/dev/**'],
+  },
+
   // Order matters: i18n before sitemap so the sitemap picks up localized routes.
   modules: ['@nuxtjs/supabase', '@nuxtjs/i18n', '@nuxtjs/sitemap', '@nuxtjs/robots', 'nuxt-gtag'],
 

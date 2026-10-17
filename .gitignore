@@ -43,3 +43,7 @@ Oracle_Cloud/*.key
 .claude/gsd-install-state.json
 .claude/gsd-migration-journal/
 .claude/.gsd-profile
+
+# 2027 토정비결 생성 스크립트 — API 키·응답 원문
+scripts/tojung2027/.env
+scripts/tojung2027/out/
