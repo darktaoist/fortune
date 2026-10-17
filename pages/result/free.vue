@@ -822,7 +822,7 @@ function onShare() {
 .result-hero .ganji { display: inline-block; font-family: var(--font-mono); font-size: var(--text-sm); letter-spacing: 0.16em; color: var(--gold-primary); padding: 6px 16px; border: 1px solid var(--gold-border); border-radius: var(--radius-full); }
 
 .result-layout { display: grid; grid-template-columns: 180px minmax(0, 1fr) 180px; gap: var(--space-8); align-items: start; max-width: 1544px; margin: 0 auto; }
-.main-col { min-width: 0; max-width: 1120px; margin: 0 auto; width: 100%; }
+.main-col { min-width: 0; max-width: 1120px; margin: 0 auto; width: 100%; grid-column: 2; } /* 광고 차단기가 .ad-rail을 숨겨도 180px 칸으로 밀려나지 않게 고정 */
 .ad-rail { position: sticky; top: 104px; }
 
 .ad-slot { position: relative; background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.012) 0 10px, transparent 10px 20px), var(--bg-secondary); border: 1px dashed var(--gold-border); border-radius: var(--radius-md); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: var(--text-muted); overflow: hidden; }
@@ -954,7 +954,7 @@ function onShare() {
 .t27-lock-glyph { width: 56px; height: 56px; margin: 0 auto var(--space-4); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--gold-light); border: 1px solid var(--gold-border-strong); }
 .t27-lock h3 { font-family: var(--font-display); font-size: var(--text-xl); margin-bottom: var(--space-3); }
 .t27-lock p { color: var(--text-secondary); margin-bottom: var(--space-6); line-height: 1.7; }
-@media (max-width: 1100px) { .result-layout { grid-template-columns: minmax(0, 1fr); } .ad-rail { display: none; } }
+@media (max-width: 1100px) { .result-layout { grid-template-columns: minmax(0, 1fr); } .ad-rail { display: none; } .main-col { grid-column: 1; } }
 @media (max-width: 640px) {
   .result-hero { padding-top: var(--space-16); }
   .back-btn { position: static; display: inline-flex; margin-bottom: var(--space-6); }
