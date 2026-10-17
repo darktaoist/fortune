@@ -11,7 +11,7 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const code = computed(() => String(route.params.gwae_code || ''))
 
-const { data, error } = await useFetch(() => `/api/dev/tojung2027/${code.value}`, { query: { lang: 'ko' } })
+const { data, error } = await useFetch(() => `/api/dev/tojung2027/${code.value}`, { query: { lang: computed(() => String(route.query.lang || 'ko')) } })
 const y = computed(() => data.value?.yearly)
 const months = computed(() => data.value?.months || [])
 

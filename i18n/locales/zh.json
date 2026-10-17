@@ -1425,5 +1425,20 @@
   "cel.seoFaqQ2": "需要輸入什麼？",
   "cel.seoFaqA2": "八字合盤請輸入出生年月日，MBTI合盤則選擇性格類型即可。",
   "cel.seoFaqQ3": "是免費的嗎？",
-  "cel.seoFaqA3": "是的，可免費確認與多位明星的合盤。"
+  "cel.seoFaqA3": "是的，可免費確認與多位明星的合盤。",
+  "free.tojung.title2027": "2027 土亭秘訣",
+  "result.ganji2027": "丁未年 · 紅羊之年",
+  "tojung27.paidTitle": "2027 詳細解讀",
+  "tojung27.paidDesc": "收錄全年總結、各領域運勢、好月份與需留意的月份，以及每月建議。",
+  "tojung27.summary": "全年總結",
+  "tojung27.family": "家庭運",
+  "tojung27.caution": "需要留意的事",
+  "tojung27.goodMonths": "好月份",
+  "tojung27.badMonths": "需留意的月份",
+  "tojung27.lucky": "幸運指南",
+  "tojung27.luckyItem": "幸運物品",
+  "tojung27.advice": "本月建議",
+  "tojung27.lockTitle": "詳細解讀為付費服務",
+  "tojung27.lockDesc": "購買一生八字命盤報告或新年運勢，即可查看各領域運勢、好月份與需留意的月份，以及每月建議。",
+  "tojung27.lockCta": "查看一生八字命盤報告"
 }

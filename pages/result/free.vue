@@ -49,7 +49,7 @@ const UPSELL_MAP = {
 const upsell = computed(() => (ftKey.value ? UPSELL_MAP[ftKey.value] : null))
 const UPSELL_SESSION_KEY = 'taoist_upsell_free' // 실제 키는 `${...}_${ftKey}` (화면별 1회)
 const stamp = computed(() => cfg.value?.stamp || '午')
-const heroTitle = computed(() => (cfg.value ? t(cfg.value.titleKey) : t('result.title')))
+const heroTitle = computed(() => (tojung2027.value ? t('free.tojung.title2027') : cfg.value ? t(cfg.value.titleKey) : t('result.title')))
 const showGanji = computed(() => (cfg.value ? cfg.value.ganji : true))
 
 /* ---- 입력값(사주) 표시용 헬퍼 ---- */
@@ -133,13 +133,36 @@ async function loadToday() {
 const TOJUNG_MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
 const tojungFortune = ref(null)
 const tojungLoading = ref(false)
+// 2027판(runtimeConfig.public.tojungYear='2027'): 응답 year로 판정(코드·언어가 없으면 서버가 2026으로 폴백).
+// 무료=헤드라인·총운·월별 본문, 유료(detail, 서버가 결제 확인 시에만 내려줌)=요약·항목별·좋은/조심할 달·월별 조언.
+const TOJUNG_YEAR_CFG = String(useRuntimeConfig().public.tojungYear)
+const tojungMeta = ref(null)
+const tojung2027 = computed(() => isTojung.value && (tojungMeta.value ? tojungMeta.value.year === 2027 : TOJUNG_YEAR_CFG === '2027'))
+const tojungDetail = computed(() => (tojung2027.value ? tojungMeta.value?.detail || null : null))
+const ganjiLabel = computed(() => (tojung2027.value ? t('result.ganji2027') : t('result.ganji')))
+const monthLabelOf = (n) => (locale.value === 'en' ? EN_MONTHS[n - 1] : (locale.value === 'ko' ? `${n}월` : `${n}月`))
+const stars = (g) => '★'.repeat(g || 0) + '☆'.repeat(5 - (g || 0))
+const tojungSections = computed(() => {
+  const d = tojungDetail.value
+  if (!d) return []
+  return [
+    { glyph: '財', title: t('pro.sec.wealth'), body: d.wealth },
+    { glyph: '職', title: t('pro.sec.career'), body: d.career },
+    { glyph: '愛', title: t('pro.sec.love'), body: d.love },
+    { glyph: '健', title: t('pro.sec.health'), body: d.health },
+    { glyph: '家', title: t('tojung27.family'), body: d.family },
+    { glyph: '戒', title: t('tojung27.caution'), body: d.caution },
+  ].filter((x) => x.body)
+})
 const tojungMonths = computed(() => {
   const fr = tojungFortune.value
   if (!fr) return []
+  const dm = new Map((tojungDetail.value?.months || []).map((m) => [m.month, m]))
   return TOJUNG_MONTHS.map((k, i) => ({
     n: i + 1,
-    label: locale.value === 'en' ? EN_MONTHS[i] : (locale.value === 'ko' ? `${i + 1}월` : `${i + 1}月`),
+    label: monthLabelOf(i + 1),
     body: fr[k],
+    detail: dm.get(i + 1) || null,
   })).filter((m) => m.body)
 })
 async function loadTojung() {
@@ -149,12 +172,18 @@ async function loadTojung() {
   try {
     const res = await $fetch('/api/fortune/tojung', {
       method: 'POST',
-      body: { year: c.year, month: c.month, day: c.day, gender: c.gender, calendar: c.calendar, lang: locale.value },
+      body: {
+        year: c.year, month: c.month, day: c.day, gender: c.gender, calendar: c.calendar, lang: locale.value,
+        // 개발 서버 전용 유료 미리보기(?paid=1) — 서버도 import.meta.dev일 때만 받아준다.
+        ...(import.meta.dev && route.query.paid === '1' ? { paidPreview: true } : {}),
+      },
     })
     tojungFortune.value = res?.fortune || null
+    tojungMeta.value = res ? { year: res.year === 2027 ? 2027 : 2026, headline: res.headline || '', detail: res.detail || null } : null
   } catch {
     if (isTojung.value) loadError.value = t('result.loadError')
     tojungFortune.value = null
+    tojungMeta.value = null
   } finally {
     tojungLoading.value = false
   }
@@ -383,7 +412,7 @@ async function onSave() {
     type_key: ftKey.value || 'today',
     tier: 'free',
     subject: c ? { ...c } : null,        // 다시 보기 시 복원할 사주 주체
-    ganji: showGanji.value ? t('result.ganji') : null,
+    ganji: showGanji.value ? ganjiLabel.value : null,
     glyph: stamp.value,
     tint: TYPE_TINT[ftKey.value] || 'gold',
   })
@@ -406,7 +435,7 @@ function onShare() {
       </NuxtLink>
       <div class="stamp">{{ stamp }}</div>
       <h1>{{ heroTitle }}</h1>
-      <span v-show="showGanji" class="ganji">{{ t('result.ganji') }}</span>
+      <span v-show="showGanji" class="ganji">{{ ganjiLabel }}</span>
     </div>
 
     <div class="result-layout">
@@ -471,6 +500,7 @@ function onShare() {
           <template v-else>
             <p v-if="tojungLoading" class="loading-note">{{ t('result.loading') }}</p>
             <template v-else-if="tojungFortune">
+              <p v-if="tojung2027 && tojungMeta?.headline" class="t27-headline">{{ tojungMeta.headline }}</p>
               <section v-if="tojungFortune.total">
                 <div class="section-head">
                   <div class="eyebrow">{{ t('result.overall') }}</div>
@@ -483,6 +513,40 @@ function onShare() {
                   </article>
                 </div>
               </section>
+              <!-- 2027 유료 풀이: 결제 확인 시 서버가 detail을 내려준다. 없으면 잠금 안내 -->
+              <section v-if="tojung2027 && tojungDetail">
+                <div class="section-head">
+                  <div class="eyebrow">{{ t('tojung27.paidTitle') }}</div>
+                  <h2>{{ t('tojung27.paidTitle') }}</h2>
+                  <p>{{ t('tojung27.paidDesc') }}</p>
+                </div>
+                <div class="info-card t27-card">
+                  <div class="t27-grade">{{ stars(tojungDetail.grade) }}</div>
+                  <p class="t27-summary">{{ tojungDetail.summary }}</p>
+                  <div class="month-tags">
+                    <div class="mt-row"><span class="mt-k good">{{ t('tojung27.goodMonths') }}</span><span v-for="n in tojungDetail.good_months" :key="'g' + n" class="mt-chip good">{{ monthLabelOf(n) }}</span></div>
+                    <div class="mt-row"><span class="mt-k bad">{{ t('tojung27.badMonths') }}</span><span v-for="n in tojungDetail.bad_months" :key="'b' + n" class="mt-chip bad">{{ monthLabelOf(n) }}</span></div>
+                  </div>
+                  <div v-if="tojungDetail.lucky" class="lucky">
+                    <span><b>{{ t('result.lucky.color') }}</b>{{ (tojungDetail.lucky.colors || []).join(', ') }}</span>
+                    <span><b>{{ t('result.lucky.num') }}</b>{{ (tojungDetail.lucky.numbers || []).join(', ') }}</span>
+                    <span><b>{{ t('lotto.aura.direction') }}</b>{{ tojungDetail.lucky.direction }}</span>
+                    <span><b>{{ t('tojung27.luckyItem') }}</b>{{ tojungDetail.lucky.item }}</span>
+                  </div>
+                </div>
+                <div class="overall-list">
+                  <article v-for="sec in tojungSections" :key="sec.glyph" class="ov-card">
+                    <div class="ov-glyph">{{ sec.glyph }}</div>
+                    <div class="ov-body"><h3 class="ov-title">{{ sec.title }}</h3><p class="ov-text pre">{{ sec.body }}</p></div>
+                  </article>
+                </div>
+              </section>
+              <div v-else-if="tojung2027" class="info-card t27-lock">
+                <div class="t27-lock-glyph">秘</div>
+                <h3>{{ t('tojung27.lockTitle') }}</h3>
+                <p>{{ t('tojung27.lockDesc') }}</p>
+                <NuxtLink class="btn btn-primary" :to="localePath({ path: '/saju', query: { service: 'lifetime' } })">{{ t('tojung27.lockCta') }}</NuxtLink>
+              </div>
               <section v-if="tojungMonths.length">
                 <div class="section-head">
                   <div class="eyebrow">{{ t('result.monthly') }}</div>
@@ -491,8 +555,15 @@ function onShare() {
                 <div class="month-list">
                   <template v-for="(mo, i) in tojungMonths" :key="mo.n">
                     <article class="mo-card">
-                      <div class="mo-head"><span class="mo-chip">{{ mo.label }}</span><span class="mo-bar" /></div>
+                      <div class="mo-head"><span class="mo-chip">{{ mo.label }}</span><span v-if="mo.detail" class="mo-grade" :class="{ low: mo.detail.grade <= 2 }">{{ stars(mo.detail.grade) }}</span><span class="mo-bar" /></div>
+                      <p v-if="mo.detail" class="mo-summary">{{ mo.detail.summary }}</p>
                       <p class="mo-text pre">{{ mo.body }}</p>
+                      <template v-if="mo.detail">
+                        <dl class="mo-sub">
+                          <template v-for="[g, v] in [['財', mo.detail.wealth], ['職', mo.detail.career], ['愛', mo.detail.love], ['健', mo.detail.health]]" :key="g"><dt>{{ g }}</dt><dd>{{ v }}</dd></template>
+                        </dl>
+                        <p v-if="mo.detail.advice" class="mo-advice"><span>{{ t('tojung27.advice') }}</span>{{ mo.detail.advice }}</p>
+                      </template>
                     </article>
                     <div v-if="i === 3 || i === 7" class="ad-inline"><AdUnit ad-slot="5610413079" /></div>
                   </template>
@@ -857,6 +928,32 @@ function onShare() {
 .la-color { display: inline-flex; align-items: center; gap: 6px; }
 .la-dot { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); }
 
+/* 2027 토정비결(TOJUNG_YEAR=2027) — pages/dev/tojung2027 미리보기와 같은 디자인 */
+.t27-headline { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 600; text-align: center; color: var(--gold-light); margin: 0 0 var(--space-12); line-height: 1.4; }
+.t27-card { margin-bottom: var(--space-6); }
+.t27-grade { font-size: var(--text-lg); letter-spacing: 0.12em; color: var(--gold-primary); margin-bottom: var(--space-3); }
+.t27-summary { color: var(--text-primary); font-size: var(--text-lg); line-height: 1.8; margin-bottom: var(--space-6); }
+.month-tags { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6); }
+.mt-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.mt-k { font-family: var(--font-display); font-weight: 700; font-size: var(--text-sm); min-width: 96px; }
+.mt-k.good { color: var(--gold-light); } .mt-k.bad { color: #e57373; }
+.mt-chip { font-size: var(--text-sm); padding: 4px 12px; border-radius: var(--radius-full); border: 1px solid var(--gold-border); color: var(--text-secondary); }
+.mt-chip.good { border-color: var(--gold-border-strong); color: var(--gold-light); }
+.mt-chip.bad { border-color: rgba(229, 115, 115, 0.5); color: #e57373; }
+.lucky { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); color: var(--text-secondary); font-size: var(--text-sm); }
+.lucky b { color: var(--gold-primary); font-weight: 600; margin-right: 6px; }
+.mo-grade { font-size: var(--text-sm); letter-spacing: 0.1em; color: var(--gold-primary); }
+.mo-grade.low { color: #e57373; }
+.mo-summary { color: var(--text-primary); font-weight: 600; margin-bottom: var(--space-3); }
+.mo-sub { display: grid; grid-template-columns: 28px 1fr; gap: 6px var(--space-3); margin: 0 0 var(--space-4); font-size: var(--text-sm); }
+.mo-sub dt { font-family: var(--font-display); font-weight: 700; color: var(--gold-primary); }
+.mo-sub dd { color: var(--text-secondary); margin: 0; }
+.mo-advice { display: flex; flex-wrap: wrap; gap: 4px var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--bg-tertiary); color: var(--text-primary); font-size: var(--text-sm); }
+.mo-advice span { font-family: var(--font-display); font-weight: 700; color: var(--gold-light); }
+.t27-lock { text-align: center; margin-bottom: var(--space-16); }
+.t27-lock-glyph { width: 56px; height: 56px; margin: 0 auto var(--space-4); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--gold-light); border: 1px solid var(--gold-border-strong); }
+.t27-lock h3 { font-family: var(--font-display); font-size: var(--text-xl); margin-bottom: var(--space-3); }
+.t27-lock p { color: var(--text-secondary); margin-bottom: var(--space-6); line-height: 1.7; }
 @media (max-width: 1100px) { .result-layout { grid-template-columns: minmax(0, 1fr); } .ad-rail { display: none; } }
 @media (max-width: 640px) {
   .result-hero { padding-top: var(--space-16); }

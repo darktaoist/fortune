@@ -1426,5 +1426,20 @@
   "cel.seoFaqQ2": "무엇을 입력해야 하나요?",
   "cel.seoFaqA2": "사주 궁합은 생년월일을, MBTI 궁합은 성격유형을 선택하면 됩니다.",
   "cel.seoFaqQ3": "무료인가요?",
-  "cel.seoFaqA3": "네. 여러 스타와의 궁합을 무료로 확인할 수 있습니다."
+  "cel.seoFaqA3": "네. 여러 스타와의 궁합을 무료로 확인할 수 있습니다.",
+  "free.tojung.title2027": "2027 토정비결",
+  "result.ganji2027": "丁未年 · 붉은 양의 해",
+  "tojung27.paidTitle": "2027 정밀 풀이",
+  "tojung27.paidDesc": "한 해 요약과 항목별 운세, 좋은 달·조심할 달, 달마다의 조언을 담았어요.",
+  "tojung27.summary": "한 해 요약",
+  "tojung27.family": "가족운",
+  "tojung27.caution": "조심할 점",
+  "tojung27.goodMonths": "좋은 달",
+  "tojung27.badMonths": "조심할 달",
+  "tojung27.lucky": "행운 포인트",
+  "tojung27.luckyItem": "행운의 물건",
+  "tojung27.advice": "이달의 조언",
+  "tojung27.lockTitle": "정밀 풀이는 유료 서비스예요",
+  "tojung27.lockDesc": "평생사주 리포트나 신년운세를 구매하면 항목별 운세, 좋은 달·조심할 달, 달마다의 조언까지 모두 볼 수 있어요.",
+  "tojung27.lockCta": "평생사주 리포트 보기"
 }

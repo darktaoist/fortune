@@ -52,6 +52,9 @@ export default defineNuxtConfig({
       tossWidgetKey: payKey('TOSS_WIDGET_KEY'),
       adsenseClient: ADSENSE_CLIENT,
       metaPixelId: process.env.NUXT_PUBLIC_META_PIXEL_ID || '2470955410072045',
+      // 토정비결 연도판: '2026'(기존 tojung 테이블) | '2027'(tojung_yearly/monthly, 없으면 2026 폴백).
+      // 빌드 시 TOJUNG_YEAR로 고정되고, 실행 시 NUXT_PUBLIC_TOJUNG_YEAR로 덮어쓸 수 있다.
+      tojungYear: process.env.TOJUNG_YEAR || '2026',
     },
   },
 

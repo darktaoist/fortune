@@ -1425,5 +1425,20 @@
   "cel.seoFaqQ2": "What do I need to enter?",
   "cel.seoFaqA2": "For Saju compatibility, enter your birth date; for MBTI compatibility, just select your personality type.",
   "cel.seoFaqQ3": "Is it free?",
-  "cel.seoFaqA3": "Yes. You can check your compatibility with many stars for free."
+  "cel.seoFaqA3": "Yes. You can check your compatibility with many stars for free.",
+  "free.tojung.title2027": "2027 Tojeong Bigyeol",
+  "result.ganji2027": "Year of 丁未 · The Red Sheep",
+  "tojung27.paidTitle": "2027 In-Depth Reading",
+  "tojung27.paidDesc": "A summary of your year, readings by area, your best and most careful months, and advice for every month.",
+  "tojung27.summary": "Your Year at a Glance",
+  "tojung27.family": "Family",
+  "tojung27.caution": "Things to Watch",
+  "tojung27.goodMonths": "Good months",
+  "tojung27.badMonths": "Careful months",
+  "tojung27.lucky": "Lucky Points",
+  "tojung27.luckyItem": "Lucky item",
+  "tojung27.advice": "Advice for the month",
+  "tojung27.lockTitle": "The in-depth reading is a paid feature",
+  "tojung27.lockDesc": "Purchase the Lifetime Saju Report or the New Year Fortune to see readings by area, your good and careful months, and monthly advice.",
+  "tojung27.lockCta": "See the Lifetime Saju Report"
 }
