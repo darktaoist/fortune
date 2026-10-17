@@ -328,7 +328,7 @@
   "saju.field.hour.m": "分",
   "saju.hour.ph": "時",
   "saju.min.ph": "分",
-  "saju.hour.unknown": "時間が分かりません(時柱を除外)",
+  "saju.hour.unknown": "時間が分かりません(11時30分として計算)",
   "saju.field.mbti.sub": "任意 · 相性分析に使用",
   "saju.mbti.E.k": "外向",
   "saju.mbti.I.k": "内向",
@@ -1440,5 +1440,6 @@
   "tojung27.advice": "今月のアドバイス",
   "tojung27.lockTitle": "詳細鑑定は有料サービスです",
   "tojung27.lockDesc": "一生の四柱推命レポートまたは新年運勢をご購入いただくと、分野別の運勢、良い月・注意したい月、毎月のアドバイスまですべてご覧いただけます。",
-  "tojung27.lockCta": "一生の四柱推命レポートを見る"
+  "tojung27.lockCta": "一生の四柱推命レポートを見る",
+  "sj.hourDefault": "不明 · 11:30基準(午の刻)"
 }

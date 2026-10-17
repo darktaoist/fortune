@@ -328,7 +328,7 @@
   "saju.field.hour.m": "분",
   "saju.hour.ph": "시",
   "saju.min.ph": "분",
-  "saju.hour.unknown": "시간을 모릅니다 (시주 제외)",
+  "saju.hour.unknown": "시간을 모릅니다 (11시 30분 기준으로 계산)",
   "saju.field.mbti.sub": "선택 · 궁합 분석에 사용",
   "saju.mbti.E.k": "외향",
   "saju.mbti.I.k": "내향",
@@ -1441,5 +1441,6 @@
   "tojung27.advice": "이달의 조언",
   "tojung27.lockTitle": "정밀 풀이는 유료 서비스예요",
   "tojung27.lockDesc": "평생사주 리포트나 신년운세를 구매하면 항목별 운세, 좋은 달·조심할 달, 달마다의 조언까지 모두 볼 수 있어요.",
-  "tojung27.lockCta": "평생사주 리포트 보기"
+  "tojung27.lockCta": "평생사주 리포트 보기",
+  "sj.hourDefault": "시간 모름 · 11:30 기준 午시"
 }

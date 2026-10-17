@@ -51,7 +51,8 @@ const f = reactive({
   mbti: [null, null, null, null],
   fortuneType: route.query.service ? mapService(route.query.service) : 'today',
 })
-// 시간 모름: 체크 시 시각을 비워 시주(時柱)를 제외한다. number 산식에선 모름 → 11(서버 처리).
+// 시간 모름: 체크(또는 시를 선택하지 않음) → hour/minute null로 저장·전송. 서버가 정시법 기본값
+// 11:30(午時)으로 계산한다(번호 산식 unknown → 11, 명식 시주·대운 UNKNOWN_HOUR). 00시로 계산되지 않는다.
 const hourUnknown = ref(false)
 watch(hourUnknown, (v) => { if (v) { f.hour = null; f.minute = null } })
 watch(() => f.hour, (v) => { if (v != null) hourUnknown.value = false })
@@ -316,6 +317,8 @@ function prefillFromCurrent() {
 
 async function submit() {
   if (!hasDate.value) { alert(t('saju.alert.dob')); return }
+  // 시를 고르지 않았으면 분만 골랐더라도 시간 모름으로 본다(00시·임의 분으로 저장되지 않게).
+  if (f.hour == null) f.minute = null
   if (f.fortuneType === 'mbti' && f.mbti.some((v) => v === null)) {
     mbtiHighlight.value = false
     nextTick(() => { mbtiHighlight.value = true })

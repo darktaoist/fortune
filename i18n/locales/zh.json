@@ -328,7 +328,7 @@
   "saju.field.hour.m": "分",
   "saju.hour.ph": "時",
   "saju.min.ph": "分",
-  "saju.hour.unknown": "不知道時辰(略過時柱)",
+  "saju.hour.unknown": "不知道時辰(以11點30分計算)",
   "saju.field.mbti.sub": "選填 · 用於合盤分析",
   "saju.mbti.E.k": "外向",
   "saju.mbti.I.k": "內向",
@@ -1440,5 +1440,6 @@
   "tojung27.advice": "本月建議",
   "tojung27.lockTitle": "詳細解讀為付費服務",
   "tojung27.lockDesc": "購買一生八字命盤報告或新年運勢，即可查看各領域運勢、好月份與需留意的月份，以及每月建議。",
-  "tojung27.lockCta": "查看一生八字命盤報告"
+  "tojung27.lockCta": "查看一生八字命盤報告",
+  "sj.hourDefault": "不詳 · 以11:30(午時)計算"
 }

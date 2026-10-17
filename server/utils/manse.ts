@@ -31,6 +31,13 @@ export const EL = ['mok', 'hwa', 'to', 'geum', 'su'] as const
 export type Pillar = [string, string] // [천간, 지지]
 export interface Pillars { year: Pillar; month: Pillar; day: Pillar; hour: Pillar | null }
 
+/**
+ * 출생 시각을 모를 때의 기준 시각 — 1.0 정시법 기본값 11:30(午時).
+ * 오늘의 운세·데이트·평생사주 요약 번호 산식(unknown → 11)과 명식(시주·대운)이 같은 기준을 쓴다.
+ */
+export const UNKNOWN_HOUR = 11
+export const UNKNOWN_MINUTE = 30
+
 /** 시주(時柱) — 일간 + 시각(0~23). 1.0 calculateTimeGanzhi 복제. hour null이면 null. */
 export function timePillar(dayStem: string, hour: number | null): Pillar | null {
   if (hour == null || Number.isNaN(hour)) return null

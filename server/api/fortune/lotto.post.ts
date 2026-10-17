@@ -75,7 +75,8 @@ export default defineEventHandler(async (event) => {
 
   // 3) 계산 셀렉터 (명식).
   const input: MyeongsikInput = { year, month, day, hour, minute, calendar, gender, name: String(body?.name || '') }
-  const myeongsik = await buildMyeongsik(admin, input)
+  // 로또 시드는 시간 모름을 고정 토큰('空空')으로 써 왔다 — 주간 번호가 바뀌지 않도록 시주를 비운 채 계산.
+  const myeongsik = await buildMyeongsik(admin, input, { keepUnknownHour: true })
   const computed = myeongsik
     ? computeLotto(myeongsik, nation, target, { year, month, day, hour, calendar }, fortuneNumber, phraseFor)
     : null

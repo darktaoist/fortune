@@ -92,7 +92,7 @@ const elCls = (ch, isBranch) => 'el-' + (isBranch ? BRANCH_ELEM[ch] : STEM_ELEM[
       <div class="sj-info-meta">
         <span v-if="d.user.solar"><b>{{ t('sj.solar') }}</b> {{ d.user.solar }}</span>
         <span v-if="d.user.lunar"><b>{{ t('sj.lunar') }}</b> {{ d.user.lunar }}</span>
-        <span v-if="d.user.hour"><b>{{ t('sj.born') }}</b> {{ d.user.hour }}</span>
+        <span v-if="d.user.hour"><b>{{ t('sj.born') }}</b> {{ d.user.hourDefault ? t('sj.hourDefault') : d.user.hour }}</span>
       </div>
     </div>
 

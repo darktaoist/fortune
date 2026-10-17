@@ -1,5 +1,5 @@
 import {
-  timePillar, ohaengScore, strongWeak, buildDaeun, parseTermTime,
+  timePillar, UNKNOWN_HOUR, UNKNOWN_MINUTE, ohaengScore, strongWeak, buildDaeun, parseTermTime,
   STEM_ELEM, BRANCH_ELEM, type Pillars, type Term,
 } from './manse'
 
@@ -44,8 +44,13 @@ export interface MyeongsikInput {
   calendar: string; gender: 'm' | 'f'; name?: string
 }
 
+export interface MyeongsikOpts {
+  /** 시간 모름(hour null)일 때 시주를 비울지(로또 시드 호환). 기본 false → 11:30(UNKNOWN_HOUR) 기준. */
+  keepUnknownHour?: boolean
+}
+
 export interface Myeongsik {
-  user: { name: string; meta: string; solar: string; lunar: string; hour: string }
+  user: { name: string; meta: string; solar: string; lunar: string; hour: string; hourDefault?: boolean }
   pillars: Pillars
   ohaeng: Record<string, number>
   strongWeak: { type: 'strong' | 'weak'; score: string }
@@ -56,10 +61,13 @@ export interface Myeongsik {
 }
 
 /** Supabase 클라이언트(서버)와 입력을 받아 명식을 빌드한다. 데이터 없으면 null. */
-export async function buildMyeongsik(client: any, input: MyeongsikInput): Promise<Myeongsik | null> {
+export async function buildMyeongsik(client: any, input: MyeongsikInput, opts: MyeongsikOpts = {}): Promise<Myeongsik | null> {
   const { year, month, day, calendar, gender } = input
-  const hour = input.hour == null ? null : Number(input.hour)
-  const minute = input.minute == null ? 0 : Number(input.minute)
+  // 시간 모름 → 11:30(정시법 기본값)으로 시주·대운을 계산한다. 로또만 시주 없이(keepUnknownHour).
+  const hourUnknown = input.hour == null || Number.isNaN(Number(input.hour))
+  const useDefault = hourUnknown && !opts.keepUnknownHour
+  const hour = useDefault ? UNKNOWN_HOUR : hourUnknown ? null : Number(input.hour)
+  const minute = useDefault ? UNKNOWN_MINUTE : input.minute == null ? 0 : Number(input.minute)
   const name = String(input.name || '').trim()
 
   // 1) 명식 row (양/음력 분기, 윤달).
@@ -120,9 +128,11 @@ export async function buildMyeongsik(client: any, input: MyeongsikInput): Promis
       }
     })
 
-  const hourLabel = hourP ? `${hourP[1]}시 (${HH(hour as number)}:${HH(minute || 0)})` : '시간 모름'
+  const hourLabel = !hourP ? '시간 모름'
+    : useDefault ? `시간 모름 → ${hourP[1]}시 (${HH(UNKNOWN_HOUR)}:${HH(UNKNOWN_MINUTE)} 기준)`
+      : `${hourP[1]}시 (${HH(hour as number)}:${HH(minute || 0)})`
   return {
-    user: { name: name || '', meta: '', solar: `${sy}.${sm}.${sd}`, lunar: `${ly}.${lm}.${ld}`, hour: hourLabel },
+    user: { name: name || '', meta: '', solar: `${sy}.${sm}.${sd}`, lunar: `${ly}.${lm}.${ld}`, hour: hourLabel, hourDefault: useDefault },
     pillars,
     ohaeng,
     strongWeak: sw,

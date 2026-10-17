@@ -328,7 +328,7 @@
   "saju.field.hour.m": "",
   "saju.hour.ph": "Hour",
   "saju.min.ph": "Min",
-  "saju.hour.unknown": "I don't know the hour (skip Hour Pillar)",
+  "saju.hour.unknown": "I don't know the hour (calculated as 11:30 AM)",
   "saju.field.mbti.sub": "Optional · Used for compatibility",
   "saju.mbti.E.k": "Extra-",
   "saju.mbti.I.k": "Intro-",
@@ -1440,5 +1440,6 @@
   "tojung27.advice": "Advice for the month",
   "tojung27.lockTitle": "The in-depth reading is a paid feature",
   "tojung27.lockDesc": "Purchase the Lifetime Saju Report or the New Year Fortune to see readings by area, your good and careful months, and monthly advice.",
-  "tojung27.lockCta": "See the Lifetime Saju Report"
+  "tojung27.lockCta": "See the Lifetime Saju Report",
+  "sj.hourDefault": "Unknown · calculated as 11:30 (午 hour)"
 }
