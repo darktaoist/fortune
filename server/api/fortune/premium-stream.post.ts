@@ -8,6 +8,7 @@ import { toTraditional } from '../../utils/zh'
 import { toPurchaseKey } from '~/shared/premiumService'
 import { isFreeService, reserveCelebQuota, refundCelebQuota, kstDate } from '../../utils/celebFree'
 import { rateLimit } from '../../utils/ratelimit'
+import { loadIljuRef, ILJU_REF_TYPES } from '../../utils/iljuRef'
 
 const LANGS = new Set(['ko', 'en', 'ja', 'zh'])
 
@@ -133,6 +134,8 @@ export default defineEventHandler(async (event) => {
 
   const myeongsik = type.usesSaju ? await buildMyeongsik(admin, input) : null
   if (type.usesSaju && !myeongsik) throw createError({ statusCode: 422, statusMessage: '해당 생년월일의 명식을 찾을 수 없습니다.' })
+  // 일주별 참고 해석(신년운세·평생사주) — 같은 언어 행이 없으면 null이고 프롬프트는 기존 그대로.
+  const iljuRef = ILJU_REF_TYPES.has(service) ? await loadIljuRef(admin, myeongsik, lang) : null
 
   // 상대: 주문 스냅샷의 partner 우선(payload.partner), 없으면 요청 본문.
   const partnerRef = (savedPayload?.partner && (savedPayload.partner.id || savedPayload.partner.mbti))
@@ -189,7 +192,7 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      const userPrompt = type.buildPrompt({ myeongsik: myeongsik as any, partner: partner as any, lang, myMbti, partnerMbti, myName: input.name, partnerName })
+      const userPrompt = type.buildPrompt({ myeongsik: myeongsik as any, partner: partner as any, lang, myMbti, partnerMbti, myName: input.name, partnerName, iljuRef })
 
       // ── 비용점 게이트 ── 무료 서비스는 AI 호출 직전에 일일 쿼터를 원자적으로 예약한다.
       //   한도 초과(-1)면 AI를 호출하지 않고 limit 이벤트로 차단(비용 0). 동시요청/중복클릭은

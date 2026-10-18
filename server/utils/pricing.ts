@@ -3,6 +3,7 @@
 // 국내(카드/Toss)=KRW, 해외(PayPal/Toss 위젯)=USD — 레거시(1.0)와 동일한 이원 구조.
 // DB(purchases.amount)는 최소 단위로 저장: KRW=원, USD=센트(mypage 표시 로직과 일치).
 import { SERVICE_PRICES } from '~/shared/prices'
+import { NEWYEAR_ORDER_NAME } from '~/shared/newyear'
 
 export interface PriceInfo {
   krw: number          // KRW (원 단위)
@@ -11,7 +12,7 @@ export interface PriceInfo {
 }
 
 export const PRICES: Record<string, PriceInfo> = {
-  newyear: { krw: SERVICE_PRICES.newyear.krw, usdCents: SERVICE_PRICES.newyear.usdCents, orderName: '2026 신년운세' },
+  newyear: { krw: SERVICE_PRICES.newyear.krw, usdCents: SERVICE_PRICES.newyear.usdCents, orderName: NEWYEAR_ORDER_NAME },
   lifetime: { krw: SERVICE_PRICES.lifetime.krw, usdCents: SERVICE_PRICES.lifetime.usdCents, orderName: '평생사주 리포트' },
   // celeb/mbti는 무료화(로그인+1일 3회 쿼터)되어 결제 퍼널을 타지 않는다(checkout에서 celeb-select로 우회).
   // 아래 항목은 과거 주문 orderName 조회용으로만 남아 있는 사실상 사문 규정이므로 그대로 둔다.

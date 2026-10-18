@@ -6,6 +6,7 @@ import { resolvePartnerInput, resolvePartnerMbti } from '../../utils/partner'
 import { requirePaidPurchase } from '../../utils/paywall'
 import { rateLimit } from '../../utils/ratelimit'
 import { toTraditional } from '../../utils/zh'
+import { loadIljuRef, ILJU_REF_TYPES } from '../../utils/iljuRef'
 
 const LANGS = new Set(['ko', 'en', 'ja', 'zh'])
 
@@ -55,6 +56,8 @@ export default defineEventHandler(async (event) => {
   if (type.usesSaju && !myeongsik) {
     throw createError({ statusCode: 422, statusMessage: '해당 생년월일의 명식을 찾을 수 없습니다.' })
   }
+  // 일주별 참고 해석(신년운세·평생사주) — premium-stream과 같은 규칙.
+  const iljuRef = ILJU_REF_TYPES.has(service) ? await loadIljuRef(admin, myeongsik, lang) : null
 
   // 2) 상대: 사주 타입(gunghap)은 명식, MBTI 타입은 유형만 조회.
   let partner = null
@@ -78,7 +81,7 @@ export default defineEventHandler(async (event) => {
   // 생성(캐시 미사용 — 매번 새로 생성).
   const result = await generateStructured<Record<string, any>>({
     system: type.system(lang),
-    user: type.buildPrompt({ myeongsik: myeongsik as any, partner, lang, myMbti, partnerMbti, myName: input.name, partnerName }),
+    user: type.buildPrompt({ myeongsik: myeongsik as any, partner, lang, myMbti, partnerMbti, myName: input.name, partnerName, iljuRef }),
     schema: sectionSchema(type),
     maxTokens: type.maxTokens,
   }, provider)

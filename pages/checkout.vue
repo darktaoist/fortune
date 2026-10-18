@@ -6,6 +6,7 @@
 import SERVICES from '~/data/checkout-services.js'
 import { toServiceKey } from '~/shared/premiumService'
 import { SERVICE_PRICES, fmtKrw, fmtUsd } from '~/shared/prices'
+import { NEWYEAR_ORDER_NAME } from '~/shared/newyear'
 
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
@@ -96,7 +97,7 @@ onMounted(loadInfo)
 // Meta Pixel ViewContent — 유료 상품(평생운세/신년운세) 결제 진입 시.
 // celeb/mbti는 무료 퍼널이라 여기 오지 않음(celeb-select로 우회 + 거기서 ViewContent 처리).
 onMounted(() => {
-  const NAMES = { lifetime: '평생사주 리포트', newyear: '2026 신년운세' } // i18n-ok: 분석 content_name(비-UI), PRICES orderName과 동일
+  const NAMES = { lifetime: '평생사주 리포트', newyear: NEWYEAR_ORDER_NAME } // i18n-ok: 분석 content_name(비-UI), PRICES orderName과 동일
   if (NAMES[service.value]) useMetaPixel().trackViewContent(NAMES[service.value])
 })
 watch(current, loadInfo, { deep: true })

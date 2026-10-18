@@ -1,22 +1,24 @@
 // 결제(상품 상세) 페이지의 서비스별 콘텐츠 — 결제.html 디자인 SERVICES에서 그대로 포팅.
 // 각 텍스트는 ko/en/ja/zh 4개 언어를 모두 보유. 카테고리(features)는 글자(gl)+제목(t)+설명(d).
 // ⚠️ 가격은 여기 두지 않는다 — 표시/청구 금액의 단일 원천은 shared/prices.ts.
+import { NEWYEAR_YEAR as Y } from '../shared/newyear'
+
 export default {
   newyear: {
     glyph: '秘',
-    title: { ko: '2026 AI 신년운세', en: '2026 AI New Year Reading', ja: '2026 AI新年運勢', zh: '2026 AI 新年運勢' },
+    title: { ko: `${Y} AI 신년운세`, en: `${Y} AI New Year Reading`, ja: `${Y} AI新年運勢`, zh: `${Y} AI 新年運勢` },
     tagline: {
-      ko: 'AI가 분석한 2026 병오년 한 해의 흐름. 새해를 준비하는 가장 지혜로운 길라잡이.',
-      en: 'AI-charted flow of 2026, the Year of the Red Horse — your wisest guide into the new year.',
-      ja: 'AIが分析する2026丙午年の流れ。新年を準備する最も賢い道しるべ。',
-      zh: 'AI 解析 2026 丙午年的整體走勢，迎接新年最睿智的指引。',
+      ko: `AI가 분석한 ${Y} 정미년 한 해의 흐름. 새해를 준비하는 가장 지혜로운 길라잡이.`,
+      en: `AI-charted flow of ${Y}, the Year of the Red Sheep — your wisest guide into the new year.`,
+      ja: `AIが分析する${Y}丁未年の流れ。新年を準備する最も賢い道しるべ。`,
+      zh: `AI 解析 ${Y} 丁未年的整體走勢，迎接新年最睿智的指引。`,
     },
     aboutTitle: { ko: '신년운세란?', en: 'What is the New Year Reading?', ja: '新年運勢とは?', zh: '什麼是新年運勢?' },
     aboutDesc: {
-      ko: '40년 사주명리 지식을 학습한 AI가 2026년 한 해의 운의 흐름과 주의할 시기를 풀어드립니다.',
-      en: 'An AI trained on 40 years of saju expertise reads your fortune flow and key turning points across 2026.',
-      ja: '40年の四柱推命の知識を学んだAIが、2026年一年の運の流れと注意すべき時期を読み解きます。',
-      zh: '學習四十年八字命理的 AI，為您解讀 2026 一整年的運勢走向與須留意的時機。',
+      ko: `40년 사주명리 지식을 학습한 AI가 ${Y}년 한 해의 운의 흐름과 주의할 시기를 풀어드립니다.`,
+      en: `An AI trained on 40 years of saju expertise reads your fortune flow and key turning points across ${Y}.`,
+      ja: `40年の四柱推命の知識を学んだAIが、${Y}年一年の運の流れと注意すべき時期を読み解きます。`,
+      zh: `學習四十年八字命理的 AI，為您解讀 ${Y} 一整年的運勢走向與須留意的時機。`,
     },
     features: [
       { gl: '運', t: { ko: '종합 총운', en: 'Overall Fortune', ja: '総合運', zh: '綜合總運' }, d: { ko: '한 해 전체의 흐름과 핵심 패턴', en: "The year's overall flow and key patterns", ja: '一年全体の流れと重要なパターン', zh: '一整年的走勢與關鍵格局' } },

@@ -18,11 +18,14 @@ const SAMPLE_READINGS: Record<string, Record<string, string>> = {
     ja: '1e2e2dbd-fa04-4f90-b428-f912dc67b79f', // 山田太郎
     zh: '93aa1de2-328f-4e2b-b70f-6588daa61348', // 張三
   },
+  // 2027 정미년판(2026-10-18, server/api/dev/newyear-sample.post.ts로 생성). 2026판 행은 그대로 남아 있다:
+  // ko 2b75f5ff-fabe-46a3-a806-842736a22c0b · en 92dba8bd-c076-4a3c-89ea-3763c267597a ·
+  // ja ab0e5de3-43c5-482f-a050-0aa5b14a4ad8 · zh d6492cc9-2139-44f3-ae96-1a9223f973b0
   newyear: {
-    ko: '2b75f5ff-fabe-46a3-a806-842736a22c0b', // 홍길동
-    en: '92dba8bd-c076-4a3c-89ea-3763c267597a', // John Doe
-    ja: 'ab0e5de3-43c5-482f-a050-0aa5b14a4ad8', // 山田太郎
-    zh: 'd6492cc9-2139-44f3-ae96-1a9223f973b0', // 張三
+    ko: '028a76a7-0ad9-4a5c-b0f4-da88a6af77b0', // 홍길동
+    en: 'dc265eff-2a9c-450a-9387-42f00a164ce3', // John Doe
+    ja: '119c9b45-fb8a-433d-b04d-154b9f1c500a', // 山田太郎
+    zh: '17e60018-6828-4799-be82-55d5e1f2253d', // 張三
   },
   gunghap: {
     ko: '1fb48306-4790-44f9-9fb3-5cb56624f35a', // 홍길동 × 제니

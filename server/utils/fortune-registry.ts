@@ -1,4 +1,7 @@
 import { formatMyeongsikForPrompt, type Myeongsik } from './myeongsik'
+import { SIXTY, STEM_ELEM, BRANCH_ELEM } from './manse'
+import { NEWYEAR_YEAR } from '~/shared/newyear'
+import type { IljuRef } from './iljuRef'
 
 /**
  * 프리미엄 운세 타입 레지스트리 — 한 프로그램으로 모든 타입을 커버하기 위한 설정.
@@ -17,6 +20,7 @@ export interface PromptCtx {
   partnerMbti?: string | null
   myName?: string | null
   partnerName?: string | null
+  iljuRef?: IljuRef | null    // 일주별 참고 해석(ilju_yearly) — 없으면 프롬프트에 아무것도 더하지 않는다
 }
 export interface FortuneType {
   key: string
@@ -49,6 +53,47 @@ export const langDirective = (l: string) => LANG_DIRECTIVE[l] || LANG_DIRECTIVE.
 
 // 모든 프리미엄 프롬프트 공통 규칙 — 한자 단독 노출 금지(독자가 못 읽음).
 const HANJA_RULE = '- 【매우 중요】 한자(漢字)를 음(독음) 없이 단독으로 절대 쓰지 마라. 사주의 간지·오행·십신 등 모든 한자는 출력 언어의 발음을 우선해 적는다. 한국어 본문이라면 반드시 한글 독음으로 쓰고(예: 癸水→계수, 巳火→사화, 甲木→갑목, 子午沖→자오충, 未土→미토, 壬子→임자, 食神→식신, 偏官→편관), 한자를 함께 보이려면 "계수(癸水)"처럼 한글을 앞세워 괄호로만 병기한다. 한국어 결과에 "癸水"·"巳火"·"子午沖"처럼 한자만 단독으로 노출되는 일이 절대 없어야 한다.'
+
+// ── 신년운세 대상 연도의 세운(歲運) — shared/newyear.ts의 연도에서 계산 ──
+// 60갑자 기준점: 서기 4년 = 甲子. 2026 → 丙午, 2027 → 丁未.
+const STEM_KO: Record<string, string> = { 甲: '갑', 乙: '을', 丙: '병', 丁: '정', 戊: '무', 己: '기', 庚: '경', 辛: '신', 壬: '임', 癸: '계' }
+const BRANCH_KO: Record<string, string> = { 子: '자', 丑: '축', 寅: '인', 卯: '묘', 辰: '진', 巳: '사', 午: '오', 未: '미', 申: '신', 酉: '유', 戌: '술', 亥: '해' }
+const ELEM_HANJA: Record<string, string> = { mok: '木', hwa: '火', to: '土', geum: '金', su: '水' }
+const ELEM_KO: Record<string, string> = { mok: '목', hwa: '화', to: '토', geum: '금', su: '수' }
+export function yearGanji(year: number) {
+  const gz = SIXTY[(((year - 4) % 60) + 60) % 60]
+  const [stem, branch] = [gz[0], gz[1]]
+  const se = STEM_ELEM[stem], be = BRANCH_ELEM[branch]
+  return {
+    hanja: gz, // 丁未
+    ko: STEM_KO[stem] + BRANCH_KO[branch], // 정미
+    stem: stem + ELEM_HANJA[se], // 丁火
+    branch: branch + ELEM_HANJA[be], // 未土
+    stemElemKo: `${ELEM_KO[se]}(${ELEM_HANJA[se]})`, // 화(火)
+    branchElemKo: `${ELEM_KO[be]}(${ELEM_HANJA[be]})`, // 토(土)
+  }
+}
+const YEAR = NEWYEAR_YEAR
+const YG = yearGanji(YEAR)
+const YEAR_GANJI = `${YG.ko}년(${YG.hanja}年)` // 예: 정미년(丁未年)
+// 세운 오행 표기: 천간·지지가 같은 오행이면 하나만(丙午 → 화(火)), 다르면 둘 다(丁未 → 화(火)·토(土)).
+const YEAR_ELEMS = YG.stemElemKo === YG.branchElemKo ? YG.stemElemKo : `${YG.stemElemKo}·${YG.branchElemKo}`
+
+// ── 일주별 참고 해석 블록(신년운세·평생사주 공용) ──
+// 행이 없으면 빈 배열 → buildPrompt 결과가 참고 해석 도입 전과 바이트 단위로 같다.
+// full=false(평생사주)는 일주 성향 + 그해 세운 관계만 — 연도 한정 포인트가 평생 풀이를 끌고 가지 않게 한다.
+function iljuRefBlock(ref: IljuRef | null | undefined, full: boolean): string[] {
+  if (!ref) return []
+  const rows: [string, string][] = full
+    ? [['일주 성향', ref.nature], ['세운과의 관계', ref.year_relation], ['재물', ref.wealth], ['직업', ref.career], ['애정', ref.love], ['건강', ref.health], ['조심할 점', ref.caution]]
+    : [['일주 성향', ref.nature], [`${ref.year}년 세운과의 관계`, ref.year_relation]]
+  return [
+    '',
+    `[참고 해석 — 일주 ${ref.ilju} · ${ref.year}년]`,
+    '아래는 이 일주에 대한 일반 해석이다. 근거로만 참고하고 문장을 그대로 옮기지 않는다. 명식 전체(다른 기둥·오행 분포·신강신약·대운)와 어긋나는 부분은 명식을 우선한다.',
+    ...rows.map(([k, v]) => `- ${k}: ${v}`),
+  ]
+}
 
 // ── 평생운세 ──
 const LIFE_SECTIONS: FortuneSection[] = [
@@ -100,7 +145,7 @@ const LIFE_SECTION_GUIDE = [
   '  · 간지는 한자 그대로 둔다(예: 癸未). 독음을 병기하려면 출력 언어(아래 "모든 본문은 …로 작성한다"에 지정된 언어) 기준으로만 한다 — 한국어가 아닌 언어에서 한글 독음(예: "계미")을 쓰지 않는다.',
   '이어서 그 대운의 오행 기운, 원국과의 상호작용, 구체적 변화 시기를 2~4문장으로(역시 출력 언어(아래 "모든 본문은 …로 작성한다"에 지정된 언어)로) 풀이한다. 대운 사이에는 빈 줄을 둔다.',
   '',
-  '[흉년 작성법] 충(沖)·형(刑) 등이 강하게 드는 구체 연도(예: 2026년 병오년)를 짚어,',
+  '[흉년 작성법] 충(沖)·형(刑) 등이 강하게 드는 구체 연도(예: ' + YEAR + '년 ' + YG.ko + '년)를 짚어,',
   '어느 기둥과 충돌해 무엇(건강·관계·직업·가정)을 주의해야 하는지 설명한다. 막연한 경고 금지 — 연도와 영역을 구체적으로.',
 ].join('\n')
 
@@ -135,17 +180,16 @@ const lifetime: FortuneType = {
     '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·JSON·마크다운은 쓰지 않는다(단, daeun 항목 내부의 대운별 라벨 줄은 허용).',
     langDirective(lang) + ' daeun 항목의 대운별 라벨 줄(회차·나이·연도 단위어 포함)과 그 풀이도 예외 없이 같은 출력 언어로 쓴다 — 간지 한자(癸未 등)만 그대로 둔다.',
   ].join('\n'),
-  buildPrompt: ({ myeongsik, lang }) => [
+  buildPrompt: ({ myeongsik, lang, iljuRef }) => [
     formatMyeongsikForPrompt(myeongsik),
+    ...iljuRefBlock(iljuRef, false),
     '',
     '위 명식을 바탕으로 이 사람의 평생운세를 11개 항목으로 깊이 있게 풀이하세요.',
     langDirective(lang),
   ].join('\n'),
 }
 
-// ── 올해의 운세(2026 병오년 세운) ──
-const YEAR = 2026
-const YEAR_GANJI = '병오년(丙午年)' // 2026 세운: 천간 丙火 · 지지 午火
+// ── 올해의 운세(세운 — 연도·간지는 위 YEAR/YG) ──
 
 const YEAR_SECTIONS: FortuneSection[] = [
   { key: 'overview', titleKey: 'premium.newyear.overview', glyph: '歲' },
@@ -166,8 +210,8 @@ const YEAR_PERSONA = [
   '이 사람의 "' + YEAR + '년 한 해의 운세"를 깊이 있고 따뜻한 상담조로, 분야별로 풍부하게 풀어냅니다.',
   '',
   '[작성 규칙]',
-  '- 반드시 주어진 명식(일간·오행 균형·신강신약·십신·대운)과 ' + YEAR + '년 ' + YEAR_GANJI + ' 세운(천간 丙火, 지지 午火)의 상호작용에 근거해 해석한다. 일반론·뜬구름 금지.',
-  '- 세운과 원국의 충(沖)·합(合)·생극(生剋)을 구체적으로 짚는다(예: "병오년의 화(火)가 사주의 금(金)을 극하여…", "현재 대운과 맞물려…").',
+  '- 반드시 주어진 명식(일간·오행 균형·신강신약·십신·대운)과 ' + YEAR + '년 ' + YEAR_GANJI + ' 세운(천간 ' + YG.stem + ', 지지 ' + YG.branch + ')의 상호작용에 근거해 해석한다. 일반론·뜬구름 금지.',
+  '- 세운과 원국의 충(沖)·합(合)·생극(生剋)을 구체적으로 짚는다(예: "' + YG.ko + '년의 ' + YEAR_ELEMS + ' 기운이 사주의 오행과 만나…", "현재 대운과 맞물려…").',
   '- 시기는 ' + YEAR + '년의 구체적 월(예: 4월·9월)로 짚는다.',
   '- 각 항목은 따뜻한 상담조 산문으로 쓴다. 단락 사이는 빈 줄 하나로 구분. 마크다운·불릿·소제목·이모지 금지(단, monthly 항목의 "N월:" 라벨 줄은 예외).',
   '- 항목당 분량은 한국어 기준 약 350~600자. 단 monthly는 12개월 각 3~4문장이라 전체에서 가장 긴 항목으로 약 1500자 이상 충실하게 작성한다(caution·wealthboost도 더 충실하게). 다른 언어도 그에 상응하는 분량.',
@@ -181,7 +225,7 @@ const YEAR_SECTION_GUIDE = [
   '2) wealth — 재물운과 재테크 운: 재성(財星)과 세운의 작용, 유리한 시기(월)·분야·투자 방향.',
   '3) career — 직업운과 승진운: 관성·식상과 세운, 승진/이직/창업의 적기와 분야.',
   '4) love — 연애운과 결혼운: 배우자성·도화와 세운, 만남/관계발전/결혼 적기(월).',
-  '5) health — 건강운: 오행 과부족과 세운 화(火)의 충돌이 가리키는 주의 장부·시기, 식이·운동.',
+  '5) health — 건강운: 오행 과부족과 세운 ' + YEAR_ELEMS + ' 기운의 충돌이 가리키는 주의 장부·시기, 식이·운동.',
   '6) relations — 인간관계운: 비겁·인성·관성과 세운이 만드는 대인 흐름, 귀인·갈등 시기.',
   '7) study — 학업·자기계발운: 인성·식상과 세운, 유리한 학습 분야·자격/시험 적기.',
   '8) monthly — 월별 세부 운세: 1월부터 12월까지 12개 달을 빠짐없이, 각 달마다 "N월:"로 시작해 반드시 3~4문장으로 충실히 작성한다(한 줄 요약 금지). 각 달은 그 달의 재물·일·관계·건강 흐름, 해당 월운(月運)과 원국의 작용, 그리고 구체적인 조언까지 담는다. 달과 달 사이는 빈 줄 하나로 구분한다.',
@@ -221,8 +265,9 @@ const newyearType: FortuneType = {
     '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·JSON·마크다운은 쓰지 않는다(단, monthly 항목 내부의 "N월:" 라벨 줄은 허용).',
     langDirective(lang),
   ].join('\n'),
-  buildPrompt: ({ myeongsik, lang }) => [
+  buildPrompt: ({ myeongsik, lang, iljuRef }) => [
     formatMyeongsikForPrompt(myeongsik),
+    ...iljuRefBlock(iljuRef, true),
     '',
     '위 명식을 바탕으로 ' + YEAR + '년 ' + YEAR_GANJI + ' 한 해의 운세를 11개 항목으로 깊이 있게 풀이하세요.',
     langDirective(lang),
@@ -423,7 +468,7 @@ const placeholder = (key: string, glyph: string, tint: string, needsPartner: boo
 
 export const FORTUNE_TYPES: Record<string, FortuneType> = {
   lifetime,
-  // 프리미엄 올해의 운세(2026 병오년) — 무료 'tojung'과 분리된 별도 키. 레거시도 둘 다 서비스했음.
+  // 프리미엄 올해의 운세(연도는 shared/newyear.ts) — 무료 'tojung'과 분리된 별도 키. 레거시도 둘 다 서비스했음.
   newyear: newyearType,
   gunghap: gunghapType,    // 연예인 궁합
   mbti: mbtiType,          // MBTI 궁합
