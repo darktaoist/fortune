@@ -8,19 +8,19 @@ const P = newyearParams(Y)
 export default {
   newyear: {
     glyph: '秘',
-    title: { ko: `${Y} AI 신년운세`, en: `${Y} AI New Year Reading`, ja: `${Y} AI新年運勢`, zh: `${Y} AI 新年運勢` },
+    title: { ko: `${Y} 신년운세`, en: `${Y} New Year Reading`, ja: `${Y} 新年運勢`, zh: `${Y} 新年運勢` },
     tagline: {
-      ko: `AI가 분석한 ${Y} ${P.nyGanjiKo}년 한 해의 흐름. 새해를 준비하는 가장 지혜로운 길라잡이.`,
-      en: `AI-charted flow of ${Y}, the Year of the ${P.nyAnimalEn} — your wisest guide into the new year.`,
-      ja: `AIが分析する${Y}${P.nyGanji}年の流れ。新年を準備する最も賢い道しるべ。`,
-      zh: `AI 解析 ${Y} ${P.nyGanji}年的整體走勢，迎接新年最睿智的指引。`,
+      ko: `만세력으로 계산한 ${Y} ${P.nyGanjiKo}년 한 해의 흐름. 새해를 준비하는 가장 지혜로운 길라잡이.`,
+      en: `The flow of ${Y}, the Year of the ${P.nyAnimalEn}, calculated with the Manseryeok almanac — your wisest guide into the new year.`,
+      ja: `万歳暦で計算する${Y}${P.nyGanji}年の流れ。新年を準備する最も賢い道しるべ。`,
+      zh: `以萬歲曆推算 ${Y} ${P.nyGanji}年的整體走勢，迎接新年最睿智的指引。`,
     },
     aboutTitle: { ko: '신년운세란?', en: 'What is the New Year Reading?', ja: '新年運勢とは?', zh: '什麼是新年運勢?' },
     aboutDesc: {
-      ko: `40년 사주명리 지식을 학습한 AI가 ${Y}년 한 해의 운의 흐름과 주의할 시기를 풀어드립니다.`,
-      en: `An AI trained on 40 years of saju expertise reads your fortune flow and key turning points across ${Y}.`,
-      ja: `40年の四柱推命の知識を学んだAIが、${Y}年一年の運の流れと注意すべき時期を読み解きます。`,
-      zh: `學習四十年八字命理的 AI，為您解讀 ${Y} 一整年的運勢走向與須留意的時機。`,
+      ko: `만세력으로 세운 사주 명식을 ${Y}년 세운과 대조해, 한 해의 운의 흐름과 주의할 시기를 풀어드립니다.`,
+      en: `We build your Saju chart with the Manseryeok almanac and compare it with the energy of ${Y} to read your fortune flow and key turning points.`,
+      ja: `万歳暦で立てた命式を${Y}年の歳運と照らし合わせ、一年の運の流れと注意すべき時期を読み解きます。`,
+      zh: `以萬歲曆排出的命盤對照 ${Y} 年的流年，為您解讀一整年的運勢走向與須留意的時機。`,
     },
     features: [
       { gl: '運', t: { ko: '종합 총운', en: 'Overall Fortune', ja: '総合運', zh: '綜合總運' }, d: { ko: '한 해 전체의 흐름과 핵심 패턴', en: "The year's overall flow and key patterns", ja: '一年全体の流れと重要なパターン', zh: '一整年的走勢與關鍵格局' } },
@@ -38,14 +38,14 @@ export default {
   },
   lifetime: {
     glyph: '命',
-    title: { ko: 'AI 평생운세', en: 'AI Lifetime Reading', ja: 'AI生涯運勢', zh: 'AI 一生運勢' },
+    title: { ko: '평생사주 리포트', en: 'Lifetime Saju Report', ja: '一生の四柱推命レポート', zh: '一生八字命盤報告' },
     tagline: {
       ko: '빅데이터가 설계하는 인생 마스터플랜. 출생부터 노후까지, 운의 흐름을 한 권의 책으로.',
       en: 'A life master plan designed by big data — the flow of fortune from birth to old age, in one volume.',
       ja: 'ビッグデータが設計する人生マスタープラン。誕生から晩年まで、運の流れを一冊の本に。',
       zh: '大數據設計的人生規劃。從出生到晚年的運勢，一書呈現。',
     },
-    aboutTitle: { ko: '평생운세란?', en: 'What is the Lifetime Reading?', ja: '生涯運勢とは?', zh: '什麼是一生運勢?' },
+    aboutTitle: { ko: '평생사주 리포트란?', en: 'What is the Lifetime Saju Report?', ja: '一生の四柱推命レポートとは?', zh: '什麼是一生八字命盤報告?' },
     aboutDesc: {
       ko: '타고난 사주 원국부터 10년 단위 대운까지, 인생 전체의 큰 그림과 전환점을 짚어드립니다.',
       en: 'From your innate natal chart to your great fortunes by decade, we map the whole arc of your life and its turning points.',
@@ -68,7 +68,7 @@ export default {
   },
   celeb: {
     glyph: '緣',
-    title: { ko: 'AI 연예인 궁합', en: 'AI Celebrity Compatibility', ja: 'AI芸能人相性', zh: 'AI 明星合盤' },
+    title: { ko: '연예인 궁합', en: 'Celebrity Compatibility', ja: '芸能人相性', zh: '明星合盤' },
     tagline: {
       ko: '최애와 나의 운명적 케미스트리. 사주 오행으로 풀어보는 K-스타와의 인연.',
       en: 'The fated chemistry between you and your bias — your bond with K-stars, read through saju.',
@@ -95,7 +95,7 @@ export default {
   },
   mbti: {
     glyph: '合',
-    title: { ko: 'AI MBTI 궁합', en: 'AI MBTI Compatibility', ja: 'AI MBTI相性', zh: 'AI MBTI 合盤' },
+    title: { ko: 'MBTI 궁합', en: 'MBTI Compatibility', ja: 'MBTI相性', zh: 'MBTI合盤' },
     tagline: {
       ko: '과학과 사주가 만나면. 16가지 성격유형과 천간지지로 보는 완벽한 소울메이트.',
       en: 'Where science meets saju — the perfect soulmate, read through 16 types and the celestial stems.',

@@ -249,7 +249,7 @@ async function pay(easyPayKey = null) {
               quantity: 1,
               unitAmount: order.amount,
               currency: 'USD',
-              description: 'AI-powered fortune telling service',
+              description: 'Saju fortune reading calculated with the Manseryeok almanac',
             },
           ],
           shipping: {
