@@ -237,9 +237,10 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
 .daily-top { max-width: 860px; margin: 0 auto; }
 /* 본문(띠목록) 좌우에 광고 레일 — PC만, 1100px 이하 숨김 */
 .daily-layout { display: grid; grid-template-columns: 180px minmax(0, 860px) 180px; gap: var(--space-8); justify-content: center; align-items: start; }
-.daily-main { min-width: 0; }
+.daily-main { min-width: 0; grid-column: 2; } /* 광고 차단기가 .ad-rail을 숨겨도 180px 칸으로 밀려나지 않게 고정 */
 .daily-layout .ad-rail { position: sticky; top: 104px; }
-@media (max-width: 1100px) { .daily-layout { grid-template-columns: minmax(0, 860px); } .daily-layout .ad-rail { display: none; } }
+.daily-layout .ad-rail:last-child { grid-column: 3; }
+@media (max-width: 1100px) { .daily-layout { grid-template-columns: minmax(0, 860px); } .daily-layout .ad-rail { display: none; } .daily-main { grid-column: 1; } }
 
 .dh-head { text-align: center; margin-bottom: var(--space-8); }
 .dh-head .stamp { width: 60px; height: 60px; margin: 0 auto var(--space-4); display: flex; align-items: center; justify-content: center; border-radius: 50%; font-family: var(--font-display); font-size: 28px; color: var(--gold-light); background: radial-gradient(circle at 35% 30%, rgba(201, 168, 76, 0.30), rgba(201, 168, 76, 0.05)); border: 2px solid var(--gold-border-strong); box-shadow: var(--shadow-glow); }
