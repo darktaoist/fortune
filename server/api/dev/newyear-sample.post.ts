@@ -4,9 +4,11 @@ import { FORTUNE_TYPES } from '../../utils/fortune-registry'
 import { deepseekStreamText } from '../../utils/deepseek'
 import { loadIljuRef } from '../../utils/iljuRef'
 import { toTraditional } from '../../utils/zh'
+import { NEWYEAR_YEAR } from '~/shared/newyear'
 
 /**
- * 신년운세 생성(개발 서버 전용) — 공개 샘플 재생성과 참고 해석 전후 비교에 쓴다.
+ * 신년운세·평생사주 생성(개발 서버 전용) — 공개 샘플 재생성과 참고 해석 전후 비교에 쓴다.
+ * service='lifetime'은 compare만(샘플 행을 만들지 않는다).
  * premium-stream과 같은 프롬프트·마커 파싱·번체 보정을 쓰되:
  *  - 엔진은 DeepSeek 고정(폴백·언어 누수 재생성으로 Claude를 부르지 않는다). 누수면 실패로 돌려준다.
  *  - mode='sample': from(기존 샘플 saved_readings.id)의 owner·subject·glyph·tint를 복사해 **새 행**을 만든다.
@@ -21,13 +23,15 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const mode = body?.mode === 'sample' ? 'sample' : 'compare'
   const lang = ['ko', 'en', 'ja', 'zh'].includes(body?.lang) ? body.lang : 'ko'
-  const type = FORTUNE_TYPES.newyear
+  const service = body?.service === 'lifetime' ? 'lifetime' : 'newyear'
+  if (service === 'lifetime' && mode === 'sample') throw createError({ statusCode: 400, statusMessage: 'lifetime은 compare만' })
+  const type = FORTUNE_TYPES[service]
   const admin = serverSupabaseServiceRole(event)
   if (!useRuntimeConfig().deepseekApiKey) throw createError({ statusCode: 500, statusMessage: 'DEEPSEEK_API_KEY 없음' })
 
   const { data: src } = await admin.from('saved_readings')
     .select('id, owner_id, type_key, tier, subject, glyph, tint').eq('id', String(body?.from || '')).maybeSingle()
-  if (!src || src.type_key !== 'newyear') throw createError({ statusCode: 400, statusMessage: 'from: newyear saved_readings id 필요' })
+  if (!src || src.type_key !== service) throw createError({ statusCode: 400, statusMessage: `from: ${service} saved_readings id 필요` })
   const subj = src.subject || {}
   const myeongsik = await buildMyeongsik(admin, {
     year: Number(subj.year), month: Number(subj.month), day: Number(subj.day),
@@ -59,13 +63,13 @@ export default defineEventHandler(async (event) => {
   }
   const leak = lang !== 'ko' && (sections.map((s) => s.body).join('\n').match(HANGUL) || []).length >= 8
   const missing = type.sections.map((s) => s.key).filter((k) => !seen.has(k))
-  const result = { mode, lang, ilju: `${myeongsik.pillars.day[0]}${myeongsik.pillars.day[1]}`, usedRef: !!iljuRef, sections, missing, leak, prompt: user }
+  const result = { mode, service, lang, ilju: `${myeongsik.pillars.day[0]}${myeongsik.pillars.day[1]}`, usedRef: !!iljuRef, sections, missing, leak, prompt: user }
   if (mode === 'compare') return result
   if (leak || missing.length) throw createError({ statusCode: 422, statusMessage: `생성 불완전: leak=${leak} missing=${missing.join(',')}` })
 
   const { data: ins, error } = await admin.from('saved_readings').insert({
     owner_id: src.owner_id, type_key: 'newyear', tier: src.tier, subject: src.subject, glyph: type.glyph, tint: type.tint,
-    payload: { sections, myeongsik, partnerMyeongsik: null, partnerName: '', partnerMbti: '', myMbti: '', partner: null, lang },
+    payload: { sections, myeongsik, partnerMyeongsik: null, partnerName: '', partnerMbti: '', myMbti: '', partner: null, lang, year: NEWYEAR_YEAR },
   }).select('id').single()
   if (error) throw createError({ statusCode: 500, statusMessage: error.message })
   return { ...result, id: ins.id, prompt: undefined }

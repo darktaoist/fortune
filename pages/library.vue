@@ -1,4 +1,5 @@
 <script setup>
+import { newyearParams, newyearYearFor } from '~/shared/newyear'
 // 보관함(/library) — 저장한 운세 결과(saved_readings) 목록. 로그인 필수.
 // 대상(내/지인)·종류(일반/PRO) 필터 + 정렬 + 검색. "다시 보기"는 저장된 사주
 // 주체를 복원해 해당 결과 화면으로 이동(무료 타입). 삭제는 행 단위.
@@ -20,7 +21,12 @@ const TYPE_LABELS = {
   lifetime: 'premium.life.title', newyear: 'premium.newyear.title',
   celeb: 'premium.celeb.title', gunghap: 'premium.celeb.title', mbti: 'premium.mbti.title',
 }
-function typeLabel(k) { return TYPE_LABELS[k] ? t(TYPE_LABELS[k]) : k }
+// 신년운세는 행(저장본·구매)의 판 연도로 제목을 채운다 — 2026판이 2027 제목으로 보이지 않게.
+function typeLabel(k, row) {
+  if (!TYPE_LABELS[k]) return k
+  const params = k === 'newyear' && row ? newyearParams(row.payload?.year || newyearYearFor(row.created_at)) : {}
+  return t(TYPE_LABELS[k], params)
+}
 
 const readings = ref([])
 const peopleNames = ref(new Set())
@@ -183,7 +189,7 @@ async function remove(id) {
             <span class="badge" :class="r.tier">{{ r.tier === 'pro' ? t('lib.badge.pro') : t('lib.badge.free') }}</span>
           </div>
           <div class="rcard-body">
-            <div class="rtype">{{ typeLabel(r.type_key) }}</div>
+            <div class="rtype">{{ typeLabel(r.type_key, r) }}</div>
             <div class="rname">{{ subjectName(r) }}<span v-if="targetOf(r) === 'me'" class="me-tag">· {{ t('lib.tag.me') }}</span></div>
             <div v-if="r.ganji" class="rganji">{{ r.ganji }}</div>
           </div>

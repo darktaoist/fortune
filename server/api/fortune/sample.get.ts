@@ -1,4 +1,5 @@
 import { serverSupabaseServiceRole } from '#supabase/server'
+import { newyearYearFor } from '~/shared/newyear'
 
 /**
  * 공개 샘플 — "구매하면 이런 결과를 받습니다"를 보여주는 마케팅용 미리보기.
@@ -65,7 +66,7 @@ export default defineEventHandler(async (event) => {
     if (!id) return null
     const { data } = await admin
       .from('saved_readings')
-      .select('subject, payload, glyph, tint')
+      .select('subject, payload, glyph, tint, created_at')
       .eq('id', id)
       .maybeSingle()
     const sections = (data?.payload as Record<string, any>)?.sections
@@ -106,5 +107,7 @@ export default defineEventHandler(async (event) => {
     partnerMyeongsik: p.partnerMyeongsik || null,
     partnerName: p.partnerName || '',
     partnerMbti: p.partnerMbti || '',
+    // 신년운세 판 연도(제목 표기용) — 연도 저장 전 결과는 생성 시각으로 판정
+    year: service === 'newyear' ? (p.year ?? newyearYearFor(sr.created_at)) : null,
   }
 })

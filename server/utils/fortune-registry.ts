@@ -73,11 +73,9 @@ export function yearGanji(year: number) {
     branchElemKo: `${ELEM_KO[be]}(${ELEM_HANJA[be]})`, // 토(土)
   }
 }
+// 평생사주 흉년 예시용 현재 연도(신년운세 프롬프트는 아래 newyearTypeFor(year)가 연도별로 만든다).
 const YEAR = NEWYEAR_YEAR
 const YG = yearGanji(YEAR)
-const YEAR_GANJI = `${YG.ko}년(${YG.hanja}年)` // 예: 정미년(丁未年)
-// 세운 오행 표기: 천간·지지가 같은 오행이면 하나만(丙午 → 화(火)), 다르면 둘 다(丁未 → 화(火)·토(土)).
-const YEAR_ELEMS = YG.stemElemKo === YG.branchElemKo ? YG.stemElemKo : `${YG.stemElemKo}·${YG.branchElemKo}`
 
 // ── 일주별 참고 해석 블록(신년운세·평생사주 공용) ──
 // 행이 없으면 빈 배열 → buildPrompt 결과가 참고 해석 도입 전과 바이트 단위로 같다.
@@ -205,74 +203,91 @@ const YEAR_SECTIONS: FortuneSection[] = [
   { key: 'gaewoon', titleKey: 'premium.newyear.gaewoon', glyph: '開' },
 ]
 
-const YEAR_PERSONA = [
-  '당신은 30년 경력의 사주명리학 대가입니다. 주어진 명식과 ' + YEAR + '년 ' + YEAR_GANJI + '의 세운(歲運)을 대조하여,',
-  '이 사람의 "' + YEAR + '년 한 해의 운세"를 깊이 있고 따뜻한 상담조로, 분야별로 풍부하게 풀어냅니다.',
-  '',
-  '[작성 규칙]',
-  '- 반드시 주어진 명식(일간·오행 균형·신강신약·십신·대운)과 ' + YEAR + '년 ' + YEAR_GANJI + ' 세운(천간 ' + YG.stem + ', 지지 ' + YG.branch + ')의 상호작용에 근거해 해석한다. 일반론·뜬구름 금지.',
-  '- 세운과 원국의 충(沖)·합(合)·생극(生剋)을 구체적으로 짚는다(예: "' + YG.ko + '년의 ' + YEAR_ELEMS + ' 기운이 사주의 오행과 만나…", "현재 대운과 맞물려…").',
-  '- 시기는 ' + YEAR + '년의 구체적 월(예: 4월·9월)로 짚는다.',
-  '- 각 항목은 따뜻한 상담조 산문으로 쓴다. 단락 사이는 빈 줄 하나로 구분. 마크다운·불릿·소제목·이모지 금지(단, monthly 항목의 "N월:" 라벨 줄은 예외).',
-  '- 항목당 분량은 한국어 기준 약 350~600자. 단 monthly는 12개월 각 3~4문장이라 전체에서 가장 긴 항목으로 약 1500자 이상 충실하게 작성한다(caution·wealthboost도 더 충실하게). 다른 언어도 그에 상응하는 분량.',
-  '- 항목 제목은 본문에 넣지 않는다(화면에 이미 표시됨).',
-  HANJA_RULE,
-].join('\n')
-
-const YEAR_SECTION_GUIDE = [
-  '11개 항목(반드시 이 순서):',
-  '1) overview — ' + YEAR + '년 종합 운세: 세운과 원국·대운의 상호작용을 종합한 한 해 총평, 상·하반기 기조.',
-  '2) wealth — 재물운과 재테크 운: 재성(財星)과 세운의 작용, 유리한 시기(월)·분야·투자 방향.',
-  '3) career — 직업운과 승진운: 관성·식상과 세운, 승진/이직/창업의 적기와 분야.',
-  '4) love — 연애운과 결혼운: 배우자성·도화와 세운, 만남/관계발전/결혼 적기(월).',
-  '5) health — 건강운: 오행 과부족과 세운 ' + YEAR_ELEMS + ' 기운의 충돌이 가리키는 주의 장부·시기, 식이·운동.',
-  '6) relations — 인간관계운: 비겁·인성·관성과 세운이 만드는 대인 흐름, 귀인·갈등 시기.',
-  '7) study — 학업·자기계발운: 인성·식상과 세운, 유리한 학습 분야·자격/시험 적기.',
-  '8) monthly — 월별 세부 운세: 1월부터 12월까지 12개 달을 빠짐없이, 각 달마다 "N월:"로 시작해 반드시 3~4문장으로 충실히 작성한다(한 줄 요약 금지). 각 달은 그 달의 재물·일·관계·건강 흐름, 해당 월운(月運)과 원국의 작용, 그리고 구체적인 조언까지 담는다. 달과 달 사이는 빈 줄 하나로 구분한다.',
-  '9) caution — 주의해야 할 시기와 사건: 충/형이 강한 구체 월(예: 6월·11월)과 그 영역(건강·계약·관계), 피해야 할 방향.',
-  '10) wealthboost — 재물운 극대화 비법: 유리한 투자 시기·분야, 부수입 아이템, 구체 실천 지침.',
-  '11) gaewoon — 개운 방법과 실천 사항: 부족한 오행을 보강하는 색상·길방위·길일·길시, 음식·운동·생활 실천법을 구체적으로.',
-].join('\n')
-
 const YEAR_KEYS = 'overview, wealth, career, love, health, relations, study, monthly, caution, wealthboost, gaewoon'
 
-const newyearType: FortuneType = {
-  key: 'newyear',
-  glyph: '秘',
-  tint: 'purple',
-  needsPartner: false,
-  usesSaju: true,
-  ready: true,
-  maxTokens: 24000,
-  sections: YEAR_SECTIONS,
-  system: (lang) => [
-    YEAR_PERSONA,
+// 연도별 신년운세 타입. 결제(주문) 시점의 판(shared/newyear.ts NEWYEAR_EDITIONS)으로 생성하려고 연도를 인자로 받는다.
+function makeNewyearType(year: number): FortuneType {
+  const YEAR = year
+  const YG = yearGanji(YEAR)
+  const YEAR_GANJI = `${YG.ko}년(${YG.hanja}年)` // 예: 정미년(丁未年)
+  // 세운 오행 표기: 천간·지지가 같은 오행이면 하나만(丙午 → 화(火)), 다르면 둘 다(丁未 → 화(火)·토(土)).
+  const YEAR_ELEMS = YG.stemElemKo === YG.branchElemKo ? YG.stemElemKo : `${YG.stemElemKo}·${YG.branchElemKo}`
+
+  const YEAR_PERSONA = [
+    '당신은 30년 경력의 사주명리학 대가입니다. 주어진 명식과 ' + YEAR + '년 ' + YEAR_GANJI + '의 세운(歲運)을 대조하여,',
+    '이 사람의 "' + YEAR + '년 한 해의 운세"를 깊이 있고 따뜻한 상담조로, 분야별로 풍부하게 풀어냅니다.',
     '',
-    '[출력 형식]',
-    YEAR_SECTION_GUIDE,
-    '',
-    '- 위 11개 키(' + YEAR_KEYS + ')를 가진 JSON 객체 하나만 출력한다(그 외 텍스트 금지).',
-    langDirective(lang),
-  ].join('\n'),
-  systemStream: (lang) => [
-    YEAR_PERSONA,
-    '',
-    '[출력 형식]',
-    YEAR_SECTION_GUIDE,
-    '',
-    '- 11개 항목을 위 순서대로 작성하되, 각 항목 본문 바로 앞에 정확히 한 줄로 마커를 둔다:',
-    '  [[overview]] / [[wealth]] / [[career]] / [[love]] / [[health]] / [[relations]] / [[study]] / [[monthly]] / [[caution]] / [[wealthboost]] / [[gaewoon]]',
-    '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·JSON·마크다운은 쓰지 않는다(단, monthly 항목 내부의 "N월:" 라벨 줄은 허용).',
-    langDirective(lang),
-  ].join('\n'),
-  buildPrompt: ({ myeongsik, lang, iljuRef }) => [
-    formatMyeongsikForPrompt(myeongsik),
-    ...iljuRefBlock(iljuRef, true),
-    '',
-    '위 명식을 바탕으로 ' + YEAR + '년 ' + YEAR_GANJI + ' 한 해의 운세를 11개 항목으로 깊이 있게 풀이하세요.',
-    langDirective(lang),
-  ].join('\n'),
+    '[작성 규칙]',
+    '- 반드시 주어진 명식(일간·오행 균형·신강신약·십신·대운)과 ' + YEAR + '년 ' + YEAR_GANJI + ' 세운(천간 ' + YG.stem + ', 지지 ' + YG.branch + ')의 상호작용에 근거해 해석한다. 일반론·뜬구름 금지.',
+    '- 세운과 원국의 충(沖)·합(合)·생극(生剋)을 구체적으로 짚는다(예: "' + YG.ko + '년의 ' + YEAR_ELEMS + ' 기운이 사주의 오행과 만나…", "현재 대운과 맞물려…").',
+    '- 시기는 ' + YEAR + '년의 구체적 월(예: 4월·9월)로 짚는다.',
+    '- 각 항목은 따뜻한 상담조 산문으로 쓴다. 단락 사이는 빈 줄 하나로 구분. 마크다운·불릿·소제목·이모지 금지(단, monthly 항목의 "N월:" 라벨 줄은 예외).',
+    '- 항목당 분량은 한국어 기준 약 350~600자. 단 monthly는 12개월 각 3~4문장이라 전체에서 가장 긴 항목으로 약 1500자 이상 충실하게 작성한다(caution·wealthboost도 더 충실하게). 다른 언어도 그에 상응하는 분량.',
+    '- 항목 제목은 본문에 넣지 않는다(화면에 이미 표시됨).',
+    HANJA_RULE,
+  ].join('\n')
+
+  const YEAR_SECTION_GUIDE = [
+    '11개 항목(반드시 이 순서):',
+    '1) overview — ' + YEAR + '년 종합 운세: 세운과 원국·대운의 상호작용을 종합한 한 해 총평, 상·하반기 기조.',
+    '2) wealth — 재물운과 재테크 운: 재성(財星)과 세운의 작용, 유리한 시기(월)·분야·투자 방향.',
+    '3) career — 직업운과 승진운: 관성·식상과 세운, 승진/이직/창업의 적기와 분야.',
+    '4) love — 연애운과 결혼운: 배우자성·도화와 세운, 만남/관계발전/결혼 적기(월).',
+    '5) health — 건강운: 오행 과부족과 세운 ' + YEAR_ELEMS + ' 기운의 충돌이 가리키는 주의 장부·시기, 식이·운동.',
+    '6) relations — 인간관계운: 비겁·인성·관성과 세운이 만드는 대인 흐름, 귀인·갈등 시기.',
+    '7) study — 학업·자기계발운: 인성·식상과 세운, 유리한 학습 분야·자격/시험 적기.',
+    '8) monthly — 월별 세부 운세: 1월부터 12월까지 12개 달을 빠짐없이, 각 달마다 "N월:"로 시작해 반드시 3~4문장으로 충실히 작성한다(한 줄 요약 금지). 각 달은 그 달의 재물·일·관계·건강 흐름, 해당 월운(月運)과 원국의 작용, 그리고 구체적인 조언까지 담는다. 달과 달 사이는 빈 줄 하나로 구분한다.',
+    '9) caution — 주의해야 할 시기와 사건: 충/형이 강한 구체 월(예: 6월·11월)과 그 영역(건강·계약·관계), 피해야 할 방향.',
+    '10) wealthboost — 재물운 극대화 비법: 유리한 투자 시기·분야, 부수입 아이템, 구체 실천 지침.',
+    '11) gaewoon — 개운 방법과 실천 사항: 부족한 오행을 보강하는 색상·길방위·길일·길시, 음식·운동·생활 실천법을 구체적으로.',
+  ].join('\n')
+
+  return {
+    key: 'newyear',
+    glyph: '秘',
+    tint: 'purple',
+    needsPartner: false,
+    usesSaju: true,
+    ready: true,
+    maxTokens: 24000,
+    sections: YEAR_SECTIONS,
+    system: (lang) => [
+      YEAR_PERSONA,
+      '',
+      '[출력 형식]',
+      YEAR_SECTION_GUIDE,
+      '',
+      '- 위 11개 키(' + YEAR_KEYS + ')를 가진 JSON 객체 하나만 출력한다(그 외 텍스트 금지).',
+      langDirective(lang),
+    ].join('\n'),
+    systemStream: (lang) => [
+      YEAR_PERSONA,
+      '',
+      '[출력 형식]',
+      YEAR_SECTION_GUIDE,
+      '',
+      '- 11개 항목을 위 순서대로 작성하되, 각 항목 본문 바로 앞에 정확히 한 줄로 마커를 둔다:',
+      '  [[overview]] / [[wealth]] / [[career]] / [[love]] / [[health]] / [[relations]] / [[study]] / [[monthly]] / [[caution]] / [[wealthboost]] / [[gaewoon]]',
+      '- 마커는 대괄호 두 개로 감싼 영문 키만. 마커 외의 머리말·번호·JSON·마크다운은 쓰지 않는다(단, monthly 항목 내부의 "N월:" 라벨 줄은 허용).',
+      langDirective(lang),
+    ].join('\n'),
+    buildPrompt: ({ myeongsik, lang, iljuRef }) => [
+      formatMyeongsikForPrompt(myeongsik),
+      ...iljuRefBlock(iljuRef, true),
+      '',
+      '위 명식을 바탕으로 ' + YEAR + '년 ' + YEAR_GANJI + ' 한 해의 운세를 11개 항목으로 깊이 있게 풀이하세요.',
+      langDirective(lang),
+    ].join('\n'),
+  }
 }
+
+const NEWYEAR_TYPES = new Map<number, FortuneType>()
+/** 해당 연도판 신년운세 타입(캐시). 현재 판은 FORTUNE_TYPES.newyear와 같은 객체. */
+export function newyearTypeFor(year: number): FortuneType {
+  if (!NEWYEAR_TYPES.has(year)) NEWYEAR_TYPES.set(year, makeNewyearType(year))
+  return NEWYEAR_TYPES.get(year)!
+}
+const newyearType = newyearTypeFor(NEWYEAR_YEAR)
 
 // ── 연예인·지인 궁합(두 명식 대조) ──
 const GUNGHAP_SECTIONS: FortuneSection[] = [

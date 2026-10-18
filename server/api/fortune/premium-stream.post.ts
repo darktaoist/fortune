@@ -1,6 +1,6 @@
 import { serverSupabaseServiceRole, serverSupabaseUser } from '#supabase/server'
 import { buildMyeongsik, type MyeongsikInput } from '../../utils/myeongsik'
-import { FORTUNE_TYPES } from '../../utils/fortune-registry'
+import { FORTUNE_TYPES, newyearTypeFor } from '../../utils/fortune-registry'
 import { streamText, resolveProvider } from '../../utils/ai'
 import { resolvePartnerInput, resolvePartnerMbti } from '../../utils/partner'
 import { requirePaidPurchase } from '../../utils/paywall'
@@ -9,6 +9,7 @@ import { toPurchaseKey } from '~/shared/premiumService'
 import { isFreeService, reserveCelebQuota, refundCelebQuota, kstDate } from '../../utils/celebFree'
 import { rateLimit } from '../../utils/ratelimit'
 import { loadIljuRef, ILJU_REF_TYPES } from '../../utils/iljuRef'
+import { newyearYearFor } from '~/shared/newyear'
 
 const LANGS = new Set(['ko', 'en', 'ja', 'zh'])
 
@@ -102,6 +103,8 @@ export default defineEventHandler(async (event) => {
           partnerMyeongsik: savedPayload.partnerMyeongsik || null,
           myMbti: savedPayload.myMbti || '',
           partnerMbti: savedPayload.partnerMbti || '',
+          // 신년운세 판 연도 — 연도 저장 전(2026판) 결과는 주문 시각으로 판정
+          year: service === 'newyear' ? (savedPayload.year ?? newyearYearFor(reading?.created_at)) : null,
         })
         // 저장본이 zh인데 간체로 저장된 과거 행은 리플레이 시 번체로 보정(자가치유).
         const savedLang = String(savedPayload?.lang || '')
@@ -134,8 +137,12 @@ export default defineEventHandler(async (event) => {
 
   const myeongsik = type.usesSaju ? await buildMyeongsik(admin, input) : null
   if (type.usesSaju && !myeongsik) throw createError({ statusCode: 422, statusMessage: '해당 생년월일의 명식을 찾을 수 없습니다.' })
-  // 일주별 참고 해석(신년운세·평생사주) — 같은 언어 행이 없으면 null이고 프롬프트는 기존 그대로.
-  const iljuRef = ILJU_REF_TYPES.has(service) ? await loadIljuRef(admin, myeongsik, lang) : null
+  // 신년운세는 주문 시각의 판으로 생성한다(shared/newyear.ts NEWYEAR_EDITIONS) — 판이 바뀌기 전에 결제하고
+  // 아직 열람하지 않은 주문은 결제한 해의 운세를 받는다. 스냅샷이 없는 과거 주문은 현재 판.
+  const nyYear = service === 'newyear' ? newyearYearFor(reading?.created_at) : null
+  const gen = nyYear ? newyearTypeFor(nyYear) : type
+  // 일주별 참고 해석(신년운세·평생사주) — 같은 언어·같은 연도 행이 없으면 null이고 프롬프트는 기존 그대로.
+  const iljuRef = ILJU_REF_TYPES.has(service) ? await loadIljuRef(admin, myeongsik, lang, nyYear ?? undefined) : null
 
   // 상대: 주문 스냅샷의 partner 우선(payload.partner), 없으면 요청 본문.
   const partnerRef = (savedPayload?.partner && (savedPayload.partner.id || savedPayload.partner.mbti))
@@ -165,7 +172,7 @@ export default defineEventHandler(async (event) => {
     let savedOk = false
     const quotaDay = kstDate()
     try {
-      send({ type: 'meta', service, glyph: type.glyph, tint: type.tint, myeongsik, partnerName, partnerMyeongsik: partner, myMbti, partnerMbti })
+      send({ type: 'meta', service, glyph: type.glyph, tint: type.tint, myeongsik, partnerName, partnerMyeongsik: partner, myMbti, partnerMbti, year: nyYear })
 
       // 생성: 마커 구분 스트림 → 섹션 완성 즉시 push.
       let buf = ''
@@ -192,7 +199,7 @@ export default defineEventHandler(async (event) => {
         }
       }
 
-      const userPrompt = type.buildPrompt({ myeongsik: myeongsik as any, partner: partner as any, lang, myMbti, partnerMbti, myName: input.name, partnerName, iljuRef })
+      const userPrompt = gen.buildPrompt({ myeongsik: myeongsik as any, partner: partner as any, lang, myMbti, partnerMbti, myName: input.name, partnerName, iljuRef })
 
       // ── 비용점 게이트 ── 무료 서비스는 AI 호출 직전에 일일 쿼터를 원자적으로 예약한다.
       //   한도 초과(-1)면 AI를 호출하지 않고 limit 이벤트로 차단(비용 0). 동시요청/중복클릭은
@@ -204,9 +211,9 @@ export default defineEventHandler(async (event) => {
       }
 
       await streamText({
-        system: (type.systemStream || type.system)(lang),
+        system: (gen.systemStream || gen.system)(lang),
         user: userPrompt,
-        maxTokens: type.maxTokens,
+        maxTokens: gen.maxTokens,
         onText: (delta) => { buf += delta; scan(false) },
       }, provider)
       scan(true)
@@ -245,9 +252,9 @@ export default defineEventHandler(async (event) => {
         try {
           let rbuf = ''
           await streamText({
-            system: (type.systemStream || type.system)(lang),
+            system: (gen.systemStream || gen.system)(lang),
             user: userPrompt,
-            maxTokens: type.maxTokens,
+            maxTokens: gen.maxTokens,
             onText: (d) => { rbuf += d },
           }, 'claude')
           const reparsed: typeof sectionsOut = []
@@ -288,6 +295,7 @@ export default defineEventHandler(async (event) => {
             myMbti: myMbti || '',
             partner: partnerRef || null,
             lang,
+            ...(nyYear ? { year: nyYear } : {}),
           },
           glyph: type.glyph,
           tint: type.tint,

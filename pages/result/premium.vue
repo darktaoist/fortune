@@ -1,4 +1,5 @@
 <script setup>
+import { newyearParams, newyearYearFor } from '~/shared/newyear'
 // ⚠️ 연예인 궁합(gunghap)·연예인 MBTI 궁합(mbti)은 무광고 원칙 — 퍼블리시티권 리스크 방어선.
 //    광고 추가 시 상업적 이용이 성립하여 방어선이 붕괴한다. 이 페이지에 애드센스/광고
 //    컴포넌트(AdUnit 등) 추가 금지(유료 상품 화면도 이 페이지를 공유하므로 특히 주의).
@@ -12,6 +13,12 @@ const user = useSupabaseUser()
 const supabase = useSupabaseClient()
 const { current, hasInput, save } = useSajuInput()
 
+// 신년운세 결과의 판 연도(meta·저장본·샘플이 알려준다). 제목의 {nyYear} 등은 이 판 기준으로 채운다 —
+// 2026판 결과를 2027 문구로 보이지 않게. 없으면 i18n 기본값(현재 판).
+const nyYear = ref(null)
+const nyParams = computed(() => (service.value === 'newyear' && nyYear.value ? newyearParams(nyYear.value) : {}))
+const tt = (key) => t(key, nyParams.value)
+
 const SERVICE = {
   lifetime: { glyph: '命', titleKey: 'premium.life.title' },
   newyear: { glyph: '秘', titleKey: 'premium.newyear.title' },
@@ -23,7 +30,7 @@ const service = computed(() => {
   return SERVICE[raw] ? raw : null
 })
 const cfg = computed(() => (service.value ? SERVICE[service.value] : null))
-const heroTitle = computed(() => (cfg.value ? t(cfg.value.titleKey) : t('result.title')))
+const heroTitle = computed(() => (cfg.value ? tt(cfg.value.titleKey) : t('result.title')))
 
 // 궁합 상대(연예인/지인) — 식별자만 받고 명식은 서버가 조회. partnerName은 meta로 갱신될 수 있음.
 const partnerRef = computed(() => {
@@ -183,6 +190,7 @@ function handleEvent(evt) {
     result.value.partnerMyeongsik = evt.partnerMyeongsik || null
     if (evt.partnerName) partnerName.value = evt.partnerName
     if (evt.partnerMbti) partnerMbti.value = String(evt.partnerMbti).toUpperCase()
+    if (evt.year) nyYear.value = Number(evt.year)
   } else if (evt.type === 'section') {
     const i = result.value.sections.findIndex((s) => s.key === evt.key)
     const sec = { key: evt.key, titleKey: evt.titleKey, glyph: evt.glyph, body: evt.body }
@@ -280,6 +288,7 @@ async function loadSaved() {
     }
     partnerName.value = p.partnerName || ''
     partnerMbti.value = (p.partnerMbti || '').toUpperCase()
+    if (data.type_key === 'newyear') nyYear.value = p.year || newyearYearFor(data.created_at)
   } catch {
     errorMsg.value = t('premium.error')
   } finally {
@@ -305,6 +314,7 @@ async function loadSample() {
     }
     partnerName.value = data.partnerName || ''
     partnerMbti.value = (data.partnerMbti || '').toUpperCase()
+    if (data.year) nyYear.value = Number(data.year)
   } catch {
     errorMsg.value = t('premium.error')
   } finally {
@@ -450,7 +460,7 @@ function buildShareText() {
   const subj = displaySubject.value?.name
   const lines = [subj ? `${heroTitle.value} — ${subj}` : heroTitle.value, '']
   for (const s of displaySections.value) {
-    lines.push(`【${s.glyph}】 ${t(s.titleKey)}`)
+    lines.push(`【${s.glyph}】 ${tt(s.titleKey)}`)
     lines.push((s.body || '').trim())
     lines.push('')
   }
@@ -556,7 +566,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
             <article v-for="s in displaySections" :key="s.key" class="ov-card">
               <div class="ov-glyph">{{ s.glyph }}</div>
               <div class="ov-body">
-                <h3 class="ov-title">{{ t(s.titleKey) }}</h3>
+                <h3 class="ov-title">{{ tt(s.titleKey) }}</h3>
                 <p class="ov-text pre">{{ s.body }}</p>
               </div>
             </article>
@@ -569,7 +579,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
             <article v-for="s in lockedSections" :key="s.key" class="ov-card locked-card">
               <div class="ov-glyph">{{ s.glyph }}</div>
               <div class="ov-body">
-                <h3 class="ov-title">{{ t(s.titleKey) }}</h3>
+                <h3 class="ov-title">{{ tt(s.titleKey) }}</h3>
                 <div class="locked-lines" aria-hidden="true"><span /><span /><span /></div>
               </div>
               <svg class="locked-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
@@ -607,7 +617,7 @@ onBeforeUnmount(() => clearTimeout(toastTimer))
               partnerName: partnerName || '',
               partnerImageUrl,
               shorts: shortsData,
-              sections: displaySections.map((s) => ({ key: s.key, glyph: s.glyph, title: t(s.titleKey), body: s.body })),
+              sections: displaySections.map((s) => ({ key: s.key, glyph: s.glyph, title: tt(s.titleKey), body: s.body })),
               zodiacGlyph: result?.glyph || '緣',
               siteUrl: 'taoist.co.kr',
               lang: locale,

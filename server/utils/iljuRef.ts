@@ -22,13 +22,13 @@ export interface IljuRef {
 /** 참고 해석을 쓰는 운세 타입. */
 export const ILJU_REF_TYPES = new Set(['newyear', 'lifetime'])
 
-export async function loadIljuRef(admin: any, myeongsik: Myeongsik | null, lang: string): Promise<IljuRef | null> {
+export async function loadIljuRef(admin: any, myeongsik: Myeongsik | null, lang: string, year: number = NEWYEAR_YEAR): Promise<IljuRef | null> {
   const day = myeongsik?.pillars?.day
   if (!day) return null
   let q = admin
     .from('ilju_yearly')
     .select('year, ilju, nature, year_relation, wealth, career, love, health, caution')
-    .eq('year', NEWYEAR_YEAR)
+    .eq('year', year)
     .eq('ilju', `${day[0]}${day[1]}`)
     .eq('lang', lang)
   if (!import.meta.dev) q = q.eq('status', 'published')

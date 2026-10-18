@@ -2,6 +2,7 @@ import ko from './locales/ko.json'
 import en from './locales/en.json'
 import ja from './locales/ja.json'
 import zh from './locales/zh.json'
+import { newyearParams } from '../shared/newyear'
 
 /**
  * vue-i18n runtime config for @nuxtjs/i18n.
@@ -22,6 +23,10 @@ import zh from './locales/zh.json'
  *     as a literal — no linked messages, no pluralization, no HTML parsing.
  */
 
+// 신년운세 문구의 연도·간지 토큰({nyYear} 등) 기본값 — shared/newyear.ts의 현재 판.
+// 호출부가 t(key, newyearParams(2026))처럼 넘기면 그 값이 우선한다(과거 판 결과 화면).
+const NY_DEFAULTS = newyearParams()
+
 // Minimal message compiler: literal text + `{var}` interpolation only.
 function compileLiteral(message: unknown) {
   if (typeof message !== 'string') {
@@ -32,7 +37,8 @@ function compileLiteral(message: unknown) {
   return ((ctx: { named: (k: string) => unknown; list: (i: number) => unknown }) =>
     message.replace(/{(\w+)}/g, (whole, key) => {
       const val = /^\d+$/.test(key) ? ctx.list(Number(key)) : ctx.named(key)
-      return val === undefined || val === null ? whole : String(val)
+      if (val === undefined || val === null) return key in NY_DEFAULTS ? NY_DEFAULTS[key] : whole
+      return String(val)
     })) as never
 }
 

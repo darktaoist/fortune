@@ -1,17 +1,19 @@
 // 결제(상품 상세) 페이지의 서비스별 콘텐츠 — 결제.html 디자인 SERVICES에서 그대로 포팅.
 // 각 텍스트는 ko/en/ja/zh 4개 언어를 모두 보유. 카테고리(features)는 글자(gl)+제목(t)+설명(d).
 // ⚠️ 가격은 여기 두지 않는다 — 표시/청구 금액의 단일 원천은 shared/prices.ts.
-import { NEWYEAR_YEAR as Y } from '../shared/newyear'
+import { NEWYEAR_YEAR as Y, newyearParams } from '../shared/newyear'
+
+const P = newyearParams(Y)
 
 export default {
   newyear: {
     glyph: '秘',
     title: { ko: `${Y} AI 신년운세`, en: `${Y} AI New Year Reading`, ja: `${Y} AI新年運勢`, zh: `${Y} AI 新年運勢` },
     tagline: {
-      ko: `AI가 분석한 ${Y} 정미년 한 해의 흐름. 새해를 준비하는 가장 지혜로운 길라잡이.`,
-      en: `AI-charted flow of ${Y}, the Year of the Red Sheep — your wisest guide into the new year.`,
-      ja: `AIが分析する${Y}丁未年の流れ。新年を準備する最も賢い道しるべ。`,
-      zh: `AI 解析 ${Y} 丁未年的整體走勢，迎接新年最睿智的指引。`,
+      ko: `AI가 분석한 ${Y} ${P.nyGanjiKo}년 한 해의 흐름. 새해를 준비하는 가장 지혜로운 길라잡이.`,
+      en: `AI-charted flow of ${Y}, the Year of the ${P.nyAnimalEn} — your wisest guide into the new year.`,
+      ja: `AIが分析する${Y}${P.nyGanji}年の流れ。新年を準備する最も賢い道しるべ。`,
+      zh: `AI 解析 ${Y} ${P.nyGanji}年的整體走勢，迎接新年最睿智的指引。`,
     },
     aboutTitle: { ko: '신년운세란?', en: 'What is the New Year Reading?', ja: '新年運勢とは?', zh: '什麼是新年運勢?' },
     aboutDesc: {

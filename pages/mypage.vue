@@ -1,4 +1,5 @@
 <script setup>
+import { newyearParams, newyearYearFor } from '~/shared/newyear'
 // 마이페이지 — 계정·구매·저장 정보 허브. 로그인 필수(미로그인 시 게이트 표시).
 // 모든 데이터는 Supabase RLS로 본인 소유만 조회/수정. 1.0에 없던 2.0 신규 페이지.
 // 회원 탈퇴는 service role 서버 엔드포인트(/api/account/delete)로 위임.
@@ -83,7 +84,12 @@ const TYPE_LABELS = {
   lotto: 'free.lotto.title', month: 'free.month.title', hour: 'free.hour.title',
   lifetime: 'premium.life.title', newyear: 'premium.newyear.title', celeb: 'premium.celeb.title', mbti: 'premium.mbti.title',
 }
-function typeLabel(k) { return TYPE_LABELS[k] ? t(TYPE_LABELS[k]) : k }
+// 신년운세는 행(저장본·구매)의 판 연도로 제목을 채운다 — 2026판이 2027 제목으로 보이지 않게.
+function typeLabel(k, row) {
+  if (!TYPE_LABELS[k]) return k
+  const params = k === 'newyear' && row ? newyearParams(row.payload?.year || newyearYearFor(row.created_at)) : {}
+  return t(TYPE_LABELS[k], params)
+}
 
 const availableLocales = computed(() =>
   locales.value.map((l) => (typeof l === 'string' ? { code: l, name: l } : l)),
@@ -216,7 +222,7 @@ async function confirmWithdraw() {
             <ul v-else class="plist">
               <li v-for="p in purchases" :key="p.id" class="prow">
                 <div class="prow-main">
-                  <span class="prow-type">{{ typeLabel(p.type_key) }}</span>
+                  <span class="prow-type">{{ typeLabel(p.type_key, p) }}</span>
                   <button v-if="p.order_no" class="prow-order" @click="copyOrder(p.order_no)">{{ t('mypage.purchase.order') }} {{ p.order_no }}</button>
                 </div>
                 <div class="prow-side">
