@@ -8,6 +8,11 @@ import { SERVICE_PRICES, fmtKrw, fmtUsd } from '~/shared/prices'
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
 
+// 오행도사전 배너 CTA — checkout.vue와 같은 방어적 패턴(gtag 미초기화여도 링크 이동은 그대로).
+function onGameCta() {
+  try { useTrackEvent('game_cta_click', { placement: 'main_section' }) } catch { /* analytics best-effort */ }
+}
+
 // Per-page SEO. Home uses its full title verbatim (no brand suffix); the title
 // itself leads with "K-Fortune" for en/ja/zh. Site-level og/twitter defaults
 // come from app.vue; hreflang/canonical from useLocaleHead in the layout.
@@ -521,6 +526,44 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="ohhaeng-readout active" v-html="ohText" />
+      </div>
+    </section>
+
+    <!-- ============ GAME BANNER (오행도사전, dosa.taoist.co.kr) ============ -->
+    <!-- 게임이 한국어 전용이라 ko 홈에만 노출한다. 다국어판이 나오면 v-if를 풀고 en/ja/zh 키를 추가. -->
+    <section v-if="locale === 'ko'" id="game" class="aura-section game-section container">
+      <div class="aura-card game-card">
+        <div class="aura-text">
+          <div class="aura-label">{{ t('game.label') }}</div>
+          <h2 class="aura-title" v-html="t('game.title.html')" />
+          <p class="aura-desc">{{ t('game.desc') }}</p>
+          <div class="aura-features">
+            <span class="aura-feat">{{ t('game.feat.free') }}</span>
+            <span class="aura-feat">{{ t('game.feat.noinstall') }}</span>
+            <span class="aura-feat">{{ t('game.feat.pc') }}</span>
+          </div>
+          <a href="https://dosa.taoist.co.kr" target="_blank" rel="noopener" class="aura-cta" @click="onGameCta">
+            <span>{{ t('game.cta') }}</span>
+          </a>
+        </div>
+
+        <div class="aura-visual">
+          <div class="game-screen">
+            <div class="aura-phone-label">{{ t('game.screen.label') }}</div>
+            <div class="game-tiles">
+              <div class="aura-tile">
+                <span class="aura-tile-hanja">符</span>
+                <div class="aura-tile-title">{{ t('game.tile.talisman') }}</div>
+                <div class="aura-tile-desc">{{ t('game.tile.talisman.desc') }}</div>
+              </div>
+              <div class="aura-tile">
+                <span class="aura-tile-hanja">連</span>
+                <div class="aura-tile-title">{{ t('game.tile.combo') }}</div>
+                <div class="aura-tile-desc">{{ t('game.tile.combo.desc') }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1433,6 +1476,34 @@ onBeforeUnmount(() => {
   border-radius: 40% 40% 50% 50%;
 }
 @media (max-width: 900px) { .aura-card { grid-template-columns: 1fr; padding: var(--space-12) var(--space-6); } }
+
+/* 게임 배너 — aura 카드 골격 재사용, 비주얼만 가로 화면(PC 게임)으로 */
+.game-section { padding-bottom: 0; }
+.game-card {
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(201, 168, 76, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 85% 30%, rgba(220, 70, 50, 0.12) 0%, transparent 50%);
+}
+.game-screen {
+  width: 100%;
+  max-width: 380px;
+  aspect-ratio: 16 / 10;
+  border-radius: 16px;
+  border: 8px solid #1a1a1a;
+  background: #000;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), 0 0 60px rgba(201, 168, 76, 0.2);
+}
+/* 한글 어절 중간 줄바꿈 방지 (360px에서 "물리쳐/라"로 끊기던 문제) */
+.game-card .aura-title, .game-card .aura-desc, .game-card .aura-tile-desc { word-break: keep-all; }
+.game-tiles { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.game-tiles .aura-tile { gap: 8px; justify-content: flex-end; }
+.game-tiles .aura-tile-desc { font-size: 11px; }
+@media (max-width: 900px) { .game-section .aura-visual { min-height: 0; } }
+@media (max-width: 420px) { .game-screen { aspect-ratio: auto; } .game-tiles { grid-template-columns: 1fr; } }
 
 /* ============ FOOTER ============ */
 .footer {
