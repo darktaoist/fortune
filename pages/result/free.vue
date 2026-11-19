@@ -2,6 +2,12 @@
 // 무료 운세 결과 — ported from 운세 결과.html.
 // Hero varies by ?service=; body (총운/월별) uses a localized SAMPLE dataset
 // (real per-type content from DB/AI is wired later). 만세력 via <SajuChart>.
+
+// 같은 /result/free 안에서 service만 바뀌는 이동(토정비결 → 무료 평생사주 요약 버튼)도
+// 새 화면으로 마운트되게 한다. 기본 키는 쿼리를 무시해 onMounted 로드가 다시 돌지 않는다.
+// service 외 쿼리(utm·save)는 키에 넣지 않는다 — ?save=1 제거 replace가 재마운트되지 않도록.
+definePageMeta({ key: (r) => `${r.path}?service=${String(r.query.service || r.query.type || '').toLowerCase()}` })
+
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
 const route = useRoute()
@@ -42,8 +48,13 @@ const UPSELL_MAP = {
   today: { to: { path: '/saju', query: { service: 'newyear' } }, copyKey: 'newyearGate', product: 'newyear', gate: true },
   month: { to: { path: '/saju', query: { service: 'newyear' } }, copyKey: 'newyear', product: 'newyear' },
   lotto: { to: { path: '/saju', query: { service: 'newyear' } }, copyKey: 'lotto', product: 'newyear' },
-  tojung: { to: { path: '/saju', query: { service: 'lifetime' } }, copyKey: 'lifetimeGate', product: 'lifetime', gate: true },
-  hour: { to: { path: '/saju', query: { service: 'lifetime' } }, copyKey: 'lifetime', product: 'lifetime', gate: true, cooldownDays: 7, priceKey: 'lifetime' },
+  // tojung: 항상 노출(gate 없음 → 닫기·세션 1회 없음). 주=무료 평생사주 요약, 보조=유료 리포트(가격 병기).
+  tojung: {
+    to: { path: '/result/free', query: { service: 'hour' } }, copyKey: 'tojungLife', product: 'lifetime', priceKey: 'lifetime',
+    eventParams: { location: 'tojung_result_bottom', target: 'free_summary' },
+    secondary: { to: { path: '/saju', query: { service: 'lifetime' } }, labelKey: 'upsell.tojungLife.paidCta', eventParams: { location: 'tojung_result_bottom', target: 'paid' } },
+  },
+  hour: { to: { path: '/saju', query: { service: 'lifetime' } }, copyKey: 'lifetime', product: 'lifetime', gate: true, cooldownDays: 7, priceKey: 'lifetime', eventParams: { location: 'lifetime_summary' } },
   date: { to: { path: '/celeb-select', query: { service: 'celeb' } }, copyKey: 'celeb', product: 'celeb' },
 }
 const upsell = computed(() => (ftKey.value ? UPSELL_MAP[ftKey.value] : null))
@@ -773,6 +784,8 @@ function onShare() {
           :session-key="upsell.gate === true ? `${UPSELL_SESSION_KEY}_${ftKey}` : ''"
           :cooldown-days="upsell.cooldownDays || 0"
           :price-key="upsell.priceKey || ''"
+          :event-params="upsell.eventParams || null"
+          :secondary="upsell.secondary || null"
         />
 
         <div class="disclaimer">
