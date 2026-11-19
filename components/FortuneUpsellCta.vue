@@ -22,6 +22,11 @@ const props = defineProps({
   cooldownDays: { type: Number, default: 0 },
   // SERVICE_PRICES의 키. 주면 cta 라벨의 {price} 자리에 채운다(금액 원천은 shared/prices.ts 하나).
   priceKey: { type: String, default: '' },
+  // 보조 버튼(선택). { to, labelKey, eventParams } — 주지 않으면(null) 기존 렌더·동작 그대로.
+  // 주면 카드 전체 링크 대신 버튼 영역형으로 렌더하고 주/보조 두 링크를 나란히 둔다.
+  // labelKey는 전체 i18n 키이며 {price} 자리는 priceKey 가격으로 채운다.
+  // eventParams는 보조 버튼의 upsell_click에만, 카드 공통 eventParams 위에 병합된다.
+  secondary: { type: Object, default: null },
 })
 const { t, te } = useI18n()
 const localePath = useLocalePath()
@@ -33,11 +38,16 @@ const noteKey = computed(() => `upsell.${props.copyKey}.note`)
 const noteText = computed(() => (te(noteKey.value) ? t(noteKey.value) : ''))
 
 const DEFAULT_UTM = { utm_source: 'internal', utm_medium: 'cta', utm_campaign: 'free_to_paid' }
-const resolvedTo = computed(() => {
-  const base = typeof props.to === 'string' ? { path: props.to } : { ...props.to }
+function withUtm(to) {
+  const base = typeof to === 'string' ? { path: to } : { ...to }
   base.query = { ...(base.query || {}), ...(props.utm || DEFAULT_UTM), utm_content: props.source }
   return localePath(base)
-})
+}
+const resolvedTo = computed(() => withUtm(props.to))
+const secondaryTo = computed(() => (props.secondary?.to ? withUtm(props.secondary.to) : null))
+const secondaryLabel = computed(() => (props.secondary?.labelKey ? t(props.secondary.labelKey, { price: price.value }) : ''))
+// 버튼 영역형: 닫기형이거나 보조 버튼이 있을 때(a 안에 또 다른 a/button은 무효 마크업).
+const boxed = computed(() => props.dismissible || !!secondaryTo.value)
 
 // SSR은 항상 노출(내부링크 유지). 클라이언트 부팅 후 세션 기록이 있으면 감춘다.
 // 쿨다운(localStorage)도 여기서만 읽는다 — SSR에서 읽으면 내부링크를 잃고 하이드레이션이 어긋난다.
@@ -68,6 +78,7 @@ function track(event, extra) {
   }
 }
 function onClick() { track('upsell_click') }
+function onSecondaryClick() { track('upsell_click', props.secondary?.eventParams || null) }
 function onDismiss() {
   hidden.value = true
   // 쿨다운은 "닫을 때" 기록한다(첫 노출 마킹과 별개) — 직접 닫은 사람만 N일 쉬게 한다.
@@ -83,8 +94,8 @@ function onDismiss() {
 </script>
 
 <template>
-  <!-- 닫기형: 카드 전체를 링크로 감싸지 않는다(a 안에 button은 무효 마크업) -->
-  <div v-if="dismissible" v-show="!hidden" class="upsell upsell-box">
+  <!-- 닫기형·보조 버튼형: 카드 전체를 링크로 감싸지 않는다(a 안에 button/a는 무효 마크업) -->
+  <div v-if="boxed" v-show="!hidden" class="upsell upsell-box">
     <span class="badge badge-pro upsell-badge">PRO</span>
     <div class="upsell-body">
       <h3 class="upsell-title">{{ t(`upsell.${copyKey}.title`) }}</h3>
@@ -96,7 +107,10 @@ function onDismiss() {
         {{ ctaLabel }}
         <span class="upsell-arrow">→</span>
       </NuxtLink>
-      <button type="button" class="upsell-dismiss" @click="onDismiss">{{ t('upsell.dismiss') }}</button>
+      <NuxtLink v-if="secondaryTo" class="upsell-cta upsell-cta-secondary" :to="secondaryTo" @click="onSecondaryClick">
+        {{ secondaryLabel }}
+      </NuxtLink>
+      <button v-if="dismissible" type="button" class="upsell-dismiss" @click="onDismiss">{{ t('upsell.dismiss') }}</button>
     </div>
   </div>
 
@@ -186,7 +200,19 @@ a.upsell:hover {
   transform: translateX(4px);
 }
 
-/* 닫기형 전용 — 주(CTA) / 종(닫기) 위계 */
+/* 보조 버튼 — 주 버튼보다 한 단계 낮은 위계(테두리형) */
+.upsell-box .upsell-cta-secondary {
+  background: none;
+  color: var(--gold-light);
+  border: 1px solid var(--gold-border-strong);
+  box-shadow: none;
+}
+.upsell-box .upsell-cta-secondary:hover {
+  border-color: var(--gold-primary);
+  box-shadow: none;
+}
+
+/* 닫기형·보조 버튼형 — 주(CTA) / 종(보조·닫기) 위계 */
 .upsell-box .upsell-actions {
   display: flex;
   align-items: center;
