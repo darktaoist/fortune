@@ -505,7 +505,7 @@
   "result.disclaimer": "This reading is reference material based on traditional interpretation. Please make important decisions with care.",
   "result.savedMock": "This is a design mock.\nIn production your result is saved to your library.",
   "result.saved": "Saved to your library.",
-  "result.shareMock": "Share link copied. (design mock)",
+  "result.shareMock": "Share link copied.",
   "result.copy": "Copy result",
   "result.copied": "Copied! Paste it into your chat",
   "result.copyFail": "Couldn't copy. Please try again",

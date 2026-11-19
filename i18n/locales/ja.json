@@ -505,7 +505,7 @@
   "result.disclaimer": "本鑑定は伝統的な命理解釈に基づく参考資料です。重要な判断は慎重に行ってください。",
   "result.savedMock": "デザイン試案です。\n実際は結果が保管庫に保存されます。",
   "result.saved": "保管庫に保存しました。",
-  "result.shareMock": "共有リンクをコピーしました。(試案)",
+  "result.shareMock": "共有リンクをコピーしました。",
   "result.copy": "結果をコピー",
   "result.copied": "コピーしました！トークに貼り付けてください",
   "result.copyFail": "コピーに失敗しました。もう一度お試しください",

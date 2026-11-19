@@ -505,7 +505,7 @@
   "result.disclaimer": "本解析為基於傳統命理的參考資料。重要決定請審慎為之。",
   "result.savedMock": "此為設計樣稿。\n實際會將結果儲存至收藏庫。",
   "result.saved": "已儲存至收藏庫。",
-  "result.shareMock": "已複製分享連結。(樣稿)",
+  "result.shareMock": "已複製分享連結。",
   "result.copy": "複製結果",
   "result.copied": "已複製！貼到聊天即可分享",
   "result.copyFail": "複製失敗，請再試一次",
