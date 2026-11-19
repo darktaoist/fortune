@@ -432,6 +432,48 @@ function onShare() {
   if (typeof navigator !== 'undefined' && navigator.share) navigator.share({ title: heroTitle.value, url }).catch(() => {})
   else if (typeof navigator !== 'undefined' && navigator.clipboard) navigator.clipboard.writeText(url).then(() => alert(t('result.shareMock')))
 }
+
+/* ---- 토정비결 결과 공유 블록(작업 5) ----
+ * 공유 대상은 이 결과 페이지가 아니라 공개 랜딩 /fortune/tojung + 고정 UTM.
+ * 개인 입력값(생년월일 등)은 URL에 절대 넣지 않는다(결과는 localStorage 기반).
+ */
+const siteUrl = useSiteConfig().url.replace(/\/$/, '')
+const TOJUNG_SHARE_UTM = 'utm_source=share&utm_medium=referral&utm_campaign=tojung2027'
+const tojungShareUrl = computed(() => `${siteUrl}${localePath('/fortune/tojung')}?${TOJUNG_SHARE_UTM}`)
+const shareToast = ref('')
+let shareToastTimer = null
+function showShareToast(msg) {
+  shareToast.value = msg
+  clearTimeout(shareToastTimer)
+  shareToastTimer = setTimeout(() => { shareToast.value = '' }, 2800)
+}
+function trackShare(method) {
+  try { useTrackEvent('share_click', { method, location: 'tojung_result' }) } catch { /* analytics best-effort */ }
+}
+async function copyText(text) {
+  try {
+    if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(text); return true }
+  } catch { /* 권한 거부 → 아래 폴백 */ }
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0'
+    document.body.appendChild(ta); ta.select()
+    const ok = document.execCommand('copy')
+    ta.remove()
+    return ok
+  } catch { return false }
+}
+async function onTojungCopy() {
+  trackShare('copy')
+  const ok = await copyText(tojungShareUrl.value)
+  showShareToast(ok ? t('tojung27.share.copied') : t('tojung27.share.copyFail', { url: tojungShareUrl.value }))
+}
+function onTojungShare() {
+  // navigator.share 미지원(대부분의 데스크톱) → 링크 복사로 대체(method=copy로 기록).
+  if (typeof navigator === 'undefined' || !navigator.share) return onTojungCopy()
+  trackShare('native')
+  navigator.share({ title: t('free.tojung.title'), text: t('tojung27.share.text'), url: tojungShareUrl.value }).catch(() => {})
+}
 </script>
 
 <template>
@@ -772,6 +814,22 @@ function onShare() {
           </div>
         </template>
 
+        <!-- 토정비결 공유·이어 보기(결과가 표시될 때만, 업셀 카드 바로 위) -->
+        <section v-if="isTojung && current && current.year && tojungFortune" class="t27-share">
+          <h3 class="t27-share-title">{{ t('tojung27.share.title') }}</h3>
+          <p class="t27-share-desc">{{ t('tojung27.share.desc') }}</p>
+          <div class="t27-share-btns">
+            <button type="button" class="btn btn-primary" @click="onTojungShare">{{ t('tojung27.share.native') }}</button>
+            <button type="button" class="btn btn-ghost" @click="onTojungCopy">{{ t('tojung27.share.copy') }}</button>
+          </div>
+          <div class="t27-next">
+            <span class="t27-next-k">{{ t('tojung27.next.title') }}</span>
+            <NuxtLink :to="localePath('/fortune/newyear')">{{ t('tojung27.next.newyear') }} →</NuxtLink>
+            <NuxtLink :to="localePath({ path: '/result/free', query: { service: 'today' } })">{{ t('tojung27.next.today') }} →</NuxtLink>
+          </div>
+          <p class="t27-toast" role="status" aria-live="polite" :class="{ show: !!shareToast }">{{ shareToast }}</p>
+        </section>
+
         <!-- 유료 상품 CTA (무료 결과 본문 끝 ↔ 애드센스 사이, 결과가 표시될 때만) -->
         <FortuneUpsellCta
           v-if="upsell && ftKey && current && current.year"
@@ -795,7 +853,7 @@ function onShare() {
 
         <div class="actions">
           <button class="btn btn-primary" @click="onSave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg><span>{{ t('result.save') }}</span></button>
-          <button class="btn btn-ghost" @click="onShare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg><span>{{ t('result.share') }}</span></button>
+          <button v-if="!isTojung" class="btn btn-ghost" @click="onShare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg><span>{{ t('result.share') }}</span></button>
         </div>
 
         <!-- 후기 작성 (사주 입력이 있어 결과를 본 경우에만) -->
@@ -933,6 +991,17 @@ function onShare() {
 .la-dot { width: 13px; height: 13px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, 0.25); }
 
 /* 2027 토정비결(TOJUNG_YEAR=2027) — pages/dev/tojung2027 미리보기와 같은 디자인 */
+.t27-share { margin: var(--space-12) 0 var(--space-6); padding: var(--space-6); border: 1px solid var(--gold-border); border-radius: var(--radius-lg); background: var(--bg-secondary); text-align: center; position: relative; }
+.t27-share-title { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--gold-light); margin-bottom: var(--space-2); }
+.t27-share-desc { color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.65; margin-bottom: var(--space-4); }
+.t27-share-btns { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; }
+.t27-share-btns .btn-ghost { border: 1px solid var(--gold-border); }
+.t27-next { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); justify-content: center; align-items: center; margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--gold-border); font-size: var(--text-sm); }
+.t27-next-k { color: var(--text-muted); width: 100%; }
+.t27-next a { color: var(--gold-light); text-decoration: none; }
+.t27-next a:hover { text-decoration: underline; }
+.t27-toast { position: fixed; left: 50%; bottom: 32px; transform: translate(-50%, 12px); max-width: calc(100vw - 32px); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--bg-tertiary); border: 1px solid var(--gold-border-strong); color: var(--text-primary); font-size: var(--text-sm); box-shadow: var(--shadow-glow); opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s; z-index: 50; word-break: break-all; }
+.t27-toast.show { opacity: 1; transform: translate(-50%, 0); }
 .t27-headline { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 600; text-align: center; color: var(--gold-light); margin: 0 0 var(--space-12); line-height: 1.4; }
 .t27-card { margin-bottom: var(--space-6); }
 .t27-grade { font-size: var(--text-lg); letter-spacing: 0.12em; color: var(--gold-primary); margin-bottom: var(--space-3); }
