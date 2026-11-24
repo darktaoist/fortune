@@ -6,12 +6,16 @@
  *  3) zh(c) 번체 검사: opencc s2t 변환 결과가 원문과 같아야(간체 누수 0).
  *  4) 길이 sanity(너무 짧은 셀 경고).
  *  5) 톤 분포 리포트.
- * 실패(1~3)면 exit 1.
+ *  6) 내부 정보 노출 검사(scripts/tojung2027/leak-check.mjs — 번호·성별 분류·키).
+ * 실패(1~3, 6)면 exit 1.
  */
 import { Converter } from 'opencc-js'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { findLeaks } from '../tojung2027/leak-check.mjs'
+
+const LEAK_LANG = { k: 'ko', e: 'en', j: 'ja', c: 'zh' }
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const store = JSON.parse(readFileSync(resolve(ROOT, 'scripts/db/_gen/today-generated.json'), 'utf8'))
@@ -42,6 +46,8 @@ for (const n of nums) {
     for (const c of COLS) {
       const v = obj[c]
       if (!v || !v.trim()) { errors.push(`to${n}.${label}.${c} 비어있음`); continue }
+      // 6) 내부 정보 노출(번호·성별 분류·키) — 2026-11-24 "008번 기운" 류 사고 재발 방지
+      for (const h of findLeaks(v, LEAK_LANG[lang])) errors.push(`to${n}.${label}.${c} 내부정보 노출(${h.kind}) «${h.match}» ${h.sentence.slice(0, 60)}`)
       // 새 분량 목표: total 350~450, 나머지 180~260 (KO 기준; 번역은 언어별 편차 허용)
       const floor = c === 'total' ? (lang === 'k' ? 300 : 200) : (lang === 'k' ? 150 : 90)
       if (v.length < floor) warns.push(`to${n}.${label}.${c} 짧음(${v.length}자, 목표 ${c === 'total' ? 'total' : '본문'})`)

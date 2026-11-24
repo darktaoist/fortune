@@ -2,18 +2,20 @@
 /**
  * 토정비결 풀이 내부 정보 노출 전수 검사 — 하나라도 있으면 exit 1.
  *
- *   npm run tojung:check                          # 라이브 DB(읽기 전용) + out/ 응답 원본
+ *   npm run tojung:check                          # 라이브 DB(읽기 전용) + out/ 응답 원본 + today 생성물
  *   npx tsx scripts/tojung2027/check-leaks.ts --db
  *   npx tsx scripts/tojung2027/check-leaks.ts --out
  *   npx tsx scripts/tojung2027/check-leaks.ts --file <path.json>   # 덤프({yearly,monthly}) 또는 Result+lang 배열
  *
  * DB는 `begin transaction read only` 안에서 select만 한다(year/scheme 무관 전체 행, draft 포함).
+ * 대상 테이블: tojung_yearly, tojung_monthly, today(개인 오늘의 운세 — 2026-11-24 같은 번호 노출 발견).
+ * --out에는 scripts/db/_gen/today-generated.json(today 생성물, apply-today.mjs 입력)도 포함한다.
  * 규칙은 leak-check.mjs.
  */
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import pg from 'pg'
-import { OUT, pgConfig } from './lib'
+import { OUT, ROOT, pgConfig } from './lib'
 import { findLeaks, resultLeaks, MONTHLY_TEXT, YEARLY_TEXT } from './leak-check.mjs'
 
 type Hit = { src: string; id: string; field: string; kind: string; match: string; sentence: string }
@@ -24,6 +26,14 @@ const wantOut = args.includes('--out') || (!fileArg && !args.includes('--db'))
 
 const hits: Hit[] = []
 const counts: Record<string, number> = {}
+
+const TODAY_LANG: Record<string, string> = { k: 'ko', e: 'en', j: 'ja', c: 'zh' }
+const TODAY_TEXT = ['total', 'money', 'biz', 'job', 'love', 'wish', 'hope']
+const TODAY_GEN = resolve(ROOT, 'scripts/db/_gen/today-generated.json')
+function scanToday(src: string, rows: any[]) {
+  for (const r of rows) for (const f of TODAY_TEXT) for (const h of findLeaks(r[f], r.lang)) hits.push({ src, id: `${r.number}-${r.lang}`, field: `today.${f}`, ...h })
+  counts[src] = rows.length
+}
 
 function scanRows(src: string, yearly: any[], monthly: any[]) {
   for (const r of yearly) {
@@ -42,11 +52,20 @@ if (wantDb) {
     await db.query('begin transaction read only')
     const y = (await db.query('select * from public.tojung_yearly')).rows
     const m = (await db.query('select * from public.tojung_monthly')).rows
+    const t = (await db.query('select number, nation, total, money, biz, job, love, wish, hope from public.today')).rows
     await db.query('rollback')
     scanRows('db', y, m)
+    scanToday('db-today', t.map((r: any) => ({ ...r, lang: TODAY_LANG[r.nation] })))
   } finally {
     await db.end()
   }
+}
+
+if (wantOut && existsSync(TODAY_GEN)) {
+  const g = JSON.parse(readFileSync(TODAY_GEN, 'utf8'))
+  const rows: any[] = []
+  for (const [num, v] of Object.entries<any>(g)) for (const nat of ['k', 'e', 'j', 'c']) if (v[nat]) rows.push({ number: `to${num}`, nation: nat, lang: TODAY_LANG[nat], ...v[nat] })
+  scanToday('gen-today', rows)
 }
 
 if (wantOut) {
