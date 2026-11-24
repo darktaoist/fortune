@@ -1,7 +1,8 @@
 #!/usr/bin/env -S npx tsx
 /**
  * 2027 토정비결 파일럿 — 괘 1개를 Claude API로 생성해 tojung_yearly(1행) +
- * tojung_monthly(12행)에 status='draft'로 upsert한다.
+ * tojung_monthly(12행)에 upsert한다(새 행은 draft, 기존 행은 status 유지).
+ * 이미 published인 괘는 --live 없이는 거부한다(2026-11-24).
  *
  *   npx tsx scripts/tojung2027/generate_one.ts 001            # API 1회 호출 + 적재
  *   npx tsx scripts/tojung2027/generate_one.ts 001 --dry-run  # 프롬프트만 출력(호출·적재 없음)
@@ -20,6 +21,7 @@ import { fileURLToPath } from 'node:url'
 import Anthropic from '@anthropic-ai/sdk'
 import pg from 'pg'
 import { leakErrors } from './leak-check.mjs'
+import { guardPublished } from './lib'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '../..')
@@ -150,6 +152,8 @@ const db = new pg.Client(pgConfig())
 await db.connect()
 try {
   let message: Anthropic.Message
+  // B안(2026-11-24): 이미 published인 행이면 --live 없이는 API 호출·적재 전에 멈춘다. --dry-run은 예외.
+  if (!DRY) await guardPublished(db, [[LANG, code]], `generate_one ${code}`)
 
   if (FROM_OUT) {
     if (!existsSync(rawPath)) throw new Error(`저장된 응답 없음: ${rawPath}`)
@@ -227,7 +231,7 @@ try {
        grade=excluded.grade, headline=excluded.headline, summary=excluded.summary, total=excluded.total,
        wealth=excluded.wealth, career=excluded.career, love=excluded.love, health=excluded.health,
        family=excluded.family, caution=excluded.caution, good_months=excluded.good_months,
-       bad_months=excluded.bad_months, lucky=excluded.lucky, status='draft', model=excluded.model,
+       bad_months=excluded.bad_months, lucky=excluded.lucky, model=excluded.model,
        prompt_ver=excluded.prompt_ver`,
     [YEAR, SCHEME, code, LANG, r.grade, r.headline, r.summary, r.total, r.wealth, r.career, r.love, r.health,
       r.family, r.caution, r.good_months, r.bad_months, JSON.stringify(r.lucky), MODEL, PROMPT_VER],
@@ -239,12 +243,12 @@ try {
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'draft')
        on conflict (year, scheme, gwae_code, lang, month) do update set
          grade=excluded.grade, summary=excluded.summary, body=excluded.body, wealth=excluded.wealth,
-         career=excluded.career, love=excluded.love, health=excluded.health, advice=excluded.advice, status='draft'`,
+         career=excluded.career, love=excluded.love, health=excluded.health, advice=excluded.advice`,
       [YEAR, SCHEME, code, LANG, m.month, m.grade, m.summary, m.body, m.wealth, m.career, m.love, m.health, m.advice],
     )
   }
   await db.query('commit')
-  console.log(`✔ upsert: tojung_yearly 1행 + tojung_monthly ${r.months.length}행 (status=draft)`)
+  console.log(`✔ upsert: tojung_yearly 1행 + tojung_monthly ${r.months.length}행 (새 행은 draft, 기존 행은 status 유지)`)
 } catch (err) {
   await db.query('rollback').catch(() => {})
   console.error('x', (err as Error).message)

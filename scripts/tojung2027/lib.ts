@@ -169,6 +169,11 @@ export const responsePath = (lang: string, code: string) =>
   resolve(OUT, `${YEAR}-${code}-${lang}-${lang === 'ko' ? KO_VER : TR_VER}.response.json`)
 
 // ---------- db upsert ----------
+/**
+ * 새 행은 status='draft'로 넣고, 이미 있는 행은 status를 건드리지 않는다(2026-11-24 A안).
+ * 예전에는 덮어쓸 때 'draft'로 되돌려, collect/revalidate 한 번에 공개 행이 비공개가 되고
+ * 사이트가 조용히 2026년판으로 폴백했다. 공개 행 덮어쓰기는 guardPublished(--live)로 막는다.
+ */
 export async function upsert(db: pg.Client, lang: string, code: string, r: Result, promptVer: string) {
   await db.query(
     `insert into public.tojung_yearly
@@ -179,7 +184,7 @@ export async function upsert(db: pg.Client, lang: string, code: string, r: Resul
        grade=excluded.grade, headline=excluded.headline, summary=excluded.summary, total=excluded.total,
        wealth=excluded.wealth, career=excluded.career, love=excluded.love, health=excluded.health,
        family=excluded.family, caution=excluded.caution, good_months=excluded.good_months,
-       bad_months=excluded.bad_months, lucky=excluded.lucky, status='draft', model=excluded.model,
+       bad_months=excluded.bad_months, lucky=excluded.lucky, model=excluded.model,
        prompt_ver=excluded.prompt_ver`,
     [YEAR, SCHEME, code, lang, r.grade, r.headline, r.summary, r.total, r.wealth, r.career, r.love, r.health,
       r.family, r.caution, r.good_months, r.bad_months, JSON.stringify(r.lucky), MODEL, promptVer],
@@ -191,8 +196,32 @@ export async function upsert(db: pg.Client, lang: string, code: string, r: Resul
        values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'draft')
        on conflict (year, scheme, gwae_code, lang, month) do update set
          grade=excluded.grade, summary=excluded.summary, body=excluded.body, wealth=excluded.wealth,
-         career=excluded.career, love=excluded.love, health=excluded.health, advice=excluded.advice, status='draft'`,
+         career=excluded.career, love=excluded.love, health=excluded.health, advice=excluded.advice`,
       [YEAR, SCHEME, code, lang, m.month, m.grade, m.summary, m.body, m.wealth, m.career, m.love, m.health, m.advice],
     )
   }
+}
+
+// ---------- live guard (2026-11-24 B안) ----------
+export const LIVE = process.argv.includes('--live')
+
+/**
+ * keys([lang, code]) 중 이미 published인 행(yearly·monthly)이 있으면 목록과 건수를 출력하고,
+ * --live가 없으면 예외로 멈춘다. 쓰기 전에 호출한다(읽기만 함).
+ */
+export async function guardPublished(db: pg.Client, keys: Array<[string, string]>, what: string, live = LIVE) {
+  const ids = [...new Set(keys.map(([l, c]) => `${l}-${c}`))]
+  if (!ids.length) return
+  const y = (await db.query(
+    `select lang, gwae_code from public.tojung_yearly
+      where year=$1 and scheme=$2 and status='published' and (lang || '-' || gwae_code) = any($3::text[])
+      order by lang, gwae_code`, [YEAR, SCHEME, ids])).rows
+  const m = (await db.query(
+    `select count(*)::int n from public.tojung_monthly
+      where year=$1 and scheme=$2 and status='published' and (lang || '-' || gwae_code) = any($3::text[])`, [YEAR, SCHEME, ids])).rows[0].n
+  if (!y.length && !m) return
+  console.log(`⚠ ${what}: 이미 published인 행을 건드립니다 — yearly ${y.length}행 · monthly ${m}행 (대상 ${ids.length}건 중)`)
+  console.log('  ' + y.map((r: any) => `${r.lang}-${r.gwae_code}`).join(' '))
+  if (!live) throw new Error(`STOP: published 행 yearly ${y.length} · monthly ${m} — 라이브에 반영하려면 --live를 붙여 다시 실행`)
+  console.log('  --live: 진행(status는 published 유지)')
 }

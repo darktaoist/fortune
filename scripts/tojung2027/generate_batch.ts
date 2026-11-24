@@ -10,6 +10,8 @@
  *   npx tsx scripts/tojung2027/generate_batch.ts publish            # ledger ok 건만 published(정책 0개일 때만)
  *   npx tsx scripts/tojung2027/generate_batch.ts status
  *
+ * 라이브 보호(2026-11-24): upsert는 기존 행의 status를 유지하고(새 행만 draft), collect/revalidate/publish는
+ * 이미 published인 행을 건드리면 목록·건수를 출력하고 멈춘다. 진행하려면 --live.
  * 노출 검사(leak-check.mjs): collect/revalidate는 노출이 있으면 invalid로 두고 적재하지 않으며,
  * publish는 공개 대상 행에 노출이 하나라도 있으면 거부한다. 전수 검사는 `npm run tojung:check`.
  *
@@ -29,7 +31,7 @@ import { Converter } from 'opencc-js'
 import pg from 'pg'
 import {
   BATCH_PRICE_IN, BATCH_PRICE_OUT, CODES, COST_CAP_USD, HERE, KO_VER, MAX_TOKENS, MODEL, MONTH_COLS, OUT, SCHEMA,
-  TR_LANGS, TR_VER, allText, apiKey, clean, loadLedger, mapStrings, pgConfig, responsePath, saveLedger,
+  TR_LANGS, TR_VER, allText, apiKey, clean, guardPublished, loadLedger, mapStrings, pgConfig, responsePath, saveLedger,
   upsert, validateStructure, type Ledger, type Result,
 } from './lib'
 import { findLeaks, leakErrors, MONTHLY_TEXT, YEARLY_TEXT } from './leak-check.mjs'
@@ -259,6 +261,8 @@ async function collect() {
   const client = new Anthropic({ apiKey: apiKey(), maxRetries: 2 })
   const db = new pg.Client(pgConfig()); await db.connect()
   try {
+    // B안: 이번에 적재할 키 중 published가 있으면 --live 없이는 멈춘다(결과 조회·적재 전).
+    await guardPublished(db, pending.flatMap((b) => b.custom_ids.map((id) => [id.slice(0, 2), id.slice(-3)] as [string, string])), `collect ${phase}`)
     for (const b of pending) {
       const s = await client.messages.batches.retrieve(b.id!)
       if (s.processing_status !== 'ended') { console.log(`${b.id} 아직 ${s.processing_status}`); continue }
@@ -308,10 +312,14 @@ async function revalidate() {
   const db = new pg.Client(pgConfig()); await db.connect()
   let okN = 0
   try {
-    for (const [id, st] of Object.entries(ledger.requests)) {
-      if (st.status !== 'invalid' && !(process.argv.includes('--all') && st.status === 'ok')) continue
+    const targets = Object.entries(ledger.requests).filter(([id, st]) => {
+      if (st.status !== 'invalid' && !(process.argv.includes('--all') && st.status === 'ok')) return false
+      return phase === 'tr' ? id.slice(0, 2) !== 'ko' : id.slice(0, 2) === 'ko'
+    })
+    // B안: 다시 적재할 키 중 published가 있으면 --live 없이는 멈춘다(쓰기 전).
+    await guardPublished(db, targets.map(([id]) => [id.slice(0, 2), id.slice(-3)] as [string, string]), `revalidate ${phase}`)
+    for (const [id, st] of targets) {
       const [lang, code] = [id.slice(0, 2), id.slice(-3)]
-      if (phase === 'tr' ? lang === 'ko' : lang !== 'ko') continue
       const msg = JSON.parse(readFileSync(responsePath(lang, code), 'utf8'))
       try {
         if (msg.stop_reason !== 'end_turn') throw new Error(`stop_reason=${msg.stop_reason}`)
@@ -343,6 +351,8 @@ async function publish() {
     const pol = (await db.query(`select count(*)::int n from pg_policies where schemaname='public' and tablename in ('tojung_yearly','tojung_monthly')`)).rows[0].n
     if (pol !== 0) throw new Error(`STOP: tojung_yearly/monthly에 정책 ${pol}개 — 0016(공개 읽기 제거) 적용 전에는 published 전환 금지`)
     const ok = Object.entries(ledger.requests).filter(([, st]) => st.status === 'ok').map(([id]) => [id.slice(0, 2), id.slice(-3)])
+    // B안: 이미 published인 행이 대상에 있으면 --live 없이는 멈춘다.
+    await guardPublished(db, ok as Array<[string, string]>, 'publish')
     // 공개 전 마지막 관문: 공개할 행 전체를 노출 검사(2026-11-24). 하나라도 있으면 아무것도 공개하지 않는다.
     const leaks: string[] = []
     for (const [lang, code] of ok) {
