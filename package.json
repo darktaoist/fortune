@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "i18n:check": "node scripts/i18n/check-leaks.mjs",
+    "tojung:check": "tsx scripts/tojung2027/check-leaks.ts",
     "prebuild": "node scripts/i18n/check-leaks.mjs",
     "build": "nuxt build",
     "dev": "cross-env TMPDIR=/tmp nuxt dev",

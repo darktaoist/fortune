@@ -10,6 +10,9 @@
  *   npx tsx scripts/tojung2027/generate_batch.ts publish            # ledger ok 건만 published(정책 0개일 때만)
  *   npx tsx scripts/tojung2027/generate_batch.ts status
  *
+ * 노출 검사(leak-check.mjs): collect/revalidate는 노출이 있으면 invalid로 두고 적재하지 않으며,
+ * publish는 공개 대상 행에 노출이 하나라도 있으면 거부한다. 전수 검사는 `npm run tojung:check`.
+ *
  * ko = 한국어(prompts/v1.md, 001과 동일 입력·검증·적재), tr = en/ja/zh 번역(prompts/t1.md, 한국어 결과 입력).
  *
  * 중복 청구 방지(out/ledger.json):
@@ -29,6 +32,7 @@ import {
   TR_LANGS, TR_VER, allText, apiKey, clean, loadLedger, mapStrings, pgConfig, responsePath, saveLedger,
   upsert, validateStructure, type Ledger, type Result,
 } from './lib'
+import { findLeaks, leakErrors, MONTHLY_TEXT, YEARLY_TEXT } from './leak-check.mjs'
 
 const [cmd, phase] = process.argv.slice(2)
 const s2t = Converter({ from: 'cn', to: 'tw' })
@@ -277,6 +281,7 @@ async function collect() {
           if (msg.stop_reason !== 'end_turn') throw new Error(`stop_reason=${msg.stop_reason}`)
           const raw = JSON.parse(msg.content.flatMap((x) => (x.type === 'text' ? [x.text] : [])).join('')) as Result
           const { r, errs } = lang === 'ko' ? { r: raw, errs: validateStructure(raw) } : validateTr(lang, code, raw)
+          errs.push(...leakErrors(r, lang)) // 내부번호·성별 분류·키 노출이면 적재 거부(2026-11-24)
           if (errs.length) throw new Error(errs.join('; '))
           await db.query('begin')
           await upsert(db, lang, code, r, lang === 'ko' ? KO_VER : TR_VER)
@@ -312,6 +317,7 @@ async function revalidate() {
         if (msg.stop_reason !== 'end_turn') throw new Error(`stop_reason=${msg.stop_reason}`)
         const raw = JSON.parse(msg.content.flatMap((x: any) => (x.type === 'text' ? [x.text] : [])).join('')) as Result
         const { r, errs } = lang === 'ko' ? { r: raw, errs: validateStructure(raw) } : validateTr(lang, code, raw)
+        errs.push(...leakErrors(r, lang)) // 내부번호·성별 분류·키 노출이면 적재 거부(2026-11-24)
         if (errs.length) throw new Error(errs.join('; '))
         await db.query('begin')
         await upsert(db, lang, code, r, lang === 'ko' ? KO_VER : TR_VER)
@@ -337,6 +343,16 @@ async function publish() {
     const pol = (await db.query(`select count(*)::int n from pg_policies where schemaname='public' and tablename in ('tojung_yearly','tojung_monthly')`)).rows[0].n
     if (pol !== 0) throw new Error(`STOP: tojung_yearly/monthly에 정책 ${pol}개 — 0016(공개 읽기 제거) 적용 전에는 published 전환 금지`)
     const ok = Object.entries(ledger.requests).filter(([, st]) => st.status === 'ok').map(([id]) => [id.slice(0, 2), id.slice(-3)])
+    // 공개 전 마지막 관문: 공개할 행 전체를 노출 검사(2026-11-24). 하나라도 있으면 아무것도 공개하지 않는다.
+    const leaks: string[] = []
+    for (const [lang, code] of ok) {
+      const key = [2027, 'legacy72', code, lang]
+      const y = (await db.query(`select * from public.tojung_yearly where year=$1 and scheme=$2 and gwae_code=$3 and lang=$4`, key)).rows
+      const ms = (await db.query(`select * from public.tojung_monthly where year=$1 and scheme=$2 and gwae_code=$3 and lang=$4`, key)).rows
+      for (const r of y) for (const f of YEARLY_TEXT) for (const h of findLeaks(r[f], lang)) leaks.push(`${code}-${lang} ${f}: «${h.match}»`)
+      for (const r of ms) for (const f of MONTHLY_TEXT) for (const h of findLeaks(r[f], lang)) leaks.push(`${code}-${lang} m${r.month}.${f}: «${h.match}»`)
+    }
+    if (leaks.length) throw new Error(`STOP: 내부정보 노출 ${leaks.length}건 — publish 거부\n  ${leaks.slice(0, 30).join('\n  ')}`)
     await db.query('begin')
     let y = 0, m = 0
     for (const [lang, code] of ok) {

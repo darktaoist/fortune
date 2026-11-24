@@ -19,6 +19,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Anthropic from '@anthropic-ai/sdk'
 import pg from 'pg'
+import { leakErrors } from './leak-check.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '../..')
@@ -212,7 +213,7 @@ try {
   const text = message.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('')
   const r = JSON.parse(text) as Result
 
-  const errs = validate(r)
+  const errs = [...validate(r), ...leakErrors(r, 'ko')] // 내부번호·성별 분류·키 노출이면 적재 거부(2026-11-24)
   lengthReport(r)
   if (errs.length) throw new Error(`검증 실패 — 적재하지 않음:\n  ${errs.join('\n  ')}`)
 
